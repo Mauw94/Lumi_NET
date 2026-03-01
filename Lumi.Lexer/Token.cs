@@ -1,8 +1,18 @@
 ﻿namespace Lumi.Lexer;
 
-public class Token(TokenKind type, string? value, double? number, int startLine, int startColumn, int endLine, int endColumn)
+/// <summary>
+/// Represents a token produced by the lexer, encapsulating its type, value (if applicable), and precise source code location (line and column information).
+/// </summary>
+/// <param name="kind">Kind of token.</param>
+/// <param name="value">String value of the token.</param>
+/// <param name="number">Number value of the token.</param>
+/// <param name="startLine">Position of starting line.</param>
+/// <param name="startColumn">Position of starting column.</param>
+/// <param name="endLine">Positing of end line.</param>
+/// <param name="endColumn">Position of end column.</param>
+public class Token(TokenKind kind, string? value, double? number, int startLine, int startColumn, int endLine, int endColumn)
 {
-    public TokenKind Kind { get; } = type;
+    public TokenKind Kind { get; } = kind;
     public string? Value { get; } = value;
     public double? Number { get; } = number;
     public int StartLine { get; } = startLine;

@@ -1,5 +1,8 @@
 ﻿namespace Lumi.Lexer;
 
+/// <summary>
+/// Specifies the kinds of tokens that can be recognized during lexical analysis of source code.
+/// </summary>
 public enum TokenKind
 {
     Eof,

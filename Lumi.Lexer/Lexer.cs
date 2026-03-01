@@ -2,6 +2,10 @@
 
 namespace Lumi.Lexer;
 
+/// <summary>
+/// Represents a lexical analyzer that tokenizes a source string into a sequence of tokens for further processing.  
+/// </summary>
+/// <param name="source">The source string to be tokenized. This value cannot be null.</param>
 public class Lexer(string source)
 {
     private readonly string _source = source ?? string.Empty;
@@ -9,6 +13,13 @@ public class Lexer(string source)
     private int _line = 1;
     private int _column = 1;
 
+    /// <summary>
+    /// Extracts and returns a read-only list of tokens parsed from the source input.
+    /// </summary>
+    /// <remarks>If the source input contains no tokens, the returned list will consist solely of an
+    /// end-of-file (EOF) token. The returned list preserves the order in which tokens appear in the source.</remarks>
+    /// <returns>A read-only list of tokens representing the lexical elements found in the source input. The list always includes
+    /// an end-of-file (EOF) token as the last element.</returns>
     public IReadOnlyList<Token> Tokenize()
     {
         var tokens = new List<Token>();
@@ -34,7 +45,7 @@ public class Lexer(string source)
         return tokens;
     }
 
-    public Token NextToken()
+    private Token NextToken()
     {
         SkipWhitespace();
 
@@ -170,6 +181,7 @@ public class Lexer(string source)
 
         try
         {
+            // TODO: pass number type so we can later convert to proper int/long/float/double based on suffixes like 123L, 1.23f, etc.
             if (isHex)
             {
                 var parsed = Convert.ToUInt64(s.Substring(2), 16);
@@ -285,7 +297,7 @@ public class Lexer(string source)
         if (_pos + 1 < _source.Length)
         {
             var next = _source[_pos + 1];
-            var two = new string(new[] { c, next });
+            var two = new string([c, next]);
             switch (two)
             {
                 case "==": Advance(); Advance(); return Token.WithPositions(TokenKind.Equal, startLine, startCol, _line, _column);
