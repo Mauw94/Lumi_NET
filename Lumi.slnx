@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/AST/">
+    <Project Path="Lumi.AST/Lumi.AST.csproj" />
+  </Folder>
+  <Folder Name="/Lexer/">
+    <Project Path="Lumi.Lexer.Tests/Lumi.Lexer.Tests.csproj" />
+    <Project Path="Lumi.Lexer/Lumi.Lexer.csproj" />
+  </Folder>
+  <Folder Name="/Parser/">
+    <Project Path="Lumi.Parser.Tests/Lumi.Parser.Tests.csproj" />
+    <Project Path="Lumi.Parser/Lumi.Parser.csproj" />
+  </Folder>
+</Solution>
