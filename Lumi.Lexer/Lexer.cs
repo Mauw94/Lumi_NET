@@ -45,7 +45,15 @@ public class Lexer(string source)
         return tokens;
     }
 
-    private Token NextToken()
+    /// <summary>
+    /// Reads and returns the next token from the source input, advancing the current position past any whitespace and
+    /// the recognized token.
+    /// </summary>
+    /// <remarks>This method recognizes and returns tokens for identifiers, keywords, numbers, strings,
+    /// comments, and operators. It updates the current line and column positions as tokens are read.</remarks>
+    /// <returns>A <see cref="Token"/> representing the next token in the source input. Returns an end-of-file token if the end
+    /// of the source is reached.</returns>
+    public Token NextToken()
     {
         SkipWhitespace();
 
