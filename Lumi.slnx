@@ -1,6 +1,10 @@
 <Solution>
   <Folder Name="/AST/">
+    <Project Path="Lumi.AST.Tests/Lumi.AST.Tests.csproj" Id="d0110146-a007-4e73-8281-af1fa0a4b947" />
     <Project Path="Lumi.AST/Lumi.AST.csproj" />
+  </Folder>
+  <Folder Name="/Bytecode/">
+    <Project Path="Lumi.Bytecode/Lumi.Bytecode.csproj" />
   </Folder>
   <Folder Name="/Lexer/">
     <Project Path="Lumi.Lexer.Tests/Lumi.Lexer.Tests.csproj" />

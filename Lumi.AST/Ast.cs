@@ -1,137 +1,136 @@
 ﻿using Lumi.AST;
 
-namespace Lumi.Ast
+namespace Lumi.Ast;
+
+public abstract class Node
 {
-    public abstract class Node
-    {
-        public NodeSpan Span { get; set; } = null!;
+    public NodeSpan Span { get; set; } = null!;
 
-        // Convenience singletons used by the parser
-        public static readonly Node Null = new NullNode();
-        public static readonly Node Undefined = new UndefinedNode();
-    }
+    // Convenience singletons used by the parser
+    public static readonly Node Null = new NullNode();
+    public static readonly Node Undefined = new UndefinedNode();
+}
 
-    public sealed class NullNode : Node { }
-    public sealed class UndefinedNode : Node { }
+public sealed class NullNode : Node { }
+public sealed class UndefinedNode : Node { }
 
-    // Program
-    public class Program : Node
-    {
-        public List<Node> Body { get; set; } = [];
-    }
+// Program
+public class Program : Node
+{
+    public List<Node> Body { get; set; } = [];
+}
 
-    // Declarations
-    public class VariableDeclaration : Node
-    {
-        public string Kind { get; set; } = string.Empty;
-        public List<VariableDeclarator> Declarations { get; set; } = [];
-    }
+// Declarations
+public class VariableDeclaration : Node
+{
+    public string Kind { get; set; } = string.Empty;
+    public List<VariableDeclarator> Declarations { get; set; } = [];
+}
 
-    public class VariableDeclarator : Node
-    {
-        public required Node VarName { get; set; }
-        public Node? VarType { get; set; }
-        public Node? Init { get; set; }
-    }
+public class VariableDeclarator : Node
+{
+    public required Node VarName { get; set; }
+    public Node? VarType { get; set; }
+    public Node? Init { get; set; }
+}
 
-    public class FunctionDeclaration : Node
-    {
-        public required Node Id { get; set; }
-        public List<Node> Params { get; set; } = [];
-        public required Node Body { get; set; }
-        public bool IsAsync { get; set; }
-    }
+public class FunctionDeclaration : Node
+{
+    public required Node Id { get; set; }
+    public List<Node> Params { get; set; } = [];
+    public required Node Body { get; set; }
+    public bool IsAsync { get; set; }
+}
 
-    public class CallExpression : Node
-    {
-        public required Node Callee { get; set; }
-        public List<Node> Arguments { get; set; } = [];
-    }
+public class CallExpression : Node
+{
+    public required Node Callee { get; set; }
+    public List<Node> Arguments { get; set; } = [];
+}
 
-    // Expressions
-    public class BinaryExpression : Node
-    {
-        public required Node Left { get; set; }
-        public string Operator { get; set; } = string.Empty; // TODO: replace with enum
-        public required Node Right { get; set; }
-    }
+// Expressions
+public class BinaryExpression : Node
+{
+    public required Node Left { get; set; }
+    public string Operator { get; set; } = string.Empty; // TODO: replace with enum
+    public required Node Right { get; set; }
+}
 
-    public class LogicalExpression : Node
-    {
-        public required Node Left { get; set; }
-        public string Operator { get; set; } = string.Empty;
-        public required Node Right { get; set; }
-    }
+public class LogicalExpression : Node
+{
+    public required Node Left { get; set; }
+    public string Operator { get; set; } = string.Empty;
+    public required Node Right { get; set; }
+}
 
-    public class AssignmentExpression : Node
-    {
-        public required Node Left { get; set; }
-        public string Operator { get; set; } = string.Empty;
-        public required Node Right { get; set; }
-    }
+public class AssignmentExpression : Node
+{
+    public required Node Left { get; set; }
+    public string Operator { get; set; } = string.Empty;
+    public required Node Right { get; set; }
+}
 
-    public class UnaryExpression : Node
-    {
-        public string Operator { get; set; } = string.Empty;
-        public required Node Argument { get; set; }
-        public bool Prefix { get; set; }
-    }
+public class UnaryExpression : Node
+{
+    public string Operator { get; set; } = string.Empty;
+    public required Node Argument { get; set; }
+    public bool Prefix { get; set; }
+}
 
-    // Statements
-    public class PrintStatement : Node
-    {
-        public required Node Argument { get; set; }
-    }
+// Statements
+public class PrintStatement : Node
+{
+    public required Node Argument { get; set; }
+}
 
-    public class ExpressionStatement : Node
-    {
-        public required Node Expression { get; set; }
-    }
+public class ExpressionStatement : Node
+{
+    public required Node Expression { get; set; }
+}
 
-    public class BlockStatement : Node
-    {
-        public List<Node> Body { get; set; } = [];
-    }
+public class BlockStatement : Node
+{
+    public List<Node> Body { get; set; } = [];
+}
 
-    public class IfStatement : Node
-    {
-        public required Node Expr { get; set; }
-        public required Node Stmt { get; set; }
-        public Node? ElsePart { get; set; }
-    }
+public class IfStatement : Node
+{
+    public required Node Expr { get; set; }
+    public required Node Stmt { get; set; }
+    public Node? ElsePart { get; set; }
+}
 
-    public class ForStatement : Node
-    {
-        public required Node Iterator { get; set; }
-        public required Node Start { get; set; }
-        public required Node End { get; set; }
-        public Node? Step { get; set; }
-        public required Node Body { get; set; }
-    }
+public class ForStatement : Node
+{
+    public required Node Iterator { get; set; }
+    public required Node Start { get; set; }
+    public required Node End { get; set; }
+    public Node? Step { get; set; }
+    public required Node Body { get; set; }
+}
 
-    // Literals and misc
-    public class ArrayLiteral : Node
-    {
-        public List<Node> Elements { get; set; } = [];
-    }
+// Literals and misc
+public class ArrayLiteral : Node
+{
+    public List<Node> Elements { get; set; } = [];
+}
 
-    public class IdentifierNode : Node
-    {
-        public string Name { get; set; } = string.Empty;
-    }
+public class IdentifierNode : Node
+{
+    public string Name { get; set; } = string.Empty;
+}
 
-    public class NumberNode : Node
-    {
-        public double Value { get; set; }
-    }
+public class NumberNode : Node
+{
+    public double Value { get; set; }
+}
 
-    public class StringNode : Node
-    {
-        public string Value { get; set; } = string.Empty;
-    }
+public class StringNode : Node
+{
+    public string Value { get; set; } = string.Empty;
+}
 
-    public class BooleanNode : Node
-    {
-        public bool Value { get; set; }
-    }
+public class BooleanNode : Node
+{
+    public bool Value { get; set; }
 }
