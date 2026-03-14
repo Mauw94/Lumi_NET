@@ -12,6 +12,8 @@ namespace Lumi.VM;
 public sealed class VirtualMachine
 {
     private readonly Stack _stack;
+    private readonly BinaryInstruction _binaryInstruction;
+    private readonly Dictionary<int, Value> _variables = [];
     private IReadOnlyList<Instruction> _instructions;
     private IReadOnlyList<Constant> _constants;
     private int _ip;
@@ -20,6 +22,7 @@ public sealed class VirtualMachine
     public VirtualMachine()
     {
         _stack = new Stack();
+        _binaryInstruction = new BinaryInstruction(_stack);
         _instructions = [];
         _constants = [];
         _ip = 0;
@@ -44,16 +47,22 @@ public sealed class VirtualMachine
                     PushConst();
                     break;
                 case InstructionKind.Add:
-                    new BinaryInstruction(_stack).Add();
+                    _binaryInstruction.Add();
                     break;
                 case InstructionKind.Sub:
-                    new BinaryInstruction(_stack).Sub();
+                    _binaryInstruction.Sub();
                     break;
                 case InstructionKind.Mul:
-                    new BinaryInstruction(_stack).Mul();
+                    _binaryInstruction.Mul();
                     break;
                 case InstructionKind.Div:
-                    new BinaryInstruction(_stack).Div();
+                    _binaryInstruction.Div();
+                    break;
+                case InstructionKind.StoreVar:
+                    StoreVar();
+                    break;
+                case InstructionKind.LoadVar:
+                    LoadVar();
                     break;
                 case InstructionKind.Print:
                     Print();
@@ -74,9 +83,24 @@ public sealed class VirtualMachine
         _stack.Push(Value.ConstantToValue(constant));
     }
 
+    private void StoreVar()
+    {
+        var slot = _instructions[_ip].SafeGetIntOperand();
+        _variables[slot] = _stack.Pop();
+    }
+
+    private void LoadVar()
+    {
+        var slot = _instructions[_ip].SafeGetIntOperand();
+        if (!_variables.TryGetValue(slot, out var value))
+            throw VirtualMachineError.UndefinedVariable(slot);
+
+        _stack.Push(value);
+    }
+
     private void Print()
     {
-        var value = _stack.Peek();
+        var value = _stack.Pop();
         Console.WriteLine(value.PrintValue());
     }
 }

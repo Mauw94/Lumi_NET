@@ -23,4 +23,6 @@ public sealed class VirtualMachineError(string message) : Exception(message)
     public static VirtualMachineError UnkownConstantKind(ConstantKind kind) => new($"Unknown constant kind: {kind}");
 
     public static VirtualMachineError UnkownValueKind(ValueKind kind) => new($"Unknown value kind: {kind}");
+
+    public static VirtualMachineError UndefinedVariable(int slot) => new($"Undefined variable at slot {slot}.");
 }

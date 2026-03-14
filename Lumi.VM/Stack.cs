@@ -5,34 +5,43 @@
 /// </summary>
 internal sealed class Stack
 {
-    private const int MaxStackSize = 1024; // Define a maximum stack size to prevent overflow
-    public Stack<Value> Values { get; } = [];
+    private const int MaxStackSize = 1024;
+    // List used as the backing store so Peek(offset) is O(1) with no allocation
+    private readonly List<Value> _values = new();
+
+    public int Count => _values.Count;
 
     public void Push(Value value)
     {
-        if (Values.Count + 1 > MaxStackSize)
+        if (_values.Count >= MaxStackSize)
             throw VirtualMachineError.StackOverflow();
 
-        Values.Push(value);
+        _values.Add(value);
     }
 
     public Value Pop()
     {
-        Values.TryPop(out var value);
-
-        if (value is null)
+        if (_values.Count == 0)
             throw VirtualMachineError.StackUnderflow();
 
+        var value = _values[^1];
+        _values.RemoveAt(_values.Count - 1);
         return value;
     }
 
-    public Value Peek() => Values.Peek();
+    public Value Peek()
+    {
+        if (_values.Count == 0)
+            throw VirtualMachineError.StackUnderflow();
+
+        return _values[^1];
+    }
 
     public Value Peek(int offset)
     {
-        if (offset < 0 || offset >= Values.Count)
+        if (offset < 0 || offset >= _values.Count)
             throw VirtualMachineError.InvalidPeekOffset();
 
-        return Values.ToArray()[Values.Count - 1 - offset];
+        return _values[_values.Count - 1 - offset];
     }
 }
