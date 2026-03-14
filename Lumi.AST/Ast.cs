@@ -7,7 +7,7 @@ namespace Lumi.Ast;
 /// </summary>
 public abstract class Node
 {
-    public NodeSpan Span { get; set; } = null!;
+    public NodeSpan Span { get; set; }
 
     // Convenience singletons used by the parser
     public static readonly Node Null = new NullNode();

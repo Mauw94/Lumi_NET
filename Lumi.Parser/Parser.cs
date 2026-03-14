@@ -567,100 +567,62 @@ public sealed class Parser
         throw ParserError.UnexpectedToken(currentToken ?? throw new InvalidOperationException("No current token"), kind.ToString());
     }
 
-    private bool IsUnaryOperator()
-    {
-        if (current == null) return false;
-        return Check(TokenKind.Plus) || Check(TokenKind.Minus) || Check(TokenKind.Increment) || Check(TokenKind.Decrement);
-    }
+    private bool IsUnaryOperator() =>
+        current?.Kind is TokenKind.Plus or TokenKind.Minus or TokenKind.Increment or TokenKind.Decrement;
 
-    private bool IsMultiplicativeOperator()
-    {
-        if (current == null) return false;
-        return Check(TokenKind.Star) || Check(TokenKind.Slash) || Check(TokenKind.Percent);
-    }
+    private bool IsMultiplicativeOperator() =>
+        current?.Kind is TokenKind.Star or TokenKind.Slash or TokenKind.Percent;
 
-    private bool IsAdditiveOperator()
-    {
-        if (current == null) return false;
-        return Check(TokenKind.Plus) || Check(TokenKind.Minus);
-    }
+    private bool IsAdditiveOperator() =>
+        current?.Kind is TokenKind.Plus or TokenKind.Minus;
 
-    private bool IsRelationalOperator()
-    {
-        if (current == null) return false;
-        return Check(TokenKind.LessThan) || Check(TokenKind.GreaterThan) || Check(TokenKind.LessThanEqual) || Check(TokenKind.GreaterThanEqual);
-    }
+    private bool IsRelationalOperator() =>
+        current?.Kind is TokenKind.LessThan or TokenKind.GreaterThan or TokenKind.LessThanEqual or TokenKind.GreaterThanEqual;
 
-    private bool IsAssignmentOperator()
-    {
-        if (current == null) return false;
-        return Check(TokenKind.Arrow) || Check(TokenKind.Assign) || Check(TokenKind.PlusAssign) || Check(TokenKind.MinusAssign);
-    }
+    private bool IsAssignmentOperator() =>
+        current?.Kind is TokenKind.Arrow or TokenKind.Assign or TokenKind.PlusAssign or TokenKind.MinusAssign;
 
-    private bool IsEqualityOperator()
-    {
-        if (current == null) return false;
-        return Check(TokenKind.EqualEqual) || Check(TokenKind.NotEqual);
-    }
+    private bool IsEqualityOperator() =>
+        current?.Kind is TokenKind.EqualEqual or TokenKind.NotEqual;
 
     private Node ParsePrimaryExpression()
     {
         if (current == null)
             throw ParserError.UnexpectedEndOfFile();
 
-        var kindStr = current.Kind.ToString();
-
-        if (Check(TokenKind.Number))
+        switch (current.Kind)
         {
-            var value = current.Number ?? 0.0;
-            Advance();
+            case TokenKind.Number:
+                var value = current.Number ?? 0.0;
+                Advance();
+                return new NumberNode { Value = value };
 
-            return new NumberNode { Value = value };
+            case TokenKind.Identifier:
+                var name = current.Value ?? string.Empty;
+                Advance();
+                return new IdentifierNode { Name = name };
+
+            case TokenKind.String:
+                var s = current.Value ?? string.Empty;
+                Advance();
+                return new StringNode { Value = s };
+
+            case TokenKind.Boolean:
+                var b = (current.Value ?? "false").Equals("true", StringComparison.OrdinalIgnoreCase);
+                Advance();
+                return new BooleanNode { Value = b };
+
+            case TokenKind.Null:
+                Advance();
+                return Node.Null;
+
+            case TokenKind.Undefined:
+                Advance();
+                return Node.Undefined;
+
+            default:
+                throw ParserError.UnexpectedToken(current, "Expected primary expression");
         }
-
-        if (IsIdentifier(current, out var name))
-        {
-            Advance();
-
-            return new IdentifierNode { Name = name };
-        }
-
-        if (Check(TokenKind.String))
-        {
-            var s = current.Value ?? string.Empty;
-            Advance();
-
-            return new StringNode { Value = s };
-        }
-
-        if (Check(TokenKind.Boolean))
-        {
-            var b = (current.Value ?? "false").Equals("true", StringComparison.OrdinalIgnoreCase);
-            Advance();
-
-            return new BooleanNode { Value = b };
-        }
-
-        if (Check(TokenKind.Null))
-        {
-            Advance();
-
-            return Node.Null;
-        }
-
-        if (Check(TokenKind.Undefined))
-        {
-            Advance();
-
-            return Node.Undefined;
-        }
-
-        if (CheckIdentifier())
-        {
-            return ParseIdentifier();
-        }
-
-        throw ParserError.UnexpectedToken(current, "Expected primary expression");
     }
 
     private Node? TryParseIdentifierType()
@@ -687,35 +649,33 @@ public sealed class Parser
     private string CurrentTokenString()
     {
         if (current == null) return "EOF";
-        // Try common token kinds
-        if (Check(TokenKind.Plus)) return "+";
-        if (Check(TokenKind.Minus)) return "-";
-        if (Check(TokenKind.Star)) return "*";
-        if (Check(TokenKind.Slash)) return "/";
-        if (Check(TokenKind.Percent)) return "%";
-        if (Check(TokenKind.Equal)) return "=";
-        if (Check(TokenKind.EqualEqual)) return "==";
-        if (Check(TokenKind.LessThan)) return "<";
-        if (Check(TokenKind.GreaterThan)) return ">";
-        if (Check(TokenKind.LessThanEqual)) return "<=";
-        if (Check(TokenKind.GreaterThanEqual)) return ">=";
-        if (Check(TokenKind.PlusAssign)) return "+=";
-        if (Check(TokenKind.MinusAssign)) return "-=";
-        if (Check(TokenKind.Increment)) return "++";
-        if (Check(TokenKind.Decrement)) return "--";
-        if (IsIdentifier(current, out var name)) return name;
-        if (Check(TokenKind.String)) return current.Value ?? string.Empty;
-        if (Check(TokenKind.Boolean)) return (current.Value ?? "false").ToString();
-        if (Check(TokenKind.Number)) return current.Number?.ToString() ?? "0";
-        if (Check(TokenKind.Eof)) return "EOF";
-        return current.Kind.ToString();
+        return current.Kind switch
+        {
+            TokenKind.Plus => "+",
+            TokenKind.Minus => "-",
+            TokenKind.Star => "*",
+            TokenKind.Slash => "/",
+            TokenKind.Percent => "%",
+            TokenKind.Equal => "=",
+            TokenKind.EqualEqual => "==",
+            TokenKind.LessThan => "<",
+            TokenKind.GreaterThan => ">",
+            TokenKind.LessThanEqual => "<=",
+            TokenKind.GreaterThanEqual => ">=",
+            TokenKind.PlusAssign => "+=",
+            TokenKind.MinusAssign => "-=",
+            TokenKind.Increment => "++",
+            TokenKind.Decrement => "--",
+            TokenKind.Identifier => current.Value ?? string.Empty,
+            TokenKind.String => current.Value ?? string.Empty,
+            TokenKind.Boolean => current.Value ?? "false",
+            TokenKind.Number => current.Number?.ToString() ?? "0",
+            TokenKind.Eof => "EOF",
+            _ => current.Kind.ToString()
+        };
     }
 
-    private bool Check(TokenKind kind)
-    {
-        if (current == null) return false;
-        return current.Kind.Equals(kind);
-    }
+    private bool Check(TokenKind kind) => current != null && current.Kind == kind;
 
     private void Advance()
     {

@@ -1,16 +1,8 @@
 ﻿namespace Lumi.AST;
 
-public class Position
+public readonly record struct Position(int Line, int Column)
 {
-    public int Line { get; set; } = 1;
-    public int Column { get; set; } = 1;
-
-    public Position() { }
-    public Position(int line, int column)
-    {
-        Line = line;
-        Column = column;
-    }
+    public Position() : this(1, 1) { }
 
     public override string ToString() => $"{Line}:{Column}";
 }
