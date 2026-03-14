@@ -13,7 +13,6 @@ public sealed class VirtualMachine
 {
     private readonly Stack _stack;
     private readonly BinaryInstruction _binaryInstruction;
-    // List indexed by slot id — O(1) access with no hashing, grows on demand.
     private readonly List<Value?> _variables = [];
     private IReadOnlyList<Instruction> _instructions;
     private IReadOnlyList<Constant> _constants;
