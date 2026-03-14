@@ -562,9 +562,7 @@ public sealed class Parser
             return;
         }
 
-        var currentToken = CurrentToken();
-
-        throw ParserError.UnexpectedToken(currentToken ?? throw new InvalidOperationException("No current token"), kind.ToString());
+        throw ParserError.UnexpectedToken(CurrentToken(), kind.ToString());
     }
 
     private bool IsUnaryOperator() =>
@@ -587,28 +585,27 @@ public sealed class Parser
 
     private Node ParsePrimaryExpression()
     {
-        if (current == null)
-            throw ParserError.UnexpectedEndOfFile();
+        var tok = current ?? throw ParserError.UnexpectedEndOfFile();
 
-        switch (current.Kind)
+        switch (tok.Kind)
         {
             case TokenKind.Number:
-                var value = current.Number ?? 0.0;
+                var value = tok.Number ?? 0.0;
                 Advance();
                 return new NumberNode { Value = value };
 
             case TokenKind.Identifier:
-                var name = current.Value ?? string.Empty;
+                var name = tok.Value ?? string.Empty;
                 Advance();
                 return new IdentifierNode { Name = name };
 
             case TokenKind.String:
-                var s = current.Value ?? string.Empty;
+                var s = tok.Value ?? string.Empty;
                 Advance();
                 return new StringNode { Value = s };
 
             case TokenKind.Boolean:
-                var b = (current.Value ?? "false").Equals("true", StringComparison.OrdinalIgnoreCase);
+                var b = (tok.Value ?? "false").Equals("true", StringComparison.OrdinalIgnoreCase);
                 Advance();
                 return new BooleanNode { Value = b };
 
@@ -621,7 +618,7 @@ public sealed class Parser
                 return Node.Undefined;
 
             default:
-                throw ParserError.UnexpectedToken(current, "Expected primary expression");
+                throw ParserError.UnexpectedToken(tok, "Expected primary expression");
         }
     }
 
@@ -649,7 +646,8 @@ public sealed class Parser
     private string CurrentTokenString()
     {
         if (current == null) return "EOF";
-        return current.Kind switch
+        var tok = current.Value;
+        return tok.Kind switch
         {
             TokenKind.Plus => "+",
             TokenKind.Minus => "-",
@@ -666,16 +664,16 @@ public sealed class Parser
             TokenKind.MinusAssign => "-=",
             TokenKind.Increment => "++",
             TokenKind.Decrement => "--",
-            TokenKind.Identifier => current.Value ?? string.Empty,
-            TokenKind.String => current.Value ?? string.Empty,
-            TokenKind.Boolean => current.Value ?? "false",
-            TokenKind.Number => current.Number?.ToString() ?? "0",
+            TokenKind.Identifier => tok.Value ?? string.Empty,
+            TokenKind.String => tok.Value ?? string.Empty,
+            TokenKind.Boolean => tok.Value ?? "false",
+            TokenKind.Number => tok.Number?.ToString() ?? "0",
             TokenKind.Eof => "EOF",
-            _ => current.Kind.ToString()
+            _ => tok.Kind.ToString()
         };
     }
 
-    private bool Check(TokenKind kind) => current != null && current.Kind == kind;
+    private bool Check(TokenKind kind) => current?.Kind == kind;
 
     private void Advance()
     {
@@ -696,23 +694,14 @@ public sealed class Parser
         return current == null || Check(TokenKind.Eof);
     }
 
-    private Position? CurrentPosition()
-    {
-        if (current == null) return null;
-        return new Position(current.StartLine, current.StartColumn);
-    }
+    private Position? CurrentPosition() =>
+        current is { } tok ? new Position(tok.StartLine, tok.StartColumn) : null;
 
-    private Position? PreviousPosition()
-    {
-        if (previous == null) return null;
-        return new Position(previous.EndLine, previous.EndColumn);
-    }
+    private Position? PreviousPosition() =>
+        previous is { } tok ? new Position(tok.EndLine, tok.EndColumn) : null;
 
     private Token CurrentToken()
-    {
-        if (current is null) throw ParserError.NoCurrentTokenFound(CurrentPosition() ?? new Position());
-        return current;
-    }
+        => current ?? throw ParserError.NoCurrentTokenFound(CurrentPosition() ?? new Position());
 
     private NodeSpan CreateSpanFromTokens()
     {
@@ -736,7 +725,7 @@ public sealed class Parser
 
         errorRecovery.RecordError(error);
 
-        var ctx = new RecoveryContext(CurrentToken(), previous!, context);
+        var ctx = new RecoveryContext(CurrentToken(), previous ?? default, context);
         var strategy = ctx.DetermineStrategy();
 
         if (strategy is RecoveryStrategy.SkipUntil skip)
@@ -745,15 +734,10 @@ public sealed class Parser
             while (!IsEof())
             {
                 var t = CurrentToken();
-                if (t != null)
+                foreach (var tok in tokens)
                 {
-                    foreach (var tok in tokens)
-                    {
-                        if (t.Kind.ToString().Contains(tok))
-                        {
-                            return true;
-                        }
-                    }
+                    if (t.Kind.ToString().Contains(tok))
+                        return true;
                 }
                 Advance();
             }
@@ -765,7 +749,6 @@ public sealed class Parser
             while (!IsEof())
             {
                 var t = CurrentToken();
-                if (t == null) break;
                 if (t.Kind == TokenKind.Semicolon || t.Kind == TokenKind.RightBrace) break;
                 Advance();
             }
@@ -776,8 +759,7 @@ public sealed class Parser
         {
             while (!IsEof())
             {
-                var t = CurrentToken();
-                if (t != null && t.Kind == TokenKind.RightBrace) break;
+                if (CurrentToken().Kind == TokenKind.RightBrace) break;
                 Advance();
             }
             return true;
@@ -788,7 +770,6 @@ public sealed class Parser
             while (!IsEof())
             {
                 var t = CurrentToken();
-                if (t == null) break;
                 if (t.Kind == TokenKind.RightBrace || t.Kind == TokenKind.Semicolon) break;
                 Advance();
             }
@@ -799,8 +780,7 @@ public sealed class Parser
         {
             while (!IsEof())
             {
-                var t = CurrentToken();
-                if (t != null && t.Kind == TokenKind.RightBrace) break;
+                if (CurrentToken().Kind == TokenKind.RightBrace) break;
                 Advance();
             }
             return true;
@@ -811,10 +791,7 @@ public sealed class Parser
             while (!IsEof())
             {
                 var t = CurrentToken();
-                if (t != null)
-                {
-                    if (t.Kind == TokenKind.RightBrace || (IsKeyword(t, out var k) && (k == "import" || k == "export"))) break;
-                }
+                if (t.Kind == TokenKind.RightBrace || (IsKeyword(t, out var k) && (k == "import" || k == "export"))) break;
                 Advance();
             }
             return true;
@@ -830,18 +807,14 @@ public sealed class Parser
     }
 
     // Helper keyword/identifier checks - adapt to your Token implementation
-    private static bool IsKeyword(Token token, out string keyword)
+    private static bool IsKeyword(Token? token, out string keyword)
     {
         keyword = string.Empty;
-
-        if (token == null) return false;
-        if (token.Kind == TokenKind.Keyword)
-        {
-            keyword = token.Value ?? string.Empty;
-            return true;
-        }
-
-        return false;
+        if (!token.HasValue) return false;
+        var tok = token.Value;
+        if (tok.Kind != TokenKind.Keyword) return false;
+        keyword = tok.Value ?? string.Empty;
+        return true;
     }
 
     private bool CheckKeyword(string kw)
@@ -857,17 +830,13 @@ public sealed class Parser
         Advance();
     }
 
-    private static bool IsIdentifier(Token token, out string name)
+    private static bool IsIdentifier(Token? token, out string name)
     {
         name = string.Empty;
-
-        if (token == null) return false;
-        if (token.Kind == TokenKind.Identifier)
-        {
-            name = token.Value ?? string.Empty;
-            return true;
-        }
-
-        return false;
+        if (!token.HasValue) return false;
+        var tok = token.Value;
+        if (tok.Kind != TokenKind.Identifier) return false;
+        name = tok.Value ?? string.Empty;
+        return true;
     }
 }

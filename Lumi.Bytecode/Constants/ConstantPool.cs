@@ -16,24 +16,10 @@ internal sealed class ConstantPool
         switch (constant.Kind)
         {
             case ConstantKind.Number:
-                var num = constant.Number!.Value;
-                if (!_numberIndex.TryGetValue(num, out var ni))
-                {
-                    ni = _values.Count;
-                    _values.Add(constant);
-                    _numberIndex[num] = ni;
-                }
-                return ni;
+                return StoreNumberConstant(constant);
 
             case ConstantKind.String:
-                var str = constant.String!;
-                if (!_stringIndex.TryGetValue(str, out var si))
-                {
-                    si = _values.Count;
-                    _values.Add(constant);
-                    _stringIndex[str] = si;
-                }
-                return si;
+                return StoreStringConstant(constant);
 
             default:
                 _values.Add(constant);
@@ -44,4 +30,32 @@ internal sealed class ConstantPool
     // Return the list directly — IReadOnlyList<T> prevents mutation without the
     // extra allocation that AsReadOnly() creates on every access.
     public IReadOnlyList<Constant> Values => _values;
+
+    private int StoreNumberConstant(Constant constant)
+    {
+        var num = constant.Number!.Value;
+
+        if (!_numberIndex.TryGetValue(num, out var ni))
+        {
+            ni = _values.Count;
+            _values.Add(constant);
+            _numberIndex[num] = ni;
+        }
+
+        return ni;
+    }
+
+    private int StoreStringConstant(Constant constant)
+    {
+        var str = constant.String!;
+
+        if (!_stringIndex.TryGetValue(str, out var si))
+        {
+            si = _values.Count;
+            _values.Add(constant);
+            _stringIndex[str] = si;
+        }
+
+        return si;
+    }
 }
