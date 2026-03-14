@@ -6,7 +6,7 @@
 /// </summary>
 internal sealed class LocalManager
 {
-    private readonly List<Dictionary<string, Local>> _scopes = [];
+    private readonly List<Dictionary<string, Local>> _scopes = new(capacity: 4);
     private int _nextLabelId = 0;
     private Dictionary<string, Local> CurrentScope => _scopes.Count > 0 ? _scopes[^1] : throw BytecodeError.NoActiveScope();
 

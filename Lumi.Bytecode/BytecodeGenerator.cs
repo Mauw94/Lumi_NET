@@ -11,7 +11,7 @@ namespace Lumi.Bytecode;
 /// </summary>
 public sealed class BytecodeGenerator
 {
-    private readonly List<Instruction> _instructions = [];
+    private readonly List<Instruction> _instructions = new(capacity: 64);
     private readonly ConstantPool _constantPool = new();
     private readonly Dictionary<Label, int> _labelPositions = [];
     private readonly Dictionary<Label, int> _symbolTable = [];
@@ -40,114 +40,92 @@ public sealed class BytecodeGenerator
 
     private void Visit(Node node)
     {
-        if (node is Program program)
+        switch (node)
         {
-            for (int i = 0; i < program.Body.Count; i++)
-            {
-                Visit(program.Body[i]);
-            }
-            return;
-        }
+            case Program program:
+                for (int i = 0; i < program.Body.Count; i++)
+                    Visit(program.Body[i]);
+                break;
 
-        if (node is BlockStatement block)
-        {
-            _locals.EnterScope();
+            case BlockStatement block:
+                _locals.EnterScope();
+                foreach (var stmt in block.Body)
+                    Visit(stmt);
+                _locals.ExitScope();
+                break;
 
-            foreach (var stmt in block.Body)
-            {
-                Visit(stmt);
-            }
+            case VariableDeclaration variableDeclaration:
+                VisitVariableDeclaration(variableDeclaration);
+                break;
 
-            _locals.ExitScope();
+            case IdentifierNode identifier:
+                var local = _locals.LookupLocal(identifier.Name) ?? throw BytecodeError.UndefinedVariable(identifier.Name);
+                Emit(new Instruction(InstructionKind.LoadVar, intOperand: local.Label.Id));
+                break;
 
-            return;
-        }
+            case PrintStatement printStatement:
+                Visit(printStatement.Argument);
+                Emit(new Instruction(InstructionKind.Print));
+                break;
 
-        if (node is VariableDeclaration variableDeclaration)
-        {
-            foreach (var declaration in variableDeclaration.Declarations)
-            {
-                if (declaration.VarName is not IdentifierNode varName)
-                    throw BytecodeError.ExpectedIdentifierInVariableDeclaration();
+            case NumberNode number:
+                Emit(new Instruction(InstructionKind.PushConst, intOperand: AddConstant(Constant.FromNumber(number.Value))));
+                break;
 
-                var localKind = variableDeclaration.Kind switch
-                {
-                    "var" => LocalKind.Var,
-                    "const" => LocalKind.Const,
-                    "let" => LocalKind.Let,
-                    _ => LocalKind.Let,
-                };
+            case StringNode str:
+                Emit(new Instruction(InstructionKind.PushConst, intOperand: AddConstant(Constant.FromString(str.Value))));
+                break;
 
-                // If there is an initializer, emit code to evaluate it first so the value is on the stack.
-                if (declaration.Init is not null)
-                {
-                    Visit(declaration.Init);
-                }
+            case ExpressionStatement expressionStatement:
+                Visit(expressionStatement.Expression);
+                break;
 
-                var idx = _locals.GetOrCreateLocal(varName.Name, localKind);
-                Emit(new Instruction(InstructionKind.StoreVar, intOperand: idx.Id));
-            }
-        }
-
-        if (node is IdentifierNode identifier)
-        {
-            var local = _locals.LookupLocal(identifier.Name) ?? throw BytecodeError.UndefinedVariable(identifier.Name);
-            Emit(new Instruction(InstructionKind.LoadVar, intOperand: local.Label.Id));
-
-            return;
-        }
-
-        if (node is PrintStatement printStatement)
-        {
-            Visit(printStatement.Argument);
-            Emit(new Instruction(InstructionKind.Print));
-        }
-
-        if (node is NumberNode number)
-        {
-            var idx = AddConstant(Constant.FromNumber(number.Value));
-            Emit(new Instruction(InstructionKind.PushConst, intOperand: idx));
-        }
-
-        if (node is StringNode str)
-        {
-            var idx = AddConstant(Constant.FromString(str.Value));
-            Emit(new Instruction(InstructionKind.PushConst, intOperand: idx));
-        }
-
-        if (node is ExpressionStatement expressionStatement)
-        {
-            Visit(expressionStatement.Expression);
-        }
-
-        if (node is BinaryExpression binaryExpression)
-        {
-            Visit(binaryExpression.Left);
-            Visit(binaryExpression.Right);
-            switch (binaryExpression.Operator)
-            {
-                case "+":
-                    Emit(new Instruction(InstructionKind.Add));
-                    break;
-                case "-":
-                    Emit(new Instruction(InstructionKind.Sub));
-                    break;
-                case "*":
-                    Emit(new Instruction(InstructionKind.Mul));
-                    break;
-                case "/":
-                    Emit(new Instruction(InstructionKind.Div));
-                    break;
-                default:
-                    throw BytecodeError.UnsupportedOperator(binaryExpression.Operator);
-            }
+            case BinaryExpression binaryExpression:
+                VisitBinaryExpression(binaryExpression);
+                break;
         }
     }
 
-    private void Emit(Instruction instruction)
+    private void VisitVariableDeclaration(VariableDeclaration variableDeclaration)
     {
-        _instructions.Add(instruction);
+        foreach (var declaration in variableDeclaration.Declarations)
+        {
+            if (declaration.VarName is not IdentifierNode varName)
+                throw BytecodeError.ExpectedIdentifierInVariableDeclaration();
+
+            var localKind = variableDeclaration.Kind switch
+            {
+                "var" => LocalKind.Var,
+                "const" => LocalKind.Const,
+                _ => LocalKind.Let,
+            };
+
+            // If there is an initializer, emit code to evaluate it first so the value is on the stack.
+            if (declaration.Init is not null)
+                Visit(declaration.Init);
+
+            Emit(new Instruction(InstructionKind.StoreVar, intOperand: _locals.GetOrCreateLocal(varName.Name, localKind).Id));
+        }
     }
+
+    private void VisitBinaryExpression(BinaryExpression binaryExpression)
+    {
+        Visit(binaryExpression.Left);
+        Visit(binaryExpression.Right);
+
+        var kind = binaryExpression.Operator switch
+        {
+            "+" => InstructionKind.Add,
+            "-" => InstructionKind.Sub,
+            "*" => InstructionKind.Mul,
+            "/" => InstructionKind.Div,
+            _ => throw BytecodeError.UnsupportedOperator(binaryExpression.Operator)
+        };
+
+        Emit(new Instruction(kind));
+    }
+
+    private void Emit(Instruction instruction) => _instructions.Add(instruction);
 
     private int AddConstant(Constant constant) => _constantPool.Add(constant);
 }
