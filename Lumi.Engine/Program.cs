@@ -2,7 +2,6 @@
 using Lumi.Parser;
 using Lumi.VM;
 
-// Create VM and bytecode generator once to maintain state across input lines
 var bytecodeGenerator = new BytecodeGenerator();
 var vm = new VirtualMachine();
 

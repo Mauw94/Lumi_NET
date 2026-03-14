@@ -34,8 +34,6 @@ public sealed class VirtualMachine
     {
         _instructions = bytecode.Instructions;
         _constants = bytecode.Constants;
-
-        // Start execution from where we left off, not from the beginning
         _ip = _executedInstructionCount;
 
         while (_ip < _instructions.Count)
@@ -65,7 +63,6 @@ public sealed class VirtualMachine
             _ip += 1;
         }
 
-        // Track how many instructions we've executed for the next call
         _executedInstructionCount = _ip;
     }
 
