@@ -10,6 +10,7 @@
     <File Path="README.md" />
   </Folder>
   <Folder Name="/Engine/">
+    <Project Path="Lumi.Engine.Tests/Lumi.Engine.Tests.csproj" Id="a73834e7-2885-4baf-ab46-ebdcf7f6261b" />
     <Project Path="Lumi.Engine/Lumi.Engine.csproj" Id="a3a41d6f-a471-4f9c-abf5-944e9ba6c766" />
   </Folder>
   <Folder Name="/Lexer/">

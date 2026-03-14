@@ -28,7 +28,7 @@ public sealed class VirtualMachine
     /// Executes the provided bytecode by interpreting its instructions sequentially.
     /// </summary>
     /// <param name="bytecode">The bytecode to execute, containing the instructions and constants to be processed.</param>
-    public void Execute(BytecodeGenerator bytecode)
+    public void Execute(BytecodeResult bytecode)
     {
         _instructions = bytecode.Instructions;
         _constants = bytecode.Constants;
