@@ -5,17 +5,20 @@ using Lumi.Bytecode.Jumps;
 
 namespace Lumi.Bytecode;
 
+/// <summary>
+/// Generates bytecode instructions and manages constants for a given abstract syntax tree (AST).
+/// </summary>
 public sealed class BytecodeGenerator
 {
     private readonly List<Instruction> _instructions = [];
-    private readonly List<Constant> _constants = [];
+    private readonly ConstantPool _constantPool = new();
     private readonly Dictionary<Label, int> _labelPositions = [];
     private readonly Dictionary<Label, int> _symbolTable = [];
     private readonly Dictionary<Label, List<PendingJump>> _unpatchedJumps = [];
     private readonly int _nextLabelId = 0;
 
     public IReadOnlyList<Instruction> Instructions => _instructions;
-    public IReadOnlyList<Constant> Constants => _constants;
+    public IReadOnlyList<Constant> Constants => _constantPool.Values;
 
     public void Generate(Node node)
     {
@@ -53,6 +56,34 @@ public sealed class BytecodeGenerator
             var idx = AddConstant(Constant.FromString(str.Value));
             Emit(new Instruction(InstructionKind.PushConst, intOperand: idx));
         }
+
+        if (node is ExpressionStatement expressionStatement)
+        {
+            Visit(expressionStatement.Expression);
+        }
+
+        if (node is BinaryExpression binaryExpression)
+        {
+            Visit(binaryExpression.Left);
+            Visit(binaryExpression.Right);
+            switch (binaryExpression.Operator)
+            {
+                case "+":
+                    Emit(new Instruction(InstructionKind.Add));
+                    break;
+                case "-":
+                    Emit(new Instruction(InstructionKind.Sub));
+                    break;
+                case "*":
+                    Emit(new Instruction(InstructionKind.Mul));
+                    break;
+                case "/":
+                    Emit(new Instruction(InstructionKind.Div));
+                    break;
+                default:
+                    throw new NotSupportedException($"Unsupported operator: {binaryExpression.Operator}");
+            }
+        }
     }
 
     private void Emit(Instruction instruction)
@@ -60,11 +91,5 @@ public sealed class BytecodeGenerator
         _instructions.Add(instruction);
     }
 
-    private int AddConstant(Constant constant)
-    {
-        int index = _constants.Count;
-        _constants.Add(constant);
-
-        return index;
-    }
+    private int AddConstant(Constant constant) => _constantPool.Add(constant);
 }

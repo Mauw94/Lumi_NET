@@ -6,6 +6,12 @@
   <Folder Name="/Bytecode/">
     <Project Path="Lumi.Bytecode/Lumi.Bytecode.csproj" />
   </Folder>
+  <Folder Name="/Docs/">
+    <File Path="README.md" />
+  </Folder>
+  <Folder Name="/Engine/">
+    <Project Path="Lumi.Engine/Lumi.Engine.csproj" Id="a3a41d6f-a471-4f9c-abf5-944e9ba6c766" />
+  </Folder>
   <Folder Name="/Lexer/">
     <Project Path="Lumi.Lexer.Tests/Lumi.Lexer.Tests.csproj" />
     <Project Path="Lumi.Lexer/Lumi.Lexer.csproj" />
@@ -13,5 +19,9 @@
   <Folder Name="/Parser/">
     <Project Path="Lumi.Parser.Tests/Lumi.Parser.Tests.csproj" />
     <Project Path="Lumi.Parser/Lumi.Parser.csproj" />
+  </Folder>
+  <Folder Name="/VM/">
+    <Project Path="Lumi.VM.Tests/Lumi.VM.Tests.csproj" Id="8ad99de0-3338-4a31-8f45-f4af1f525e68" />
+    <Project Path="Lumi.VM/Lumi.VM.csproj" Id="9c4addc6-51bc-4c11-97cb-d4623b4dd17d" />
   </Folder>
 </Solution>

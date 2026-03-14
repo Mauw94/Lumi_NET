@@ -9,7 +9,7 @@
 /// for parsers that need to tolerate a limited number of errors before aborting or reporting failure.</remarks>
 /// <param name="maxErrors">The maximum number of errors that can be recorded before recovery is no longer possible. Must be a non-negative
 /// integer.</param>
-public class ErrorRecovery(int maxErrors)
+public sealed class ErrorRecovery(int maxErrors)
 {
     private readonly int _maxErrors = maxErrors;
     private int _errorCount = 0;

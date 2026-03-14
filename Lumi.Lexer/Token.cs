@@ -10,7 +10,7 @@
 /// <param name="startColumn">Position of starting column.</param>
 /// <param name="endLine">Positing of end line.</param>
 /// <param name="endColumn">Position of end column.</param>
-public class Token(TokenKind kind, string? value, double? number, int startLine, int startColumn, int endLine, int endColumn)
+public sealed class Token(TokenKind kind, string? value, double? number, int startLine, int startColumn, int endLine, int endColumn)
 {
     public TokenKind Kind { get; } = kind;
     public string? Value { get; } = value;

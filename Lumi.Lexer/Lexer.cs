@@ -6,7 +6,7 @@ namespace Lumi.Lexer;
 /// Represents a lexical analyzer that tokenizes a source string into a sequence of tokens for further processing.  
 /// </summary>
 /// <param name="source">The source string to be tokenized. This value cannot be null.</param>
-public class Lexer(string source)
+public sealed class Lexer(string source)
 {
     private readonly string _source = source ?? string.Empty;
     private int _pos = 0;
@@ -181,7 +181,7 @@ public class Lexer(string source)
             }
             else
             {
-                if (char.IsDigit(c) || c == '.' || c == 'e' || c == 'E' || c == '+' || c == '-') { sb.Append(c); Advance(); } else break;
+                if (char.IsDigit(c) || c == '.' || c == 'e' || c == 'E') { sb.Append(c); Advance(); } else break;
             }
         }
 

@@ -9,7 +9,7 @@ namespace Lumi.Parser;
 /// It implements a recursive descent parsing strategy, handling various language constructs such as expressions, statements, and declarations. 
 /// The parser also includes error recovery mechanisms to gracefully handle syntax errors and continue parsing where possible.
 /// </summary>
-public class Parser
+public sealed class Parser
 {
     //private string _source;
     //private bool _strictMode;

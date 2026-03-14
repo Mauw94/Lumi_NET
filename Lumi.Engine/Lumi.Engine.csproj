@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Lumi.Bytecode\Lumi.Bytecode.csproj" />
+    <ProjectReference Include="..\Lumi.Parser\Lumi.Parser.csproj" />
+    <ProjectReference Include="..\Lumi.VM\Lumi.VM.csproj" />
+  </ItemGroup>
+
+</Project>

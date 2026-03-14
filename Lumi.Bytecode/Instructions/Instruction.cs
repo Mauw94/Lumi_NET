@@ -3,11 +3,7 @@
 /// <summary>
 /// Represents a single instruction with an associated kind and optional operands.
 /// </summary>
-/// <remarks>An instruction may include either an integer operand, which can represent a constant index or a jump
-/// target, or a string operand, which can represent a function name. The kind of instruction determines its behavior
-/// and usage within the bytecode sequence. Use the appropriate constructor to specify the instruction kind and any
-/// required operand.</remarks>
-public class Instruction
+public sealed class Instruction
 {
     public InstructionKind Kind { get; }
 
@@ -32,6 +28,19 @@ public class Instruction
     {
         Kind = kind;
         StringOperand = stringOperand;
+    }
+
+    /// <summary>
+    /// Safely retrieves the integer operand of the instruction, throwing an exception if it is not present. This method
+    /// </summary>
+    /// <returns></returns>
+    /// <exception cref="InvalidOperationException"></exception>
+    public int SafeGetIntOperand()
+    {
+        if (!IntOperand.HasValue)
+            throw BytecodeError.InstructionKindNoIntegerOperand(Kind);
+
+        return IntOperand.Value;
     }
 
     public override string ToString()

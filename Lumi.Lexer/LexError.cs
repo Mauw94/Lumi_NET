@@ -7,7 +7,7 @@
 /// <remarks>Use this exception to signal errors such as invalid numbers, unterminated strings or comments, and
 /// unexpected characters during the tokenization phase of parsing. The class includes static factory methods for
 /// creating common lexical error instances with descriptive messages.</remarks>
-public class LexError(string message) : Exception(message)
+public sealed class LexError(string message) : Exception(message)
 {
     public static LexError InvalidNumber(string s) => new($"Invalid number: {s}");
     public static LexError UnterminatedString => new("Unterminated string");

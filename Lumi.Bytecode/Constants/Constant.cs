@@ -10,7 +10,7 @@ namespace Lumi.Bytecode.Constants;
 /// constant determines which value properties are populated. This class is useful for scenarios where values of
 /// different types need to be handled uniformly, such as in bytecode interpretation or scripting
 /// environments.</remarks>
-public class Constant
+public sealed class Constant
 {
     public ConstantKind Kind { get; }
     public double? Number { get; }

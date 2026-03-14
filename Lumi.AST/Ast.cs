@@ -2,6 +2,9 @@
 
 namespace Lumi.Ast;
 
+/// <summary>
+/// Represents a node in the abstract syntax tree (AST) for the Lumi programming language. 
+/// </summary>
 public abstract class Node
 {
     public NodeSpan Span { get; set; } = null!;
