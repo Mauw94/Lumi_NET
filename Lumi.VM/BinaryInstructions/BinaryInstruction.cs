@@ -12,14 +12,9 @@ internal sealed class BinaryInstruction(Stack stack) : VirtualMachineInstruction
         var b = Stack.Pop();
 
         if (a.Kind == ValueKind.Number && b.Kind == ValueKind.Number)
-        {
-            var result = ((NumberValue)a).Value + ((NumberValue)b).Value;
-            Stack.Push(new NumberValue(result));
-        }
+            Stack.Push(Value.FromNumber(b.Number + a.Number));
         else
-        {
             throw VirtualMachineError.InvalidValueTypes(a, b, "Add");
-        }
     }
 
     public void Sub()
@@ -28,29 +23,20 @@ internal sealed class BinaryInstruction(Stack stack) : VirtualMachineInstruction
         var b = Stack.Pop();
 
         if (a.Kind == ValueKind.Number && b.Kind == ValueKind.Number)
-        {
-            var result = ((NumberValue)b).Value - ((NumberValue)a).Value;
-            Stack.Push(new NumberValue(result));
-        }
+            Stack.Push(Value.FromNumber(b.Number - a.Number));
         else
-        {
             throw VirtualMachineError.InvalidValueTypes(a, b, "Sub");
-        }
     }
+
     public void Mul()
     {
         var a = Stack.Pop();
         var b = Stack.Pop();
 
         if (a.Kind == ValueKind.Number && b.Kind == ValueKind.Number)
-        {
-            var result = ((NumberValue)a).Value * ((NumberValue)b).Value;
-            Stack.Push(new NumberValue(result));
-        }
+            Stack.Push(Value.FromNumber(b.Number * a.Number));
         else
-        {
             throw VirtualMachineError.InvalidValueTypes(a, b, "Mul");
-        }
     }
 
     public void Div()
@@ -59,13 +45,8 @@ internal sealed class BinaryInstruction(Stack stack) : VirtualMachineInstruction
         var b = Stack.Pop();
 
         if (a.Kind == ValueKind.Number && b.Kind == ValueKind.Number)
-        {
-            var result = ((NumberValue)b).Value / ((NumberValue)a).Value;
-            Stack.Push(new NumberValue(result));
-        }
+            Stack.Push(Value.FromNumber(b.Number / a.Number));
         else
-        {
             throw VirtualMachineError.InvalidValueTypes(a, b, "Div");
-        }
     }
 }

@@ -3,54 +3,39 @@
 namespace Lumi.VM;
 
 /// <summary>
-/// Represents a value of a specific kind within the system. Serves as the abstract base class for all value types, such
-/// as numbers, strings, and functions.
+/// Represents a VM value as a tagged union. Storing Value as a readonly struct means every
+/// stack push is an inline copy into the List backing array — no heap allocation, no GC pressure.
+/// Only the payload field matching Kind carries a meaningful value; all others are at their default.
 /// </summary>
-/// <param name="kind">The kind of value represented by this instance. Determines the specific type and behavior of the value.</param>
-internal abstract class Value(ValueKind kind)
+internal readonly struct Value
 {
-    public ValueKind Kind { get; } = kind;
+    public ValueKind Kind { get; }
 
-    public static Value ConstantToValue(Constant constant)
+    // Payload fields — only the one matching Kind is populated.
+    public double Number { get; }
+    public string? String { get; }
+
+    private Value(ValueKind kind, double number = 0, string? str = null)
     {
-        return constant.Kind switch
-        {
-            ConstantKind.Number => new NumberValue(constant.Number!.Value),
-            //case ConstantKind.String:
-            //    return new StringValue(constant.String!);
-            //case ConstantKind.Boolean:
-            //    return new BooleanValue(constant.Boolean!.Value);
-            //case ConstantKind.Function:
-            //    return new FunctionValue(constant.Function!);
-            //case ConstantKind.Null:
-            //    return NullValue.Instance;
-            //case ConstantKind.Undefined:
-            //    return UndefinedValue.Instance;
-            _ => throw VirtualMachineError.UnkownConstantKind(constant.Kind),
-        };
+        Kind = kind;
+        Number = number;
+        String = str;
     }
 
-    public string PrintValue()
-    {
-        return Kind switch
-        {
-            ValueKind.Number => ((NumberValue)this).Value.ToString(),
-            //case ValueKind.String:
-            //    return ((StringValue)this).Value;
-            //case ValueKind.Boolean:
-            //    return ((BooleanValue)this).Value.ToString();
-            //case ValueKind.Function:
-            //    return $"[Function: {((FunctionValue)this).Name}]";
-            //case ValueKind.Null:
-            //    return "null";
-            //case ValueKind.Undefined:
-            //    return "undefined";
-            _ => throw VirtualMachineError.UnkownValueKind(ValueKind.Number),
-        };
-    }
-}
+    public static Value FromNumber(double n) => new(ValueKind.Number, number: n);
+    public static Value FromString(string s) => new(ValueKind.String, str: s);
 
-internal sealed class NumberValue(double value) : Value(ValueKind.Number)
-{
-    public double Value { get; } = value;
+    public static Value ConstantToValue(Constant constant) => constant.Kind switch
+    {
+        ConstantKind.Number => FromNumber(constant.Number!.Value),
+        ConstantKind.String => FromString(constant.String!),
+        _ => throw VirtualMachineError.UnkownConstantKind(constant.Kind),
+    };
+
+    public string PrintValue() => Kind switch
+    {
+        ValueKind.Number => Number.ToString(),
+        ValueKind.String => String ?? string.Empty,
+        _ => throw VirtualMachineError.UnkownValueKind(Kind),
+    };
 }
