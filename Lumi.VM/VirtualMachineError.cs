@@ -1,4 +1,4 @@
-﻿using Lumi.Bytecode.Instructions;
+﻿using Lumi.Bytecode.Constants;
 
 namespace Lumi.VM;
 
@@ -13,4 +13,14 @@ public sealed class VirtualMachineError(string message) : Exception(message)
 
     public static VirtualMachineError InvalidUnaryOperation(Value value, string operation)
         => new($"Invalid value type for unary operation '{operation}': {value.Kind}");
+
+    public static VirtualMachineError StackUnderflow() => new("Stack contains no values to pop.");
+
+    public static VirtualMachineError StackOverflow() => new("Stack overflow: maximum stack size exceeded.");
+
+    public static VirtualMachineError InvalidPeekOffset() => new("Offset must be non-negative and less than the stack size.");
+
+    public static VirtualMachineError UnkownConstantKind(ConstantKind kind) => new($"Unknown constant kind: {kind}");
+
+    public static VirtualMachineError UnkownValueKind(ValueKind kind) => new($"Unknown value kind: {kind}");
 }

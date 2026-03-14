@@ -35,6 +35,19 @@ public sealed class BenchmarkTests
         CollectBenchmarkData(iterations, source);
     }
 
+    [TestMethod]
+    public void Test_Variable_Declaration()
+    {
+        // Arrange
+        var source = "let x -> 42;";
+
+        // Act + Benchmark
+        const int iterations = 1000;
+
+        Warmup(source);
+        CollectBenchmarkData(iterations, source);
+    }
+
     private static void ExecuteProgram(string source)
     {
         var parser = new Parser.Parser(source);

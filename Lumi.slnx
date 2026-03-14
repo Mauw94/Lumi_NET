@@ -4,6 +4,7 @@
     <Project Path="Lumi.AST/Lumi.AST.csproj" />
   </Folder>
   <Folder Name="/Bytecode/">
+    <Project Path="Lumi.Bytecode.Tests/Lumi.Bytecode.Tests.csproj" Id="1bb266de-4633-4ce5-8d36-74c217763059" />
     <Project Path="Lumi.Bytecode/Lumi.Bytecode.csproj" />
   </Folder>
   <Folder Name="/Docs/">

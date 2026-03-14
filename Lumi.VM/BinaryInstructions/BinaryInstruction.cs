@@ -1,5 +1,9 @@
 ﻿namespace Lumi.VM.BinaryInstructions;
 
+/// <summary>
+/// Represents a binary instruction that operates on two values from the stack.
+/// </summary>
+/// <param name="stack"></param>
 internal sealed class BinaryInstruction(Stack stack) : VirtualMachineInstruction(stack)
 {
     public void Add()
