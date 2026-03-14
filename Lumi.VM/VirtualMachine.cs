@@ -14,7 +14,7 @@ public sealed class VirtualMachine
     private readonly Stack _stack;
     private readonly BinaryInstruction _binaryInstruction;
     // List indexed by slot id — O(1) access with no hashing, grows on demand.
-    private readonly List<Value?> _variables = new();
+    private readonly List<Value?> _variables = [];
     private IReadOnlyList<Instruction> _instructions;
     private IReadOnlyList<Constant> _constants;
     private int _ip;
@@ -42,8 +42,6 @@ public sealed class VirtualMachine
 
         while (_ip < _instructions.Count)
         {
-            // Cache the instruction once to avoid two indexer accesses (switch + operand read).
-            // With Instruction as a readonly struct this also avoids a second copy.
             var instruction = _instructions[_ip];
             switch (instruction.Kind)
             {
