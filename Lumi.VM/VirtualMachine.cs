@@ -15,6 +15,7 @@ public sealed class VirtualMachine
     private IReadOnlyList<Instruction> _instructions;
     private IReadOnlyList<Constant> _constants;
     private int _ip;
+    private int _executedInstructionCount;
 
     public VirtualMachine()
     {
@@ -22,6 +23,7 @@ public sealed class VirtualMachine
         _instructions = [];
         _constants = [];
         _ip = 0;
+        _executedInstructionCount = 0;
     }
 
     /// <summary>
@@ -32,7 +34,9 @@ public sealed class VirtualMachine
     {
         _instructions = bytecode.Instructions;
         _constants = bytecode.Constants;
-        _ip = 0;
+
+        // Start execution from where we left off, not from the beginning
+        _ip = _executedInstructionCount;
 
         while (_ip < _instructions.Count)
         {
@@ -60,6 +64,9 @@ public sealed class VirtualMachine
 
             _ip += 1;
         }
+
+        // Track how many instructions we've executed for the next call
+        _executedInstructionCount = _ip;
     }
 
     private void PushConst()
@@ -72,7 +79,7 @@ public sealed class VirtualMachine
 
     private void Print()
     {
-        var value = _stack.Pop();
+        var value = _stack.Peek();
         Console.WriteLine(value.PrintValue());
     }
 }
