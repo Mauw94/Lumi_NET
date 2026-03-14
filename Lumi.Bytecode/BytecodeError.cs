@@ -14,4 +14,5 @@ public sealed class BytecodeError(string message) : Exception(message)
     public static BytecodeError InvalidConstantIndex(int index) => new($"Invalid constant index: {index}");
     public static BytecodeError InstructionKindNoIntegerOperand(InstructionKind instructionKind)
         => new($"Instruction of kind {instructionKind} does not have an integer operand.");
+    public static BytecodeError UnsupportedOperator(string ope) => new($"Unsupported operator: {ope}");
 }

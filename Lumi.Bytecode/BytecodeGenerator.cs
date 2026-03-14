@@ -15,7 +15,8 @@ public sealed class BytecodeGenerator
     private readonly Dictionary<Label, int> _labelPositions = [];
     private readonly Dictionary<Label, int> _symbolTable = [];
     private readonly Dictionary<Label, List<PendingJump>> _unpatchedJumps = [];
-    private readonly int _nextLabelId = 0;
+    private readonly Dictionary<string, Label> _localVariables = [];
+    private int _nextLabelId = 0;
 
     public IReadOnlyList<Instruction> Instructions => _instructions;
     public IReadOnlyList<Constant> Constants => _constantPool.Values;
@@ -31,6 +32,18 @@ public sealed class BytecodeGenerator
         return BytecodeResult.FromGenerator(this);
     }
 
+    private Label GetOrCreateLocal(string name)
+    {
+        if (_localVariables.TryGetValue(name, out var local))
+            return local;
+        else
+        {
+            var newLabel = new Label(_nextLabelId++);
+            _localVariables[name] = newLabel;
+            return newLabel;
+        }
+    }
+
     private void Visit(Node node)
     {
         if (node is Program program)
@@ -41,8 +54,38 @@ public sealed class BytecodeGenerator
             }
         }
 
-        if (node is VariableDeclaration)
+        if (node is VariableDeclaration variableDeclaration)
         {
+            foreach (var declaration in variableDeclaration.Declarations)
+            {
+                if (declaration.VarName is IdentifierNode varName) // Else throw exception?
+                {
+                    // TODO: implement this as well
+                    //if (variableDeclaration.Kind == "var")
+                    //{
+                    //    _localVariables[varName.Name] = new Label($"var_{varName.Name}");
+                    //}
+                    //else if (variableDeclaration.Kind == "let")
+                    //{
+                    //    _localVariables[varName.Name] = new Label($"let_{varName.Name}");
+                    //}
+                    //else if (variableDeclaration.Kind == "const")
+                    //{
+                    //    _localVariables[varName.Name] = new Label($"const_{varName.Name}");
+                    //}
+
+                    if (declaration.Init is not null)
+                    {
+                        Visit(declaration.Init);
+                        var idx = GetOrCreateLocal(varName.Name);
+                        Emit(new Instruction(InstructionKind.StoreVar, intOperand: idx.Id));
+                    }
+                    else
+                    {
+
+                    }
+                }
+            }
         }
 
         if (node is PrintStatement printStatement)
@@ -87,7 +130,7 @@ public sealed class BytecodeGenerator
                     Emit(new Instruction(InstructionKind.Div));
                     break;
                 default:
-                    throw new NotSupportedException($"Unsupported operator: {binaryExpression.Operator}");
+                    throw BytecodeError.UnsupportedOperator(binaryExpression.Operator);
             }
         }
     }
