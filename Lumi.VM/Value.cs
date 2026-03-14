@@ -7,7 +7,7 @@ namespace Lumi.VM;
 /// as numbers, strings, and functions.
 /// </summary>
 /// <param name="kind">The kind of value represented by this instance. Determines the specific type and behavior of the value.</param>
-public abstract class Value(ValueKind kind)
+internal abstract class Value(ValueKind kind)
 {
     public ValueKind Kind { get; } = kind;
 

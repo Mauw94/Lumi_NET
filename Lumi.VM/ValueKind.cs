@@ -3,7 +3,7 @@
 /// <summary>
 /// All the different ValueKinds.
 /// </summary>
-public enum ValueKind
+internal enum ValueKind
 {
     Number,
     String,

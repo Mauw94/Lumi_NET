@@ -3,4 +3,4 @@
 /// <summary>
 /// Base class for jump instructions.
 /// </summary>
-public abstract class PendingJump { }
+internal abstract class PendingJump { }
