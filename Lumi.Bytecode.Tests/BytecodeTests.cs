@@ -88,4 +88,54 @@ public sealed class BytecodeTests
         Assert.AreEqual(ConstantKind.String, result.Constants[0].Kind);
         Assert.AreEqual("hello", result.Constants[0].String);
     }
+
+    [TestMethod]
+    public void Test_Mixed_Local_Kinds_And_Shadowing()
+    {
+        // let x -> 1; { var x -> 2; x }
+        var outerDecl = new VariableDeclaration
+        {
+            Kind = "let",
+            Declarations =
+            [
+                new VariableDeclarator { VarName = new IdentifierNode { Name = "x" }, Init = new NumberNode { Value = 1.0 } }
+            ]
+        };
+
+        var innerDecl = new VariableDeclaration
+        {
+            Kind = "var",
+            Declarations =
+            [
+                new VariableDeclarator { VarName = new IdentifierNode { Name = "x" }, Init = new NumberNode { Value = 2.0 } }
+            ]
+        };
+
+        // Block that contains inner declaration and then an identifier usage
+        var block = new BlockStatement
+        {
+            Body =
+            [
+                innerDecl,
+                new ExpressionStatement { Expression = new IdentifierNode { Name = "x" } }
+            ]
+        };
+
+        var program = new Program { Body = [outerDecl, block] };
+
+        var gen = new BytecodeGenerator();
+        var result = gen.Generate(program);
+
+        // Expect sequence: PushConst(1), StoreVar(outer x), PushConst(2), StoreVar(inner x), LoadVar(inner x)
+        Assert.IsGreaterThanOrEqualTo(5, result.Instructions.Count);
+        Assert.AreEqual(InstructionKind.PushConst, result.Instructions[0].Kind);
+        Assert.AreEqual(InstructionKind.StoreVar, result.Instructions[1].Kind);
+        Assert.AreEqual(InstructionKind.PushConst, result.Instructions[2].Kind);
+        Assert.AreEqual(InstructionKind.StoreVar, result.Instructions[3].Kind);
+        Assert.AreEqual(InstructionKind.LoadVar, result.Instructions[4].Kind);
+
+        // The LoadVar should point to the inner variable (label id 1)
+        var loadOp = result.Instructions[4].SafeGetIntOperand();
+        Assert.AreEqual(1, loadOp);
+    }
 }
