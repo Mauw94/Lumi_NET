@@ -1,4 +1,6 @@
-﻿namespace Lumi.VM.Tests;
+﻿using Lumi.VM;
+
+namespace Lumi.VM.Tests;
 
 [TestClass]
 public sealed class StackTests
@@ -7,23 +9,23 @@ public sealed class StackTests
     public void Stack_Push_And_Peek_Returns_Top_Value()
     {
         var stack = new Stack();
-        stack.Push(new NumberValue(42.0));
+        stack.Push(Value.FromNumber(42.0));
 
         var result = stack.Peek();
 
         Assert.AreEqual(ValueKind.Number, result.Kind);
-        Assert.AreEqual(42.0, ((NumberValue)result).Value);
+        Assert.AreEqual(42.0, result.Number);
     }
 
     [TestMethod]
     public void Stack_Pop_Returns_And_Removes_Value()
     {
         var stack = new Stack();
-        stack.Push(new NumberValue(10.0));
+        stack.Push(Value.FromNumber(10.0));
 
         var result = stack.Pop();
 
-        Assert.AreEqual(10.0, ((NumberValue)result).Value);
+        Assert.AreEqual(10.0, result.Number);
         Assert.AreEqual(0, stack.Count);
     }
 
@@ -31,13 +33,13 @@ public sealed class StackTests
     public void Stack_Pop_LIFO_Order()
     {
         var stack = new Stack();
-        stack.Push(new NumberValue(1.0));
-        stack.Push(new NumberValue(2.0));
-        stack.Push(new NumberValue(3.0));
+        stack.Push(Value.FromNumber(1.0));
+        stack.Push(Value.FromNumber(2.0));
+        stack.Push(Value.FromNumber(3.0));
 
-        Assert.AreEqual(3.0, ((NumberValue)stack.Pop()).Value);
-        Assert.AreEqual(2.0, ((NumberValue)stack.Pop()).Value);
-        Assert.AreEqual(1.0, ((NumberValue)stack.Pop()).Value);
+        Assert.AreEqual(3.0, stack.Pop().Number);
+        Assert.AreEqual(2.0, stack.Pop().Number);
+        Assert.AreEqual(1.0, stack.Pop().Number);
     }
 
     [TestMethod]
@@ -60,20 +62,20 @@ public sealed class StackTests
     public void Stack_PeekAtOffset_Returns_Correct_Value()
     {
         var stack = new Stack();
-        stack.Push(new NumberValue(1.0)); // bottom
-        stack.Push(new NumberValue(2.0)); // top
+        stack.Push(Value.FromNumber(1.0)); // bottom
+        stack.Push(Value.FromNumber(2.0)); // top
 
-        Assert.AreEqual(2.0, ((NumberValue)stack.Peek(0)).Value); // top
-        Assert.AreEqual(1.0, ((NumberValue)stack.Peek(1)).Value); // one below top
+        Assert.AreEqual(2.0, stack.Peek(0).Number); // top
+        Assert.AreEqual(1.0, stack.Peek(1).Number); // one below top
     }
 
     [TestMethod]
     public void Stack_PeekAtOffset_InvalidOffset_Throws()
     {
         var stack = new Stack();
-        stack.Push(new NumberValue(1.0));
+        stack.Push(Value.FromNumber(1.0));
 
-        Assert.ThrowsExactly<VirtualMachineError>(() => stack.Peek(1));  // only one element, offset 1 is out of range
+        Assert.ThrowsExactly<VirtualMachineError>(() => stack.Peek(1));
     }
 
     [TestMethod]
@@ -82,10 +84,10 @@ public sealed class StackTests
         var stack = new Stack();
         Assert.AreEqual(0, stack.Count);
 
-        stack.Push(new NumberValue(1.0));
+        stack.Push(Value.FromNumber(1.0));
         Assert.AreEqual(1, stack.Count);
 
-        stack.Push(new NumberValue(2.0));
+        stack.Push(Value.FromNumber(2.0));
         Assert.AreEqual(2, stack.Count);
 
         stack.Pop();
@@ -97,8 +99,8 @@ public sealed class StackTests
     {
         var stack = new Stack();
         for (int i = 0; i < 1024; i++)
-            stack.Push(new NumberValue(i));
+            stack.Push(Value.FromNumber(i));
 
-        Assert.ThrowsExactly<VirtualMachineError>(() => stack.Push(new NumberValue(0)));
+        Assert.ThrowsExactly<VirtualMachineError>(() => stack.Push(Value.FromNumber(0)));
     }
 }

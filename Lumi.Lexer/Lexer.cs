@@ -8,6 +8,19 @@ namespace Lumi.Lexer;
 /// <param name="source">The source string to be tokenized. This value cannot be null.</param>
 public sealed class Lexer(string source)
 {
+    private static readonly HashSet<string> _keywords = new(StringComparer.Ordinal)
+    {
+        "let","const","fn","if","else","return","async","await","yield",
+        "import","export","new","class","extends","static","get","set",
+        "try","catch","finally","throw","break","continue","switch","case",
+        "default","for","while","do","in","of","with","delete",
+        "instanceof","typeof","void","debugger","enum","interface","package",
+        "private","protected","public","implements","abstract","bool","byte",
+        "char","double","final","float","goto","int","long","str",
+        "native","short","synchronized","throws","transient","volatile","to",
+        "step","print"
+    };
+
     private readonly string _source = source ?? string.Empty;
     private int _pos = 0;
     private int _line = 1;
@@ -97,20 +110,16 @@ public sealed class Lexer(string source)
 
     private Token ReadIdentifierOrKeyword(int startLine, int startCol)
     {
-        var sb = new System.Text.StringBuilder();
-
+        var start = _pos;
         while (_pos < _source.Length)
         {
             var c = _source[_pos];
             if (char.IsLetterOrDigit(c) || c > 127 || c == '_')
-            {
-                sb.Append(c);
                 Advance();
-            }
             else break;
         }
 
-        var identifier = sb.ToString();
+        var identifier = _source[start.._pos];
 
         switch (identifier)
         {
@@ -121,101 +130,60 @@ public sealed class Lexer(string source)
             case "this": return Token.WithValue(TokenKind.Keyword, "this", startLine, startCol, _line, _column);
             case "super": return Token.WithValue(TokenKind.Keyword, "super", startLine, startCol, _line, _column);
             default:
-                // list of keywords (subset)
-                var keywords = new HashSet<string>(StringComparer.Ordinal)
-                    {
-                        "let","const","fn","if","else","return","async","await","yield",
-                        "import","export","new","class","extends","static","get","set",
-                        "try","catch","finally","throw","break","continue","switch","case",
-                        "default","for","while","do","in","of","with","delete",
-                        "instanceof","typeof","void","debugger","enum","interface","package",
-                        "private","protected","public","implements","abstract","bool","byte",
-                        "char","double","final","float","goto","int","long","str",
-                        "native","short","synchronized","throws","transient","volatile","to",
-                        "step","print"
-                    };
-
-                if (keywords.Contains(identifier))
+                if (_keywords.Contains(identifier))
                     return Token.WithValue(TokenKind.Keyword, identifier, startLine, startCol, _line, _column);
-
                 return Token.WithValue(TokenKind.Identifier, identifier, startLine, startCol, _line, _column);
         }
     }
 
     private Token ReadNumber(int startLine, int startCol)
     {
-        var sb = new System.Text.StringBuilder();
+        var numStart = _pos;
         bool isHex = false, isBinary = false, isOctal = false;
 
         if (_source[_pos] == '0' && _pos + 1 < _source.Length)
         {
             var c1 = _source[_pos + 1];
-            if (c1 == 'x' || c1 == 'X')
-            {
-                isHex = true; sb.Append("0"); sb.Append(c1); Advance(); Advance();
-            }
-            else if (c1 == 'b' || c1 == 'B')
-            {
-                isBinary = true; sb.Append("0"); sb.Append(c1); Advance(); Advance();
-            }
-            else if (c1 == 'o' || c1 == 'O')
-            {
-                isOctal = true; sb.Append("0"); sb.Append(c1); Advance(); Advance();
-            }
+            if (c1 == 'x' || c1 == 'X') { isHex = true; Advance(); Advance(); }
+            else if (c1 == 'b' || c1 == 'B') { isBinary = true; Advance(); Advance(); }
+            else if (c1 == 'o' || c1 == 'O') { isOctal = true; Advance(); Advance(); }
         }
 
         while (_pos < _source.Length)
         {
             var c = _source[_pos];
-            if (isHex)
-            {
-                if (Uri.IsHexDigit(c)) { sb.Append(c); Advance(); } else break;
-            }
-            else if (isBinary)
-            {
-                if (c == '0' || c == '1') { sb.Append(c); Advance(); } else break;
-            }
-            else if (isOctal)
-            {
-                if (c >= '0' && c <= '7') { sb.Append(c); Advance(); } else break;
-            }
-            else
-            {
-                if (char.IsDigit(c) || c == '.' || c == 'e' || c == 'E') { sb.Append(c); Advance(); } else break;
-            }
+            bool keep = isHex ? Uri.IsHexDigit(c)
+                      : isBinary ? c == '0' || c == '1'
+                      : isOctal ? c >= '0' && c <= '7'
+                      : char.IsDigit(c) || c == '.' || c == 'e' || c == 'E';
+            if (keep) Advance(); else break;
         }
 
-        var s = sb.ToString();
+        var span = _source.AsSpan(numStart, _pos - numStart);
 
-        try
+        if (isHex)
         {
-            // TODO: pass number type so we can later convert to proper int/long/float/double based on suffixes like 123L, 1.23f, etc.
-            if (isHex)
-            {
-                var parsed = Convert.ToUInt64(s.Substring(2), 16);
-                return Token.WithNumber(parsed, startLine, startCol, _line, _column);
-            }
-            else if (isBinary)
-            {
-                var parsed = Convert.ToUInt64(s.Substring(2), 2);
-                return Token.WithNumber(parsed, startLine, startCol, _line, _column);
-            }
-            else if (isOctal)
-            {
-                var parsed = Convert.ToUInt64(s.Substring(2), 8);
-                return Token.WithNumber(parsed, startLine, startCol, _line, _column);
-            }
-            else
-            {
-                if (double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out var d))
-                    return Token.WithNumber(d, startLine, startCol, _line, _column);
-                throw LexError.InvalidNumber(s);
-            }
+            if (ulong.TryParse(span.Slice(2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var hex))
+                return Token.WithNumber(hex, startLine, startCol, _line, _column);
         }
-        catch
+        else if (isBinary)
         {
-            throw LexError.InvalidNumber(s);
+            try { return Token.WithNumber(Convert.ToUInt64(span.Slice(2).ToString(), 2), startLine, startCol, _line, _column); }
+            catch { }
         }
+        else if (isOctal)
+        {
+            try { return Token.WithNumber(Convert.ToUInt64(span.Slice(2).ToString(), 8), startLine, startCol, _line, _column); }
+            catch { }
+        }
+        else
+        {
+            // Common decimal path: TryParse accepts ReadOnlySpan<char> — zero string allocation
+            if (double.TryParse(span, NumberStyles.Float, CultureInfo.InvariantCulture, out var d))
+                return Token.WithNumber(d, startLine, startCol, _line, _column);
+        }
+
+        throw LexError.InvalidNumber(span.ToString());
     }
 
     private Token ReadString(int startLine, int startCol)
@@ -305,18 +273,17 @@ public sealed class Lexer(string source)
         if (_pos + 1 < _source.Length)
         {
             var next = _source[_pos + 1];
-            var two = new string([c, next]);
-            switch (two)
+            switch (c)
             {
-                case "==": Advance(); Advance(); return Token.WithPositions(TokenKind.Equal, startLine, startCol, _line, _column);
-                case "!=": Advance(); Advance(); return Token.WithPositions(TokenKind.NotEqual, startLine, startCol, _line, _column);
-                case "<=": Advance(); Advance(); return Token.WithPositions(TokenKind.LessThanEqual, startLine, startCol, _line, _column);
-                case ">=": Advance(); Advance(); return Token.WithPositions(TokenKind.GreaterThanEqual, startLine, startCol, _line, _column);
-                case "+=": Advance(); Advance(); return Token.WithPositions(TokenKind.PlusAssign, startLine, startCol, _line, _column);
-                case "-=": Advance(); Advance(); return Token.WithPositions(TokenKind.MinusAssign, startLine, startCol, _line, _column);
-                case "++": Advance(); Advance(); return Token.WithPositions(TokenKind.Increment, startLine, startCol, _line, _column);
-                case "--": Advance(); Advance(); return Token.WithPositions(TokenKind.Decrement, startLine, startCol, _line, _column);
-                case "->": Advance(); Advance(); return Token.WithPositions(TokenKind.Arrow, startLine, startCol, _line, _column);
+                case '=' when next == '=': Advance(); Advance(); return Token.WithPositions(TokenKind.Equal, startLine, startCol, _line, _column);
+                case '!' when next == '=': Advance(); Advance(); return Token.WithPositions(TokenKind.NotEqual, startLine, startCol, _line, _column);
+                case '<' when next == '=': Advance(); Advance(); return Token.WithPositions(TokenKind.LessThanEqual, startLine, startCol, _line, _column);
+                case '>' when next == '=': Advance(); Advance(); return Token.WithPositions(TokenKind.GreaterThanEqual, startLine, startCol, _line, _column);
+                case '+' when next == '=': Advance(); Advance(); return Token.WithPositions(TokenKind.PlusAssign, startLine, startCol, _line, _column);
+                case '-' when next == '=': Advance(); Advance(); return Token.WithPositions(TokenKind.MinusAssign, startLine, startCol, _line, _column);
+                case '+' when next == '+': Advance(); Advance(); return Token.WithPositions(TokenKind.Increment, startLine, startCol, _line, _column);
+                case '-' when next == '-': Advance(); Advance(); return Token.WithPositions(TokenKind.Decrement, startLine, startCol, _line, _column);
+                case '-' when next == '>': Advance(); Advance(); return Token.WithPositions(TokenKind.Arrow, startLine, startCol, _line, _column);
             }
         }
 

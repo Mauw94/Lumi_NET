@@ -13,7 +13,7 @@ public sealed class VirtualMachine
 {
     private readonly Stack _stack;
     private readonly BinaryInstruction _binaryInstruction;
-    private readonly Dictionary<int, Value> _variables = [];
+    private readonly List<Value?> _variables = [];
     private IReadOnlyList<Instruction> _instructions;
     private IReadOnlyList<Constant> _constants;
     private int _ip;
@@ -41,10 +41,11 @@ public sealed class VirtualMachine
 
         while (_ip < _instructions.Count)
         {
-            switch (_instructions[_ip].Kind)
+            var instruction = _instructions[_ip];
+            switch (instruction.Kind)
             {
                 case InstructionKind.PushConst:
-                    PushConst();
+                    PushConst(in instruction);
                     break;
                 case InstructionKind.Add:
                     _binaryInstruction.Add();
@@ -59,10 +60,10 @@ public sealed class VirtualMachine
                     _binaryInstruction.Div();
                     break;
                 case InstructionKind.StoreVar:
-                    StoreVar();
+                    StoreVar(in instruction);
                     break;
                 case InstructionKind.LoadVar:
-                    LoadVar();
+                    LoadVar(in instruction);
                     break;
                 case InstructionKind.Print:
                     Print();
@@ -75,24 +76,27 @@ public sealed class VirtualMachine
         _executedInstructionCount = _ip;
     }
 
-    private void PushConst()
+    private void PushConst(in Instruction instruction)
     {
-        var pushConst = _instructions[_ip].SafeGetIntOperand();
-        var constant = _constants[pushConst];
-
-        _stack.Push(Value.ConstantToValue(constant));
+        _stack.Push(Value.ConstantToValue(_constants[instruction.SafeGetIntOperand()]));
     }
 
-    private void StoreVar()
+    private void StoreVar(in Instruction instruction)
     {
-        var slot = _instructions[_ip].SafeGetIntOperand();
-        _variables[slot] = _stack.Pop();
+        var slot = instruction.SafeGetIntOperand();
+        var value = _stack.Pop();
+
+        // Grow the list on demand so any slot id can be stored without pre-sizing.
+        while (_variables.Count <= slot)
+            _variables.Add(null);
+
+        _variables[slot] = value;
     }
 
-    private void LoadVar()
+    private void LoadVar(in Instruction instruction)
     {
-        var slot = _instructions[_ip].SafeGetIntOperand();
-        if (!_variables.TryGetValue(slot, out var value))
+        var slot = instruction.SafeGetIntOperand();
+        if (slot >= _variables.Count || _variables[slot] is not Value value)
             throw VirtualMachineError.UndefinedVariable(slot);
 
         _stack.Push(value);

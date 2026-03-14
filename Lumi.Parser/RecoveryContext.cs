@@ -31,18 +31,14 @@ internal sealed class RecoveryContext(Token currentToken, Token previousToken, P
         switch (Context)
         {
             case ParsingContext.TopLevel:
-                if (CurrentToken != null)
+                switch (CurrentToken.Kind)
                 {
-                    switch (CurrentToken.Kind)
-                    {
-                        case TokenKind.Semicolon:
-                        case TokenKind.RightBrace:
-                            return new RecoveryStrategy.SkipUntil([";", "}"]);
-                        default:
-                            return new RecoveryStrategy.SkipUntilStatement();
-                    }
+                    case TokenKind.Semicolon:
+                    case TokenKind.RightBrace:
+                        return new RecoveryStrategy.SkipUntil([";", "}"]);
+                    default:
+                        return new RecoveryStrategy.SkipUntilStatement();
                 }
-                return new RecoveryStrategy.NoRecovery();
 
             case ParsingContext.Statement:
                 return new RecoveryStrategy.SkipUntil([";", "}", ")"]);
@@ -72,14 +68,12 @@ internal sealed class RecoveryContext(Token currentToken, Token previousToken, P
 
     public bool IsRecoveryToken(Token token)
     {
-        if (token == null) return false;
         var tokenStr = token.Kind.ToString();
         return RecoveryTokens.Contains(tokenStr);
     }
 
     public Position? CurrentPosition()
     {
-        if (CurrentToken == null) return null;
         return new Position(CurrentToken.StartLine, CurrentToken.StartColumn);
     }
 }
