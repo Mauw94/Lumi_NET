@@ -1,6 +1,7 @@
 ﻿using Lumi.Ast;
 using Lumi.Bytecode.Constants;
 using Lumi.Bytecode.Instructions;
+using Lumi.Bytecode.Locals;
 
 namespace Lumi.Bytecode.Tests;
 
@@ -70,6 +71,86 @@ public sealed class BytecodeTests
         // StoreVar should have an int operand pointing to the local slot (label id 0)
         Assert.IsTrue(result.Instructions[1].IntOperand.HasValue);
         Assert.AreEqual(0, result.Instructions[1].SafeGetIntOperand());
+
+        // No type annotation — Type should be unknown
+        var local = result.Locals.Single();
+        Assert.AreEqual(VarType.Unknown, local.Type);
+    }
+
+    [TestMethod]
+    public void Test_VariableDeclaration_WithVarType()
+    {
+        // Build AST: let x: int  (no initializer)
+        var decl = new VariableDeclaration
+        {
+            Kind = "let",
+            Declarations =
+            [
+                new VariableDeclarator
+                {
+                    VarName = new IdentifierNode { Name = "x" },
+                    VarType = new IdentifierNode { Name = "int" }
+                }
+            ]
+        };
+
+        var program = new Program { Body = [decl] };
+
+        var gen = new BytecodeGenerator();
+        var result = gen.Generate(program);
+
+        // No initializer — no instructions or constants emitted
+        Assert.HasCount(0, result.Instructions);
+        Assert.HasCount(0, result.Constants);
+
+        // Variable should still be registered with its type
+        var local = result.Locals.Single();
+        Assert.AreEqual("x", local.Name);
+        Assert.AreEqual(LocalKind.Let, local.Kind);
+        Assert.AreEqual(VarType.Int, local.Type);
+    }
+
+    [TestMethod]
+    public void Test_VariableDeclaration_WithVarTypeAndInit()
+    {
+        // Build AST: let x: int -> 42
+        var decl = new VariableDeclaration
+        {
+            Kind = "let",
+            Declarations =
+            [
+                new VariableDeclarator
+                {
+                    VarName = new IdentifierNode { Name = "x" },
+                    VarType = new IdentifierNode { Name = "int" },
+                    Init = new NumberNode { Value = 42.0 }
+                }
+            ]
+        };
+
+        var program = new Program { Body = [decl] };
+
+        var gen = new BytecodeGenerator();
+        var result = gen.Generate(program);
+
+        // Expect: PushConst (42), StoreVar 0
+        Assert.HasCount(2, result.Instructions);
+        Assert.HasCount(1, result.Constants);
+
+        Assert.AreEqual(InstructionKind.PushConst, result.Instructions[0].Kind);
+        Assert.AreEqual(InstructionKind.StoreVar, result.Instructions[1].Kind);
+
+        Assert.AreEqual(ConstantKind.Number, result.Constants[0].Kind);
+        Assert.AreEqual(42.0, result.Constants[0].Number);
+
+        Assert.IsTrue(result.Instructions[1].IntOperand.HasValue);
+        Assert.AreEqual(0, result.Instructions[1].SafeGetIntOperand());
+
+        // Type annotation should be stored on the local
+        var local = result.Locals.Single();
+        Assert.AreEqual("x", local.Name);
+        Assert.AreEqual(LocalKind.Let, local.Kind);
+        Assert.AreEqual(VarType.Int, local.Type);
     }
 
     [TestMethod]

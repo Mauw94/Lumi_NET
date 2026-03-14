@@ -20,6 +20,7 @@ public sealed class BytecodeGenerator
 
     public IReadOnlyList<Instruction> Instructions => _instructions;
     public IReadOnlyList<Constant> Constants => _constantPool.Values;
+    public IEnumerable<Local> Locals => _locals.AllLocals;
 
     public BytecodeGenerator()
     {
@@ -100,11 +101,21 @@ public sealed class BytecodeGenerator
                 _ => LocalKind.Let,
             };
 
-            // If there is an initializer, emit code to evaluate it first so the value is on the stack.
-            if (declaration.Init is not null)
-                Visit(declaration.Init);
+            var type = declaration.VarType is IdentifierNode varType
+                ? VarTypeExtensions.Parse(varType.Name)
+                : VarType.Unknown;
 
-            Emit(new Instruction(InstructionKind.StoreVar, intOperand: _locals.GetOrCreateLocal(varName.Name, localKind).Id));
+            if (declaration.Init is not null)
+            {
+                // Emit code to evaluate the initializer so the value is on the stack, then store it.
+                Visit(declaration.Init);
+                Emit(new Instruction(InstructionKind.StoreVar, intOperand: _locals.GetOrCreateLocal(varName.Name, localKind, type).Id));
+            }
+            else
+            {
+                // Type-annotated declaration with no initializer: register the local but emit no instructions.
+                _locals.GetOrCreateLocal(varName.Name, localKind, type);
+            }
         }
     }
 
