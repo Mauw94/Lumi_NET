@@ -32,6 +32,7 @@ public sealed class BytecodeGenerator
         return BytecodeResult.FromGenerator(this);
     }
 
+    // TODO: move to a separate class, e.g. LocalVariableManager
     private Label GetOrCreateLocal(string name)
     {
         if (_localVariables.TryGetValue(name, out var local))
@@ -82,10 +83,19 @@ public sealed class BytecodeGenerator
                     }
                     else
                     {
-
+                        // No init value for variable, so we can push a default value based on the var type, else it is empty?
+                        // TODO: push default value here
+                        var idx = GetOrCreateLocal(varName.Name);
+                        Emit(new Instruction(InstructionKind.StoreVar, intOperand: idx.Id));
                     }
                 }
             }
+        }
+
+        if (node is IdentifierNode identifier)
+        {
+            var idx = GetOrCreateLocal(identifier.Name);
+            Emit(new Instruction(InstructionKind.LoadVar, intOperand: idx.Id));
         }
 
         if (node is PrintStatement printStatement)
