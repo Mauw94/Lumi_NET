@@ -13,7 +13,7 @@ namespace Lumi.Parser;
 /// <param name="currentToken">The token that is currently being processed by the parser.</param>
 /// <param name="previousToken">The token that was processed immediately before the current token.</param>
 /// <param name="context">The parsing context in which recovery is being performed. Determines the applicable recovery strategy.</param>
-public sealed class RecoveryContext(Token currentToken, Token previousToken, ParsingContext context)
+internal sealed class RecoveryContext(Token currentToken, Token previousToken, ParsingContext context)
 {
     public Token CurrentToken { get; } = currentToken;
     public Token PreviousToken { get; } = previousToken;

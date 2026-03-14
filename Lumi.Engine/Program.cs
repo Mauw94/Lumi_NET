@@ -2,8 +2,12 @@
 using Lumi.Parser;
 using Lumi.VM;
 
-do
+var bytecodeGenerator = new BytecodeGenerator();
+var vm = new VirtualMachine();
+
+while (true)
 {
+    Console.Write("> ");
     var input = Console.ReadLine();
 
     if (string.IsNullOrWhiteSpace(input)) continue;
@@ -12,15 +16,12 @@ do
     {
         var parser = new Parser(input.Trim());
         var ast = parser.Parse();
-        var bytecodeGenerator = new BytecodeGenerator();
         var bytecodeResult = bytecodeGenerator.Generate(ast);
 
-        var vm = new VirtualMachine();
         vm.Execute(bytecodeResult);
     }
     catch (Exception ex)
     {
         Console.WriteLine(ex.ToString());
     }
-
-} while (true);
+}

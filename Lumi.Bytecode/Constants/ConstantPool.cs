@@ -3,7 +3,7 @@
 /// <summary>
 /// ConstantPool manages a list of constants used in the bytecode.
 /// </summary>
-public sealed class ConstantPool
+internal sealed class ConstantPool
 {
     private readonly List<Constant> _values = [];
 

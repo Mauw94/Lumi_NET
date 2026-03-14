@@ -9,7 +9,7 @@ namespace Lumi.Parser;
 /// replacing tokens, or halting recovery. These strategies enable parsers to handle syntax errors and continue
 /// processing input in a controlled manner. Use a concrete implementation of this class to specify how the parser
 /// should attempt to recover from an error.</remarks>
-public abstract class RecoveryStrategy
+internal abstract class RecoveryStrategy
 {
     private RecoveryStrategy() { }
 

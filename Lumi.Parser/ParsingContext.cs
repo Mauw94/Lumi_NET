@@ -6,7 +6,7 @@
 /// <remarks>Use this enumeration to indicate the current parsing context, such as whether code is being parsed at
 /// the top level, within a statement, block, function, class, module, expression, or declaration. The parsing context
 /// can influence how code is interpreted and processed during parsing operations.</remarks>
-public enum ParsingContext
+internal enum ParsingContext
 {
     TopLevel,
     Statement,

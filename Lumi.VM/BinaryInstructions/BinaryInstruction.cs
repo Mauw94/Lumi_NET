@@ -29,7 +29,7 @@ internal sealed class BinaryInstruction(Stack stack) : VirtualMachineInstruction
 
         if (a.Kind == ValueKind.Number && b.Kind == ValueKind.Number)
         {
-            var result = ((NumberValue)a).Value + ((NumberValue)b).Value;
+            var result = ((NumberValue)b).Value - ((NumberValue)a).Value;
             Stack.Push(new NumberValue(result));
         }
         else
@@ -60,7 +60,7 @@ internal sealed class BinaryInstruction(Stack stack) : VirtualMachineInstruction
 
         if (a.Kind == ValueKind.Number && b.Kind == ValueKind.Number)
         {
-            var result = ((NumberValue)a).Value / ((NumberValue)b).Value;
+            var result = ((NumberValue)b).Value / ((NumberValue)a).Value;
             Stack.Push(new NumberValue(result));
         }
         else

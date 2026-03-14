@@ -6,7 +6,7 @@ namespace Lumi.VM;
 /// Represents errors that occur during the execution of a virtual machine.
 /// </summary>
 /// <param name="message">The error message that describes the reason for the exception.</param>
-public sealed class VirtualMachineError(string message) : Exception(message)
+internal sealed class VirtualMachineError(string message) : Exception(message)
 {
     public static VirtualMachineError InvalidValueTypes(Value a, Value b, string operation)
         => new($"Invalid value types for operation '{operation}': {a.Kind} and {b.Kind}");
@@ -23,4 +23,6 @@ public sealed class VirtualMachineError(string message) : Exception(message)
     public static VirtualMachineError UnkownConstantKind(ConstantKind kind) => new($"Unknown constant kind: {kind}");
 
     public static VirtualMachineError UnkownValueKind(ValueKind kind) => new($"Unknown value kind: {kind}");
+
+    public static VirtualMachineError UndefinedVariable(int slot) => new($"Undefined variable at slot {slot}.");
 }

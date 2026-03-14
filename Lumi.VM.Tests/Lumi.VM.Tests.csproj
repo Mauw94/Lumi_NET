@@ -12,6 +12,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Lumi.VM\Lumi.VM.csproj" />
+    <ProjectReference Include="..\Lumi.Bytecode\Lumi.Bytecode.csproj" />
+    <ProjectReference Include="..\Lumi.AST\Lumi.AST.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Using Include="Microsoft.VisualStudio.TestTools.UnitTesting" />
   </ItemGroup>
 
