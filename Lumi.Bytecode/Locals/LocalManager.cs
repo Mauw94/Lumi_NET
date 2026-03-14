@@ -10,6 +10,11 @@ internal sealed class LocalManager
     private int _nextLabelId = 0;
     private Dictionary<string, Local> CurrentScope => _scopes.Count > 0 ? _scopes[^1] : throw BytecodeError.NoActiveScope();
 
+    /// <summary>
+    /// Returns a flat view of every local registered across all scopes.
+    /// </summary>
+    public IEnumerable<Local> AllLocals => _scopes.SelectMany(s => s.Values);
+
     public void EnterScope()
     {
         _scopes.Add([]);
@@ -27,16 +32,17 @@ internal sealed class LocalManager
     /// </summary>
     /// <param name="name">The name of the local variable for which to get or create a label. Cannot be null.</param>
     /// <param name="kind">The kind of the local variable to associate with the label.</param>
+    /// <param name="type">The declared type, or <see langword="null"/> if no type annotation was given.</param>
     /// <returns>A label associated with the specified local variable name and kind. If the local variable does not exist in the
     /// current scope, a new label is created and returned.</returns>
-    public Label GetOrCreateLocal(string name, LocalKind kind)
+    public Label GetOrCreateLocal(string name, LocalKind kind, VarType type = VarType.Unknown)
     {
         var current = CurrentScope;
         if (current.TryGetValue(name, out var existing))
             return existing.Label;
 
         var newLabel = new Label(_nextLabelId++);
-        var newLocal = new Local(name, kind, newLabel);
+        var newLocal = new Local(name, kind, newLabel, type);
         current[name] = newLocal;
 
         return newLabel;
