@@ -8,12 +8,19 @@ do
 
     if (string.IsNullOrWhiteSpace(input)) continue;
 
-    var parser = new Parser(input.Trim());
-    var ast = parser.Parse();
-    var bytecodeGenerator = new BytecodeGenerator();
-    var bytecodeResult = bytecodeGenerator.Generate(ast);
+    try
+    {
+        var parser = new Parser(input.Trim());
+        var ast = parser.Parse();
+        var bytecodeGenerator = new BytecodeGenerator();
+        var bytecodeResult = bytecodeGenerator.Generate(ast);
 
-    var vm = new VirtualMachine();
-    vm.Execute(bytecodeResult);
+        var vm = new VirtualMachine();
+        vm.Execute(bytecodeResult);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine(ex.ToString());
+    }
 
 } while (true);

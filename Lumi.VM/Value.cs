@@ -2,6 +2,11 @@
 
 namespace Lumi.VM;
 
+/// <summary>
+/// Represents a value of a specific kind within the system. Serves as the abstract base class for all value types, such
+/// as numbers, strings, and functions.
+/// </summary>
+/// <param name="kind">The kind of value represented by this instance. Determines the specific type and behavior of the value.</param>
 public abstract class Value(ValueKind kind)
 {
     public ValueKind Kind { get; } = kind;
@@ -21,7 +26,7 @@ public abstract class Value(ValueKind kind)
             //    return NullValue.Instance;
             //case ConstantKind.Undefined:
             //    return UndefinedValue.Instance;
-            _ => throw new InvalidOperationException($"Unknown constant kind: {constant.Kind}"),
+            _ => throw VirtualMachineError.UnkownConstantKind(constant.Kind),
         };
     }
 
@@ -40,22 +45,12 @@ public abstract class Value(ValueKind kind)
             //    return "null";
             //case ValueKind.Undefined:
             //    return "undefined";
-            _ => throw new InvalidOperationException($"Unknown value kind: {Kind}"),
+            _ => throw VirtualMachineError.UnkownValueKind(ValueKind.Number),
         };
     }
 }
 
-internal class NumberValue(double value) : Value(ValueKind.Number)
+internal sealed class NumberValue(double value) : Value(ValueKind.Number)
 {
     public double Value { get; } = value;
-}
-
-public enum ValueKind
-{
-    Number,
-    String,
-    Boolean,
-    Function,
-    Null,
-    Undefined
 }
