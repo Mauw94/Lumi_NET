@@ -28,42 +28,22 @@ internal sealed class RecoveryContext(Token currentToken, Token previousToken, P
 
     public RecoveryStrategy DetermineStrategy()
     {
-        switch (Context)
+        return Context switch
         {
-            case ParsingContext.TopLevel:
-                switch (CurrentToken.Kind)
-                {
-                    case TokenKind.Semicolon:
-                    case TokenKind.RightBrace:
-                        return new RecoveryStrategy.SkipUntil([";", "}"]);
-                    default:
-                        return new RecoveryStrategy.SkipUntilStatement();
-                }
-
-            case ParsingContext.Statement:
-                return new RecoveryStrategy.SkipUntil([";", "}", ")"]);
-
-            case ParsingContext.Block:
-                return new RecoveryStrategy.SkipUntil(["}"]);
-
-            case ParsingContext.Function:
-                return new RecoveryStrategy.SkipUntil(["}", ";"]);
-
-            case ParsingContext.Class:
-                return new RecoveryStrategy.SkipUntil(["}"]);
-
-            case ParsingContext.Module:
-                return new RecoveryStrategy.SkipUntil(["}", "import", "export"]);
-
-            case ParsingContext.Expression:
-                return new RecoveryStrategy.SkipUntil([";", ",", ")", "]", "}"]);
-
-            case ParsingContext.Declaration:
-                return new RecoveryStrategy.SkipUntil([";", "}"]);
-
-            default:
-                return new RecoveryStrategy.NoRecovery();
-        }
+            ParsingContext.TopLevel => CurrentToken.Kind switch
+            {
+                TokenKind.Semicolon or TokenKind.RightBrace => new RecoveryStrategy.SkipUntil([";", "}"]),
+                _ => new RecoveryStrategy.SkipUntilStatement(),
+            },
+            ParsingContext.Statement => new RecoveryStrategy.SkipUntil([";", "}", ")"]),
+            ParsingContext.Block => new RecoveryStrategy.SkipUntil(["}"]),
+            ParsingContext.Function => new RecoveryStrategy.SkipUntil(["}", ";"]),
+            ParsingContext.Class => new RecoveryStrategy.SkipUntil(["}"]),
+            ParsingContext.Module => new RecoveryStrategy.SkipUntil(["}", "import", "export"]),
+            ParsingContext.Expression => new RecoveryStrategy.SkipUntil([";", ",", ")", "]", "}"]),
+            ParsingContext.Declaration => new RecoveryStrategy.SkipUntil([";", "}"]),
+            _ => new RecoveryStrategy.NoRecovery(),
+        };
     }
 
     public bool IsRecoveryToken(Token token)
@@ -77,4 +57,3 @@ internal sealed class RecoveryContext(Token currentToken, Token previousToken, P
         return new Position(CurrentToken.StartLine, CurrentToken.StartColumn);
     }
 }
-
