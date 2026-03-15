@@ -70,7 +70,7 @@ public sealed class VirtualMachine
                     break;
                 case InstructionKind.Jump:
                     _ip = instruction.SafeGetIntOperand();
-                    break;
+                    continue;
                 case InstructionKind.JumpIfFalse:
                     var ifFalseCondition = _stack.Pop();
                     if (ifFalseCondition.Kind != ValueKind.Boolean)
@@ -78,7 +78,7 @@ public sealed class VirtualMachine
                     if (ifFalseCondition.Bool is false)
                     {
                         _ip = instruction.SafeGetIntOperand();
-                        break;
+                        continue;   // Exit the while loop, do not increase _ip, since we have already jumped to the target instruction.
                     }
                     break;
                 case InstructionKind.JumpIfTrue:
@@ -88,7 +88,7 @@ public sealed class VirtualMachine
                     if (ifTrueCondition.Bool is true)
                     {
                         _ip = instruction.SafeGetIntOperand();
-                        break;
+                        continue;   // Exit the while loop, do not increase _ip, since we have already jumped to the target instruction.
                     }
                     break;
                 case InstructionKind.LoadVar:
