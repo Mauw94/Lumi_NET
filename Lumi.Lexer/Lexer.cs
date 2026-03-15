@@ -10,7 +10,7 @@ public sealed class Lexer(string source)
 {
     private static readonly HashSet<string> _keywords = new(StringComparer.Ordinal)
     {
-        "let","const","fn","if","else","return","async","await","yield",
+        "let","const","var","fn","if","else","return","async","await","yield",
         "import","export","new","class","extends","static","get","set",
         "try","catch","finally","throw","break","continue","switch","case",
         "default","for","while","do","in","of","with","delete",

@@ -19,6 +19,19 @@ public sealed class Parser
     private readonly ErrorRecovery errorRecovery;
     private ParsingContext context;
 
+    private static readonly HashSet<string> _keywords = new(StringComparer.Ordinal)
+    {
+        "let","const","var","fn","if","else","return","async","await","yield",
+        "import","export","new","class","extends","static","get","set",
+        "try","catch","finally","throw","break","continue","switch","case",
+        "default","for","while","do","in","of","with","delete",
+        "instanceof","typeof","void","debugger","enum","interface","package",
+        "private","protected","public","implements","abstract","bool","byte",
+        "char","double","final","float","goto","int","long","str",
+        "native","short","synchronized","throws","transient","volatile","to",
+        "step","print"
+    };
+
     public Parser(string source)
     {
         //_source = source;
@@ -43,43 +56,46 @@ public sealed class Parser
 
     public Node Parse()
     {
-        return ParseProgram();
+        return ParseProgram;
     }
 
-    private Node ParseProgram()
+    private Node ParseProgram
     {
-        var body = new List<Node>();
-        var startPos = CurrentPosition();
-
-        if (IsEof())
+        get
         {
-            var endPos = PreviousPosition();
-            var span = CreateSpan(startPos, endPos);
-            return new Program { Body = body, Span = span };
-        }
+            var body = new List<Node>();
+            var startPos = CurrentPosition();
 
-        while (!IsEof())
-        {
-            try
+            if (IsEof())
             {
-                var stmt = ParseStatement();
-                body.Add(stmt);
+                var endPos = PreviousPosition();
+                var span = CreateSpan(startPos, endPos);
+                return new Program { Body = body, Span = span };
             }
-            catch (ParserError error)
+
+            while (!IsEof())
             {
-                if (!TryRecoverFromError(error))
+                try
                 {
-                    throw;
+                    var stmt = ParseStatement();
+                    body.Add(stmt);
                 }
+                catch (ParserError error)
+                {
+                    if (!TryRecoverFromError(error))
+                    {
+                        throw;
+                    }
 
-                if (IsEof())
-                    break;
+                    if (IsEof())
+                        break;
+                }
             }
-        }
 
-        var end = PreviousPosition();
-        var programSpan = CreateSpan(startPos, end);
-        return new Program { Body = body, Span = programSpan };
+            var end = PreviousPosition();
+            var programSpan = CreateSpan(startPos, end);
+            return new Program { Body = body, Span = programSpan };
+        }
     }
 
     private Node ParseStatement()
@@ -97,19 +113,20 @@ public sealed class Parser
                 {
                     case "let":
                     case "const":
-                        result = ParseVariableDeclaration();
+                    case "var":
+                        result = ParseVariableDeclaration;
                         break;
                     case "if":
-                        result = ParseIfStatement();
+                        result = ParseIfStatement;
                         break;
                     case "print":
-                        result = ParsePrintStatement();
+                        result = ParsePrintStatement;
                         break;
                     case "fn":
-                        result = ParseFunctionStatement();
+                        result = ParseFunctionStatement;
                         break;
                     case "for":
-                        result = ParseForStatement();
+                        result = ParseForStatement;
                         break;
                     default:
                         // temporary placeholder to avoid infinite loop
@@ -120,11 +137,11 @@ public sealed class Parser
             }
             else if (Check(TokenKind.LeftBrace))
             {
-                result = ParseBlockStatement();
+                result = ParseBlockStatement;
             }
             else
             {
-                result = ParseExpressionStatement();
+                result = ParseExpressionStatement;
             }
         }
         else
@@ -137,101 +154,110 @@ public sealed class Parser
         return result;
     }
 
-    private Node ParseBlockStatement()
+    private Node ParseBlockStatement
     {
-        Advance(); // consume '{'
-
-        var oldContext = context;
-        context = ParsingContext.Block;
-
-        var body = new List<Node>();
-        while (!Check(TokenKind.RightBrace) && !IsEof())
+        get
         {
-            try
+            Advance(); // consume '{'
+
+            var oldContext = context;
+            context = ParsingContext.Block;
+
+            var body = new List<Node>();
+            while (!Check(TokenKind.RightBrace) && !IsEof())
             {
-                var stmt = ParseStatement();
-                body.Add(stmt);
-            }
-            catch (ParserError err)
-            {
-                if (!TryRecoverFromError(err))
+                try
                 {
-                    context = oldContext;
-                    throw;
+                    var stmt = ParseStatement();
+                    body.Add(stmt);
+                }
+                catch (ParserError err)
+                {
+                    if (!TryRecoverFromError(err))
+                    {
+                        context = oldContext;
+                        throw;
+                    }
                 }
             }
+
+            Expect(TokenKind.RightBrace);
+
+            context = oldContext;
+            var span = CreateSpanFromTokens();
+            return new BlockStatement { Body = body, Span = span };
         }
-
-        Expect(TokenKind.RightBrace);
-
-        context = oldContext;
-        var span = CreateSpanFromTokens();
-        return new BlockStatement { Body = body, Span = span };
     }
 
-    private Node ParseForStatement()
+    private Node ParseForStatement
     {
-        // for i in 1 to 10 step 5 { }
-        Advance();
-        var id = ParseIdentifier();
-
-        ExpectKeyword("in");
-        var start = ParseExpression();
-
-        ExpectKeyword("to");
-        var end = ParseExpression();
-
-        Node? step = null;
-
-        if (CheckKeyword("step"))
+        get
         {
+            // for i in 1 to 10 step 5 { }
             Advance();
-            step = ParseExpression();
+            var id = ParseIdentifier;
+
+            ExpectKeyword("in");
+            var start = ParseExpression();
+
+            ExpectKeyword("to");
+            var end = ParseExpression();
+
+            Node? step = null;
+
+            if (CheckKeyword("step"))
+            {
+                Advance();
+                step = ParseExpression();
+            }
+
+            var body = ParseStatement();
+            var span = CreateSpanFromTokens();
+
+            return new ForStatement
+            {
+                Iterator = id,
+                Start = start,
+                End = end,
+                Step = step,
+                Body = body,
+                Span = span
+            };
         }
-
-        var body = ParseStatement();
-        var span = CreateSpanFromTokens();
-
-        return new ForStatement
-        {
-            Iterator = id,
-            Start = start,
-            End = end,
-            Step = step,
-            Body = body,
-            Span = span
-        };
     }
 
-    private Node ParseFunctionStatement()
+    private Node ParseFunctionStatement
     {
-        Advance(); // consume 'fn'
-        Node id;
-
-        if (CheckIdentifier())
+        get
         {
-            id = ParseIdentifier();
+            Advance(); // consume 'fn'
+            Node id;
+
+            if (CheckIdentifier())
+            {
+                id = ParseIdentifier;
+            }
+            else
+            {
+                throw ParserError.NoFunctionIdentifierFound(CurrentPosition() ?? new Position());
+            }
+
+            Expect(TokenKind.LeftParen);
+            var parameters = ParseParameters();
+            Expect(TokenKind.RightParen);
+
+            var body = ParseFunctionBody();
+            var span = CreateSpanFromTokens();
+
+            return new FunctionDeclaration
+            {
+                Id = id,
+                Params = parameters,
+                Body = body,
+                IsAsync = false,
+                Span = span
+            };
         }
-        else
-        {
-            throw new ArgumentException("Function declaration must have an identifier");
-        }
-
-        Expect(TokenKind.LeftParen);
-        var parameters = ParseParameters();
-        Expect(TokenKind.RightParen);
-
-        var body = ParseFunctionBody();
-        var span = CreateSpanFromTokens();
-
-        return new FunctionDeclaration
-        {
-            Id = id,
-            Params = parameters,
-            Body = body,
-            IsAsync = false,
-            Span = span
-        };
     }
 
     private List<Node> ParseParameters()
@@ -240,7 +266,7 @@ public sealed class Parser
 
         while (!Check(TokenKind.RightParen) && !IsEof())
         {
-            parameters.Add(ParseIdentifier());
+            parameters.Add(ParseIdentifier);
             if (Check(TokenKind.Comma))
                 Advance();
         }
@@ -264,110 +290,122 @@ public sealed class Parser
 
     private Node ParseFunctionBody()
     {
-        return ParseBlockStatement();
+        return ParseBlockStatement;
     }
 
-    private Node ParsePrintStatement()
+    private Node ParsePrintStatement
     {
-        Advance(); // consume 'print'
-        var expr = ParseExpression();
-
-        if (Check(TokenKind.Semicolon))
-            Advance();
-
-        var span = CreateSpanFromTokens();
-
-        return new PrintStatement { Argument = expr, Span = span };
-    }
-
-    private Node ParseIfStatement()
-    {
-        Advance(); // consume 'if'
-
-        Expect(TokenKind.LeftParen);
-        var expr = ParseExpression();
-        Expect(TokenKind.RightParen);
-
-        var stmt = ParseStatement();
-
-        Node? elsePart = null;
-
-        if (current != null && IsKeyword(current, out var kw) && kw == "else")
+        get
         {
-            Advance();
-            elsePart = ParseStatement();
+            Advance(); // consume 'print'
+            var expr = ParseExpression();
+
+            if (Check(TokenKind.Semicolon))
+                Advance();
+
+            var span = CreateSpanFromTokens();
+
+            return new PrintStatement { Argument = expr, Span = span };
         }
-
-        var span = CreateSpanFromTokens();
-
-        return new IfStatement { Expr = expr, Stmt = stmt, ElsePart = elsePart, Span = span };
     }
 
-    private Node ParseVariableDeclaration()
+    private Node ParseIfStatement
     {
-        var kind = "let";
-        if (current != null && IsKeyword(current, out var kw))
+        get
         {
-            kind = kw;
-        }
+            Advance(); // consume 'if'
 
-        Advance(); // consume keyword
+            Expect(TokenKind.LeftParen);
+            var expr = ParseExpression();
+            Expect(TokenKind.RightParen);
 
-        var declarations = new List<VariableDeclarator>();
+            var stmt = ParseStatement();
 
-        while (true)
-        {
-            var id = ParseIdentifier();
-            var varType = TryParseIdentifierType();
-            Node? init = null;
+            Node? elsePart = null;
 
-            if (Check(TokenKind.Arrow))
+            if (current != null && IsKeyword(current, out var kw) && kw == "else")
             {
                 Advance();
-                init = ParseExpression();
+                elsePart = ParseStatement();
             }
 
             var span = CreateSpanFromTokens();
-            declarations.Add(new VariableDeclarator { VarName = id, VarType = varType, Init = init, Span = span });
 
-            if (!Check(TokenKind.Comma))
-                break;
-
-            Advance();
+            return new IfStatement { Expr = expr, Stmt = stmt, ElsePart = elsePart, Span = span };
         }
-
-        if (Check(TokenKind.Semicolon))
-            Advance();
-
-        var pan = CreateSpanFromTokens();
-
-        return new VariableDeclaration { Kind = kind, Declarations = declarations, Span = pan };
     }
 
-    private Node ParseIdentifier()
+    private Node ParseVariableDeclaration
     {
-        if (current == null)
-            throw ParserError.UnexpectedEndOfFile();
-
-        if (IsIdentifier(current, out var name))
+        get
         {
-            Advance();
-            return new IdentifierNode { Name = name };
-        }
+            IsKeyword(current, out var kw);
+            var kind = kw;
 
-        throw ParserError.InvalidSyntax("Expected identifier", CurrentPosition() ?? new Position());
+            Advance(); // consume keyword
+
+            var declarations = new List<VariableDeclarator>();
+
+            while (true)
+            {
+                var id = ParseIdentifier;
+                var varType = TryParseIdentifierType;
+                Node? init = null;
+
+                if (Check(TokenKind.Arrow))
+                {
+                    Advance();
+                    init = ParseExpression();
+                }
+
+                var span = CreateSpanFromTokens();
+                declarations.Add(new VariableDeclarator { VarName = id, VarType = varType, Init = init, Span = span });
+
+                if (!Check(TokenKind.Comma))
+                    break;
+
+                Advance();
+            }
+
+            if (Check(TokenKind.Semicolon))
+                Advance();
+
+            var pan = CreateSpanFromTokens();
+
+            return new VariableDeclaration { Kind = kind, Declarations = declarations, Span = pan };
+        }
     }
 
-    private Node ParseExpressionStatement()
+    private Node ParseIdentifier
     {
-        var expr = ParseExpression();
+        get
+        {
+            if (current == null)
+                throw ParserError.UnexpectedEndOfFile();
 
-        if (Check(TokenKind.Semicolon))
-            Advance();
+            if (IsIdentifier(current, out var name))
+            {
+                Advance();
+                return new IdentifierNode { Name = name };
+            }
 
-        var span = CreateSpanFromTokens();
+            throw ParserError.InvalidSyntax("Expected identifier", CurrentPosition() ?? new Position());
+        }
+    }
 
-        return new ExpressionStatement { Expression = expr, Span = span };
+    private Node ParseExpressionStatement
+    {
+        get
+        {
+            var expr = ParseExpression();
+
+            if (Check(TokenKind.Semicolon))
+                Advance();
+
+            var span = CreateSpanFromTokens();
+
+            return new ExpressionStatement { Expression = expr, Span = span };
+        }
     }
 
     private Node ParseExpression()
@@ -622,20 +660,23 @@ public sealed class Parser
         }
     }
 
-    private Node? TryParseIdentifierType()
+    private Node? TryParseIdentifierType
     {
-        if (Check(TokenKind.Colon))
+        get
         {
-            Advance();
-            if (current != null && IsKeyword(current, out var kw))
+            if (Check(TokenKind.Colon))
             {
                 Advance();
+                if (current != null && IsKeyword(current, out var kw))
+                {
+                    Advance();
 
-                return new IdentifierNode { Name = kw };
+                    return new IdentifierNode { Name = kw };
+                }
             }
-        }
 
-        return null;
+            return null;
+        }
     }
 
     private bool CheckIdentifier()
@@ -711,7 +752,7 @@ public sealed class Parser
         return new NodeSpan(start, end);
     }
 
-    private NodeSpan CreateSpan(Position? start, Position? end)
+    private static NodeSpan CreateSpan(Position? start, Position? end)
     {
         var s = start ?? new Position();
         var e = end ?? new Position();
@@ -806,15 +847,17 @@ public sealed class Parser
         return false;
     }
 
-    // Helper keyword/identifier checks - adapt to your Token implementation
     private static bool IsKeyword(Token? token, out string keyword)
     {
         keyword = string.Empty;
         if (!token.HasValue) return false;
+
         var tok = token.Value;
         if (tok.Kind != TokenKind.Keyword) return false;
+
         keyword = tok.Value ?? string.Empty;
-        return true;
+
+        return _keywords.Contains(keyword);
     }
 
     private bool CheckKeyword(string kw)
