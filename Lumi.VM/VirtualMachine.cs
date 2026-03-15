@@ -72,24 +72,12 @@ public sealed class VirtualMachine
                     _ip = instruction.SafeGetIntOperand();
                     continue;
                 case InstructionKind.JumpIfFalse:
-                    var ifFalseCondition = _stack.Pop();
-                    if (ifFalseCondition.Kind != ValueKind.Boolean)
-                        throw VirtualMachineError.InvalidJumpCondition(ifFalseCondition);
-                    if (ifFalseCondition.Bool is false)
-                    {
-                        _ip = instruction.SafeGetIntOperand();
+                    if (JumpIfFalse(in instruction))
                         continue;   // Exit the while loop, do not increase _ip, since we have already jumped to the target instruction.
-                    }
                     break;
                 case InstructionKind.JumpIfTrue:
-                    var ifTrueCondition = _stack.Pop();
-                    if (ifTrueCondition.Kind != ValueKind.Boolean)
-                        throw VirtualMachineError.InvalidJumpCondition(ifTrueCondition);
-                    if (ifTrueCondition.Bool is true)
-                    {
-                        _ip = instruction.SafeGetIntOperand();
+                    if (JumpIfTrue(in instruction))
                         continue;   // Exit the while loop, do not increase _ip, since we have already jumped to the target instruction.
-                    }
                     break;
                 case InstructionKind.LoadVar:
                     LoadVar(in instruction);
@@ -103,11 +91,63 @@ public sealed class VirtualMachine
         _executedInstructionCount = _ip;
     }
 
+    /// <summary>
+    /// Performs a conditional jump based on the value at the top of the stack. If the value is a Boolean and is false,
+    /// updates the instruction pointer to the operand specified by the given instruction.
+    /// </summary>
+    /// <remarks>Throws an exception if the value at the top of the stack is not a Boolean. This method is
+    /// typically used to implement conditional branching in a virtual machine execution loop.</remarks>
+    /// <param name="instruction">The instruction containing the target operand for the jump operation.</param>
+    /// <returns>true if the value at the top of the stack is a Boolean and is false; otherwise, false.</returns>
+    private bool JumpIfFalse(in Instruction instruction)
+    {
+        var condition = _stack.Pop();
+
+        if (condition.Kind != ValueKind.Boolean)
+            throw VirtualMachineError.InvalidJumpCondition(condition);
+
+        if (condition.Bool is false)
+            _ip = instruction.SafeGetIntOperand();
+
+        return condition.Bool is false;
+    }
+
+    /// <summary>
+    /// Evaluates the condition at the top of the stack and updates the instruction pointer to the specified target if
+    /// the condition is true.
+    /// </summary>
+    /// <remarks>Throws an exception if the value at the top of the stack is not a boolean. The instruction
+    /// pointer is only updated when the condition is true.</remarks>
+    /// <param name="instruction">The instruction containing the target operand to jump to if the condition is true.</param>
+    /// <returns>true if the condition is true and the jump is performed; otherwise, false.</returns>
+    private bool JumpIfTrue(in Instruction instruction)
+    {
+        var condition = _stack.Pop();
+
+        if (condition.Kind != ValueKind.Boolean)
+            throw VirtualMachineError.InvalidJumpCondition(condition);
+
+        if (condition.Bool is true)
+            _ip = instruction.SafeGetIntOperand();
+
+        return condition.Bool is true;
+    }
+
+    /// <summary>
+    /// Pushes a constant value, specified by the given instruction, onto the evaluation stack.
+    /// </summary>
+    /// <param name="instruction">The instruction containing the operand that identifies which constant to push onto the stack.</param>
     private void PushConst(in Instruction instruction)
     {
         _stack.Push(Value.ConstantToValue(_constants[instruction.SafeGetIntOperand()]));
     }
 
+    /// <summary>
+    /// Stores the value from the top of the evaluation stack into the variable slot specified by the given instruction.
+    /// </summary>
+    /// <remarks>If the variable slot index specified by the instruction exceeds the current variable list
+    /// size, the list is automatically expanded to accommodate the new slot.</remarks>
+    /// <param name="instruction">The instruction containing the operand that specifies the target variable slot.</param>
     private void StoreVar(in Instruction instruction)
     {
         var slot = instruction.SafeGetIntOperand();
@@ -120,6 +160,10 @@ public sealed class VirtualMachine
         _variables[slot] = value;
     }
 
+    /// <summary>
+    /// Loads the value of a variable specified by the given instruction and pushes it onto the evaluation stack.
+    /// </summary>
+    /// <param name="instruction">The instruction containing the operand that identifies the variable to load.</param>
     private void LoadVar(in Instruction instruction)
     {
         var slot = instruction.SafeGetIntOperand();
@@ -129,6 +173,7 @@ public sealed class VirtualMachine
         _stack.Push(value);
     }
 
+    /// <summary>Removes the top item from the stack and writes its formatted value to the console output.</summary>
     private void Print()
     {
         var value = _stack.Pop();
