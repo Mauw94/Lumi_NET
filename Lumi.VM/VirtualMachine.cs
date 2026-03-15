@@ -62,6 +62,35 @@ public sealed class VirtualMachine
                 case InstructionKind.StoreVar:
                     StoreVar(in instruction);
                     break;
+                case InstructionKind.Lt:
+                    _binaryInstruction.Lt();
+                    break;
+                case InstructionKind.Gt:
+                    _binaryInstruction.Gt();
+                    break;
+                case InstructionKind.Jump:
+                    _ip = instruction.SafeGetIntOperand();
+                    break;
+                case InstructionKind.JumpIfFalse:
+                    var ifFalseCondition = _stack.Pop();
+                    if (ifFalseCondition.Kind != ValueKind.Boolean)
+                        throw VirtualMachineError.InvalidJumpCondition(ifFalseCondition);
+                    if (ifFalseCondition.Bool is false)
+                    {
+                        _ip = instruction.SafeGetIntOperand();
+                        break;
+                    }
+                    break;
+                case InstructionKind.JumpIfTrue:
+                    var ifTrueCondition = _stack.Pop();
+                    if (ifTrueCondition.Kind != ValueKind.Boolean)
+                        throw VirtualMachineError.InvalidJumpCondition(ifTrueCondition);
+                    if (ifTrueCondition.Bool is true)
+                    {
+                        _ip = instruction.SafeGetIntOperand();
+                        break;
+                    }
+                    break;
                 case InstructionKind.LoadVar:
                     LoadVar(in instruction);
                     break;
@@ -69,10 +98,8 @@ public sealed class VirtualMachine
                     Print();
                     break;
             }
-
             _ip += 1;
         }
-
         _executedInstructionCount = _ip;
     }
 

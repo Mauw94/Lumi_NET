@@ -1,7 +1,6 @@
 ﻿using Lumi.Ast;
 using Lumi.Bytecode.Constants;
 using Lumi.Bytecode.Instructions;
-using Lumi.Bytecode.Jumps;
 using Lumi.Bytecode.Locals;
 
 namespace Lumi.Bytecode;
@@ -13,10 +12,9 @@ public sealed class BytecodeGenerator
 {
     private readonly List<Instruction> _instructions = new(capacity: 64);
     private readonly ConstantPool _constantPool = new();
-    private readonly Dictionary<Label, int> _labelPositions = [];
-    private readonly Dictionary<Label, int> _symbolTable = [];
-    private readonly Dictionary<Label, List<PendingJump>> _unpatchedJumps = [];
+    private readonly Dictionary<Label, List<int>> _unpatchedJumps = [];
     private readonly LocalManager _locals = new();
+    private int _nextLabelId = 0;
 
     public IReadOnlyList<Instruction> Instructions => _instructions;
     public IReadOnlyList<Constant> Constants => _constantPool.Values;
@@ -69,8 +67,16 @@ public sealed class BytecodeGenerator
                 Emit(new Instruction(InstructionKind.Print));
                 break;
 
+            case IfStatement ifStatement:
+                VisitIfStatement(ifStatement);
+                break;
+
             case NumberNode number:
                 Emit(new Instruction(InstructionKind.PushConst, intOperand: AddConstant(Constant.FromNumber(number.Value))));
+                break;
+
+            case BooleanNode boolean:
+                Emit(new Instruction(InstructionKind.PushConst, intOperand: AddConstant(Constant.FromBoolean(boolean.Value))));
                 break;
 
             case StringNode str:
@@ -84,6 +90,74 @@ public sealed class BytecodeGenerator
             case BinaryExpression binaryExpression:
                 VisitBinaryExpression(binaryExpression);
                 break;
+        }
+    }
+
+    /// <summary>Allocates a fresh jump label whose target will be resolved later via <see cref="PatchLabel"/>.</summary>
+    private Label NewLabel() => new(_nextLabelId++);
+
+    /// <summary>Emits an unconditional jump to <paramref name="target"/>, recording it for back-patching.</summary>
+    private void EmitJump(Label target)
+    {
+        _unpatchedJumps.TryAdd(target, []);
+        _unpatchedJumps[target].Add(_instructions.Count);
+        Emit(new Instruction(InstructionKind.Jump, intOperand: 0));
+    }
+
+    /// <summary>Emits a conditional jump that jumps to <paramref name="target"/> when the top-of-stack is false.</summary>
+    private void EmitJumpIfFalse(Label target)
+    {
+        _unpatchedJumps.TryAdd(target, []);
+        _unpatchedJumps[target].Add(_instructions.Count);
+        Emit(new Instruction(InstructionKind.JumpIfFalse, intOperand: 0));
+    }
+
+    /// <summary>
+    /// Resolves all jumps that target <paramref name="label"/> to point at the current instruction position,
+    /// then removes the label from the unpatched table.
+    /// </summary>
+    private void PatchLabel(Label label)
+    {
+        if (!_unpatchedJumps.TryGetValue(label, out var sites))
+            return;
+
+        var target = _instructions.Count;
+        foreach (var site in sites)
+        {
+            var old = _instructions[site];
+            _instructions[site] = new Instruction(old.Kind, intOperand: target);
+        }
+
+        _unpatchedJumps.Remove(label);
+    }
+
+    /// <summary>Emit an instruction.</summary>
+    private void Emit(Instruction instruction) => _instructions.Add(instruction);
+
+    /// <summary>Adds a new constant.</summary>
+    private int AddConstant(Constant constant) => _constantPool.Add(constant);
+
+    private void VisitIfStatement(IfStatement ifStatement)
+    {
+        // Evaluate the condition — leaves a bool on the stack.
+        Visit(ifStatement.Expr);
+
+        var elseLabel = NewLabel();
+        EmitJumpIfFalse(elseLabel);   // jump past the then-branch if condition is false
+
+        Visit(ifStatement.Stmt);      // then-branch
+
+        if (ifStatement.ElsePart is not null)
+        {
+            var endLabel = NewLabel();
+            EmitJump(endLabel);        // jump past else-branch after then-branch executes
+            PatchLabel(elseLabel);     // else-branch starts here
+            Visit(ifStatement.ElsePart);
+            PatchLabel(endLabel);      // end of if/else
+        }
+        else
+        {
+            PatchLabel(elseLabel);     // no else: target lands right after then-branch
         }
     }
 
@@ -121,8 +195,8 @@ public sealed class BytecodeGenerator
 
     private void VisitBinaryExpression(BinaryExpression binaryExpression)
     {
-        Visit(binaryExpression.Left);
-        Visit(binaryExpression.Right);
+        Visit(binaryExpression.Left);   // Evaluate left side
+        Visit(binaryExpression.Right);  // Evaluate right side
 
         var kind = binaryExpression.Operator switch
         {
@@ -130,13 +204,16 @@ public sealed class BytecodeGenerator
             "-" => InstructionKind.Sub,
             "*" => InstructionKind.Mul,
             "/" => InstructionKind.Div,
+            "%" => InstructionKind.Mod,
+            "==" => InstructionKind.Eq,
+            "!=" => InstructionKind.Neq,
+            "<" => InstructionKind.Lt,
+            ">" => InstructionKind.Gt,
+            "<=" => InstructionKind.Leq,
+            ">=" => InstructionKind.Geq,
             _ => throw BytecodeError.UnsupportedOperator(binaryExpression.Operator)
         };
 
-        Emit(new Instruction(kind));
+        Emit(new Instruction(kind));    // Emit the operator instruction, which will consume the two operands from the stack
     }
-
-    private void Emit(Instruction instruction) => _instructions.Add(instruction);
-
-    private int AddConstant(Constant constant) => _constantPool.Add(constant);
 }

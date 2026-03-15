@@ -7,7 +7,7 @@
 internal sealed class LocalManager
 {
     private readonly List<Dictionary<string, Local>> _scopes = new(capacity: 4);
-    private int _nextLabelId = 0;
+    private int _nextSlotId = 0;
     private Dictionary<string, Local> CurrentScope => _scopes.Count > 0 ? _scopes[^1] : throw BytecodeError.NoActiveScope();
 
     /// <summary>
@@ -15,11 +15,17 @@ internal sealed class LocalManager
     /// </summary>
     public IEnumerable<Local> AllLocals => _scopes.SelectMany(s => s.Values);
 
+    /// <summary>
+    /// Enter a new scope.
+    /// </summary>
     public void EnterScope()
     {
         _scopes.Add([]);
     }
 
+    /// <summary>
+    /// Exit the current scope, discarding all local variables declared within it. If there are no active scopes, an exception is thrown.
+    /// </summary>
     public void ExitScope()
     {
         if (_scopes.Count == 0) throw BytecodeError.NoActiveScope();
@@ -41,7 +47,7 @@ internal sealed class LocalManager
         if (current.TryGetValue(name, out var existing))
             return existing.Label;
 
-        var newLabel = new Label(_nextLabelId++);
+        var newLabel = new Label(_nextSlotId++);
         var newLocal = new Local(name, kind, newLabel, type);
         current[name] = newLocal;
 

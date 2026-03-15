@@ -219,4 +219,73 @@ public sealed class BytecodeTests
         var loadOp = result.Instructions[4].SafeGetIntOperand();
         Assert.AreEqual(1, loadOp);
     }
+
+    [TestMethod]
+    public void Test_IfStatement_WithoutElse()
+    {
+        // if (true) { print 1 }
+        //
+        // Expected bytecode:
+        //   0: PushConst  (true)
+        //   1: JumpIfFalse -> 4
+        //   2: PushConst  (1)
+        //   3: Print
+        //   4: <end>
+        var ifStmt = new IfStatement
+        {
+            Expr = new BooleanNode { Value = true },
+            Stmt = new PrintStatement { Argument = new NumberNode { Value = 1.0 } }
+        };
+
+        var result = new BytecodeGenerator().Generate(new Program { Body = [ifStmt] });
+
+        Assert.HasCount(4, result.Instructions);
+
+        Assert.AreEqual(InstructionKind.PushConst, result.Instructions[0].Kind);
+        Assert.AreEqual(InstructionKind.JumpIfFalse, result.Instructions[1].Kind);
+        Assert.AreEqual(InstructionKind.PushConst, result.Instructions[2].Kind);
+        Assert.AreEqual(InstructionKind.Print, result.Instructions[3].Kind);
+
+        // JumpIfFalse must jump past the then-branch (index 4 = one past last instruction)
+        Assert.AreEqual(4, result.Instructions[1].SafeGetIntOperand());
+    }
+
+    [TestMethod]
+    public void Test_IfStatement_WithElse()
+    {
+        // if (true) { print 1 } else { print 2 }
+        //
+        // Expected bytecode:
+        //   0: PushConst  (true)        <- condition
+        //   1: JumpIfFalse -> 5         <- jump to else-branch
+        //   2: PushConst  (1)           <- then: argument
+        //   3: Print                    <- then: print
+        //   4: Jump -> 7                <- skip else-branch
+        //   5: PushConst  (2)           <- else: argument
+        //   6: Print                    <- else: print
+        //   7: <end>
+        var ifStmt = new IfStatement
+        {
+            Expr = new BooleanNode { Value = true },
+            Stmt = new PrintStatement { Argument = new NumberNode { Value = 1.0 } },
+            ElsePart = new PrintStatement { Argument = new NumberNode { Value = 2.0 } }
+        };
+
+        var result = new BytecodeGenerator().Generate(new Program { Body = [ifStmt] });
+
+        Assert.HasCount(7, result.Instructions);
+
+        Assert.AreEqual(InstructionKind.PushConst, result.Instructions[0].Kind); // condition
+        Assert.AreEqual(InstructionKind.JumpIfFalse, result.Instructions[1].Kind); // jump to else
+        Assert.AreEqual(InstructionKind.PushConst, result.Instructions[2].Kind); // then: push 1
+        Assert.AreEqual(InstructionKind.Print, result.Instructions[3].Kind); // then: print
+        Assert.AreEqual(InstructionKind.Jump, result.Instructions[4].Kind); // jump past else
+        Assert.AreEqual(InstructionKind.PushConst, result.Instructions[5].Kind); // else: push 2
+        Assert.AreEqual(InstructionKind.Print, result.Instructions[6].Kind); // else: print
+
+        // JumpIfFalse jumps to else-branch start (index 5)
+        Assert.AreEqual(5, result.Instructions[1].SafeGetIntOperand());
+        // Unconditional Jump jumps past else-branch (index 7 = one past last)
+        Assert.AreEqual(7, result.Instructions[4].SafeGetIntOperand());
+    }
 }

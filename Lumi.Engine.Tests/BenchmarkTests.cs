@@ -118,6 +118,45 @@ public sealed class BenchmarkTests
         TestContext.WriteLine($"VM execution only:  {sw.Elapsed.TotalMilliseconds / iterations:F4} ms/iter");
     }
 
+    [TestMethod]
+    public void Test_If_Else_True_Statement()
+    {
+        // Arrange
+        var source = "if (1 < 2) { print 42; } else { print 0; }";
+
+        // Act + Benchmark
+        const int iterations = 1000;
+
+        Warmup(source);
+        CollectBenchmarkData(iterations, source);
+    }
+
+    [TestMethod]
+    public void Test_If_Else_Statement_False()
+    {
+        // Arrange
+        var source = "if (1 > 2) { print 42; } else { print 0; }";
+
+        // Act + Benchmark
+        const int iterations = 1000;
+
+        Warmup(source);
+        CollectBenchmarkData(iterations, source);
+    }
+
+    [TestMethod]
+    public void Test_If_Else_Statement_With_Variables()
+    {
+        // Arrange
+        var source = "let x -> 10; if (x > 5) { print x; } else { print 0; }";
+
+        // Act + Benchmark
+        const int iterations = 1000;
+
+        Warmup(source);
+        CollectBenchmarkData(iterations, source);
+    }
+
     private static void ExecuteProgram(string source)
     {
         var parser = new Parser.Parser(source);
