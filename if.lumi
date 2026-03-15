@@ -1,0 +1,9 @@
+let x: int -> 42;
+if (x > 40) {
+	let y -> 5;
+	if (y < 10) {
+		print y;
+	}
+}
+
+print x;

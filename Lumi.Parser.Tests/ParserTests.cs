@@ -61,6 +61,31 @@ public sealed class ParserTests
         Assert.AreEqual(42, ((NumberNode)varDecla.Init).Value);
     }
 
+    [TestMethod]
+    public void Test_If_Else_Statement()
+    {
+        var source = "if (1 < 2) { print 42; } else { print 0; }";
+        var program = ParseProgram(source);
+
+        Assert.HasCount(1, program.Body);
+        Assert.IsInstanceOfType<IfStatement>(program.Body[0]);
+        var ifStmt = (IfStatement)program.Body[0];
+
+        Assert.IsInstanceOfType<BlockStatement>(ifStmt.ElsePart);
+        var elsePart = (BlockStatement)ifStmt.ElsePart;
+
+        Assert.IsInstanceOfType<PrintStatement>(elsePart.Body[0]);
+
+        Assert.IsInstanceOfType<BinaryExpression>(ifStmt.Expr);
+        Assert.IsInstanceOfType<BlockStatement>(ifStmt.Stmt);
+        var block = (BlockStatement)ifStmt.Stmt;
+
+        Assert.IsInstanceOfType<PrintStatement>(block.Body[0]);
+        var printStmt = (PrintStatement)block.Body[0];
+
+        Assert.IsInstanceOfType<NumberNode>(printStmt.Argument);
+    }
+
     private static Program ParseProgram(string source)
     {
         var parser = new Parser(source);

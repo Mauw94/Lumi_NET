@@ -14,21 +14,25 @@ internal readonly struct Value
     // Payload fields — only the one matching Kind is populated.
     public double Number { get; }
     public string? String { get; }
+    public bool Bool { get; }
 
-    private Value(ValueKind kind, double number = 0, string? str = null)
+    private Value(ValueKind kind, double number = 0, string? str = null, bool b = false)
     {
         Kind = kind;
         Number = number;
         String = str;
+        Bool = b;
     }
 
     public static Value FromNumber(double n) => new(ValueKind.Number, number: n);
     public static Value FromString(string s) => new(ValueKind.String, str: s);
+    public static Value FromBoolean(bool b) => new(ValueKind.Boolean, b: b);
 
     public static Value ConstantToValue(Constant constant) => constant.Kind switch
     {
         ConstantKind.Number => FromNumber(constant.Number!.Value),
         ConstantKind.String => FromString(constant.String!),
+        ConstantKind.Boolean => FromBoolean(constant.Boolean!.Value),
         _ => throw VirtualMachineError.UnkownConstantKind(constant.Kind),
     };
 
@@ -36,6 +40,7 @@ internal readonly struct Value
     {
         ValueKind.Number => Number.ToString(),
         ValueKind.String => String ?? string.Empty,
+        ValueKind.Boolean => Bool.ToString(),
         _ => throw VirtualMachineError.UnkownValueKind(Kind),
     };
 }
