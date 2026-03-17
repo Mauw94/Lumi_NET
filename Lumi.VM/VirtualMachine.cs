@@ -95,8 +95,6 @@ public sealed class VirtualMachine
     /// Performs a conditional jump based on the value at the top of the stack. If the value is a Boolean and is false,
     /// updates the instruction pointer to the operand specified by the given instruction.
     /// </summary>
-    /// <remarks>Throws an exception if the value at the top of the stack is not a Boolean. This method is
-    /// typically used to implement conditional branching in a virtual machine execution loop.</remarks>
     /// <param name="instruction">The instruction containing the target operand for the jump operation.</param>
     /// <returns>true if the value at the top of the stack is a Boolean and is false; otherwise, false.</returns>
     private bool JumpIfFalse(in Instruction instruction)
@@ -116,8 +114,6 @@ public sealed class VirtualMachine
     /// Evaluates the condition at the top of the stack and updates the instruction pointer to the specified target if
     /// the condition is true.
     /// </summary>
-    /// <remarks>Throws an exception if the value at the top of the stack is not a boolean. The instruction
-    /// pointer is only updated when the condition is true.</remarks>
     /// <param name="instruction">The instruction containing the target operand to jump to if the condition is true.</param>
     /// <returns>true if the condition is true and the jump is performed; otherwise, false.</returns>
     private bool JumpIfTrue(in Instruction instruction)
