@@ -7,7 +7,7 @@ namespace Lumi.Bytecode;
 public sealed record BytecodeResult(
     IReadOnlyList<Instruction> Instructions,
     IReadOnlyList<Constant> Constants,
-    IEnumerable<Local> Locals)
+    IReadOnlyList<Local> Locals)
 {
     public static BytecodeResult FromGenerator(BytecodeGenerator generator) =>
         new(generator.Instructions, generator.Constants, generator.Locals);

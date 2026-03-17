@@ -13,7 +13,7 @@ internal sealed class LocalManager
     /// <summary>
     /// Returns a flat view of every local registered across all scopes.
     /// </summary>
-    public IEnumerable<Local> AllLocals => _scopes.SelectMany(s => s.Values);
+    public IReadOnlyList<Local> AllLocals => [.. _scopes.SelectMany(s => s.Values)];
 
     /// <summary>
     /// Enter a new scope.

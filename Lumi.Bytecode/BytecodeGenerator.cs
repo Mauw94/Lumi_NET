@@ -18,7 +18,7 @@ public sealed class BytecodeGenerator
 
     public IReadOnlyList<Instruction> Instructions => _instructions;
     public IReadOnlyList<Constant> Constants => _constantPool.Values;
-    public IEnumerable<Local> Locals => _locals.AllLocals;
+    public IReadOnlyList<Local> Locals => _locals.AllLocals;
 
     public BytecodeGenerator()
     {
