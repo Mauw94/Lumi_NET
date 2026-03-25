@@ -71,6 +71,10 @@ public sealed class BytecodeGenerator
                 VisitIfStatement(ifStatement);
                 break;
 
+            case ForStatement forStatement:
+                VisitForStatement(forStatement);
+                break;
+
             case NumberNode number:
                 Emit(new Instruction(InstructionKind.PushConst, intOperand: AddConstant(Constant.FromNumber(number.Value))));
                 break;
@@ -137,8 +141,36 @@ public sealed class BytecodeGenerator
     /// <summary>Adds a new constant.</summary>
     private int AddConstant(Constant constant) => _constantPool.Add(constant);
 
+    private void VisitForStatement(ForStatement forStatement)
+    {
+        _locals.EnterScope();
+
+        if (forStatement.Iterator is not null)
+            Visit(forStatement.Iterator);
+
+        var loopStartLabel = NewLabel();
+        var loopEndLabel = NewLabel();
+
+        EmitJump(loopEndLabel);  // Jump to condition check first (condition may be absent, in which case it defaults to true)
+        PatchLabel(loopStartLabel);  // Loop body starts here
+
+        Visit(forStatement.Body);
+
+        if (forStatement.Step is not null)
+            Visit(forStatement.Step);
+
+        EmitJump(loopStartLabel);  // Jump back to the start of the loop
+
+        PatchLabel(loopEndLabel);  // Loop ends here
+
+        _locals.ExitScope();
+    }
+
+    // TODO: Test scope management here
     private void VisitIfStatement(IfStatement ifStatement)
     {
+        _locals.EnterScope();
+
         // Evaluate the condition — leaves a bool on the stack.
         Visit(ifStatement.Expr);
 
@@ -159,6 +191,8 @@ public sealed class BytecodeGenerator
         {
             PatchLabel(elseLabel);     // no else: target lands right after then-branch
         }
+
+        _locals.ExitScope();
     }
 
     private void VisitVariableDeclaration(VariableDeclaration variableDeclaration)
