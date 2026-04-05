@@ -16,6 +16,7 @@
   <Folder Name="/Docs/Scripts/">
     <File Path="fn1.lumi" />
     <File Path="fn2.lumi" />
+    <File Path="fn3.lumi" />
     <File Path="for1.lumi" />
     <File Path="for2.lumi" />
     <File Path="for3.lumi" />

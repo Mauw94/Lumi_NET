@@ -205,6 +205,25 @@ public sealed class FunctionTests
         ExecuteProgram(source);
     }
 
+    [TestMethod]
+    public void Test_Function_Called_With_Negative_Argument()
+    {
+        // Arrange — this is the exact scenario that was crashing with a stack underflow
+        var source = @"
+            fn check(n) {
+                if (n > 0) {
+                    print 1;
+                } else {
+                    print 0;
+                }
+            }
+            check(-3);
+        ";
+
+        // Act & Assert - should print 0 without errors
+        ExecuteProgram(source);
+    }
+
     private static void ExecuteProgram(string source)
     {
         var parser = new Parser.Parser(source);

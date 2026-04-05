@@ -83,6 +83,12 @@ public sealed class VirtualMachine
                 case InstructionKind.Eq:
                     _binaryInstruction.Eq();
                     break;
+                case InstructionKind.Negate:
+                    Negate();
+                    break;
+                case InstructionKind.Not:
+                    Not();
+                    break;
                 case InstructionKind.Jump:
                     _ip = instruction.SafeGetIntOperand();
                     continue;
@@ -195,6 +201,28 @@ public sealed class VirtualMachine
     {
         var value = _stack.Pop();
         Console.WriteLine(value.PrintValue());
+    }
+
+    /// <summary>Negates the numeric value on top of the stack.</summary>
+    private void Negate()
+    {
+        var value = _stack.Pop();
+
+        if (value.Kind != ValueKind.Number)
+            throw VirtualMachineError.InvalidUnaryOperation(value, "Negate");
+
+        _stack.Push(Value.FromNumber(-value.Number));
+    }
+
+    /// <summary>Logically inverts the boolean value on top of the stack.</summary>
+    private void Not()
+    {
+        var value = _stack.Pop();
+
+        if (value.Kind != ValueKind.Boolean)
+            throw VirtualMachineError.InvalidUnaryOperation(value, "Not");
+
+        _stack.Push(Value.FromBoolean(!value.Bool));
     }
 
     /// <summary>

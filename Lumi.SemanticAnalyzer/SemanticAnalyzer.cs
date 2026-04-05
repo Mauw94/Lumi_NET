@@ -109,7 +109,7 @@ public sealed class SemanticAnalyzer
                 if (funcDecl.Id is not IdentifierNode functionName)
                     throw SemanticAnalyzerError.InvalidFunctionDeclaration();
 
-                var symbol = new Symbol(functionName.Name, SymbolKind.Function, TypeKind.Unknown);
+                var symbol = new Symbol(functionName.Name, SymbolKind.Function, TypeKind.Unknown, ParameterCount: funcDecl.Params.Count);
                 _scopes.RegisterSymbol(symbol);
             }
         }
@@ -274,6 +274,10 @@ public sealed class SemanticAnalyzer
         var function = _scopes.LookupSymbol(functionName.Name);
         if (function is null || function.Value.Kind != SymbolKind.Function)
             throw SemanticAnalyzerError.UndefinedFunction(functionName.Name);
+
+        // Validate argument count matches the declared parameter count
+        if (function.Value.ParameterCount.HasValue && callExpr.Arguments.Count != function.Value.ParameterCount.Value)
+            throw SemanticAnalyzerError.ArgumentCountMismatch(functionName.Name, function.Value.ParameterCount.Value, callExpr.Arguments.Count);
 
         // Analyze arguments
         foreach (var arg in callExpr.Arguments)

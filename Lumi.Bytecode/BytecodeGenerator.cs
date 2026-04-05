@@ -101,6 +101,10 @@ public sealed class BytecodeGenerator
                 Visit(expressionStatement.Expression);
                 break;
 
+            case UnaryExpression unaryExpression:
+                VisitUnaryExpression(unaryExpression);
+                break;
+
             case BinaryExpression binaryExpression:
                 VisitBinaryExpression(binaryExpression);
                 break;
@@ -279,6 +283,20 @@ public sealed class BytecodeGenerator
                 _locals.GetOrCreateLocal(varName.Name, localKind, type);
             }
         }
+    }
+
+    private void VisitUnaryExpression(UnaryExpression unaryExpression)
+    {
+        Visit(unaryExpression.Argument);
+
+        var kind = unaryExpression.Operator switch
+        {
+            "-" => InstructionKind.Negate,
+            "!" => InstructionKind.Not,
+            _ => throw BytecodeError.UnsupportedOperator(unaryExpression.Operator)
+        };
+
+        Emit(new Instruction(kind));
     }
 
     private void VisitBinaryExpression(BinaryExpression binaryExpression)
