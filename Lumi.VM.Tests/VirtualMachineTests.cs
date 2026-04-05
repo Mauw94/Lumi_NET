@@ -1,4 +1,4 @@
-using Lumi.Ast;
+using Lumi.AST;
 using Lumi.Bytecode;
 
 namespace Lumi.VM.Tests;

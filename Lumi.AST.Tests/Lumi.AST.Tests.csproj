@@ -17,7 +17,7 @@
 
   <ItemGroup>
     <Using Include="Microsoft.VisualStudio.TestTools.UnitTesting" />
-    <Using Include="Lumi.Ast" />
+    <Using Include="Lumi.AST" />
   </ItemGroup>
 
 </Project>

@@ -1,5 +1,4 @@
-﻿using Lumi.Ast;
-using Lumi.AST;
+﻿using Lumi.AST;
 using Lumi.Lexer;
 
 namespace Lumi.Parser;

@@ -1,4 +1,4 @@
-﻿using Lumi.Ast;
+﻿using Lumi.AST;
 using Lumi.Bytecode;
 using Lumi.Parser;
 using Lumi.SemanticAnalyzer;
@@ -95,7 +95,7 @@ static void SemanticAnalysis(Node? ast)
 {
     var semanticAnalyzer = new SemanticAnalyzer();
 
-    if (ast is Lumi.Ast.Program program)
+    if (ast is Lumi.AST.Program program)
     {
         var analysisResult = semanticAnalyzer.Analyze(program);
         if (!analysisResult.IsValid)

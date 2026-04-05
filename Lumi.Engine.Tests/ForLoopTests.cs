@@ -1,4 +1,4 @@
-using Lumi.Ast;
+using Lumi.AST;
 using Lumi.Bytecode;
 using Lumi.VM;
 
@@ -25,7 +25,7 @@ public sealed class ForLoopTests
         var output = ExecuteAndCapture(source);
 
         // Assert
-        var lines = output.Trim().Split(new[] { Environment.NewLine }, StringSplitOptions.None)
+        var lines = output.Trim().Split([Environment.NewLine], StringSplitOptions.None)
             .Where(line => !string.IsNullOrWhiteSpace(line))
             .ToArray();
 
@@ -49,7 +49,7 @@ public sealed class ForLoopTests
         var output = ExecuteAndCapture(source);
 
         // Assert
-        var lines = output.Trim().Split(new[] { Environment.NewLine }, StringSplitOptions.None)
+        var lines = output.Trim().Split([Environment.NewLine], StringSplitOptions.None)
             .Where(line => !string.IsNullOrWhiteSpace(line))
             .ToArray();
 
@@ -74,7 +74,7 @@ public sealed class ForLoopTests
         var output = ExecuteAndCapture(source);
 
         // Assert
-        var lines = output.Trim().Split(new[] { Environment.NewLine }, StringSplitOptions.None)
+        var lines = output.Trim().Split([Environment.NewLine], StringSplitOptions.None)
             .Where(line => !string.IsNullOrWhiteSpace(line))
             .ToArray();
 
@@ -99,7 +99,7 @@ public sealed class ForLoopTests
         var output = ExecuteAndCapture(source);
 
         // Assert
-        var lines = output.Trim().Split(new[] { Environment.NewLine }, StringSplitOptions.None)
+        var lines = output.Trim().Split([Environment.NewLine], StringSplitOptions.None)
             .Where(line => !string.IsNullOrWhiteSpace(line))
             .ToArray();
 
@@ -158,7 +158,7 @@ public sealed class ForLoopTests
         var output = ExecuteAndCapture(source);
 
         // Assert
-        var lines = output.Trim().Split(new[] { Environment.NewLine }, StringSplitOptions.None)
+        var lines = output.Trim().Split([Environment.NewLine], StringSplitOptions.None)
             .Where(line => !string.IsNullOrWhiteSpace(line))
             .ToArray();
 
@@ -183,7 +183,7 @@ public sealed class ForLoopTests
         var output = ExecuteAndCapture(source);
 
         // Assert
-        var lines = output.Trim().Split(new[] { Environment.NewLine }, StringSplitOptions.None)
+        var lines = output.Trim().Split([Environment.NewLine], StringSplitOptions.None)
             .Where(line => !string.IsNullOrWhiteSpace(line))
             .ToArray();
 
@@ -221,7 +221,7 @@ public sealed class ForLoopTests
         var output = ExecuteAndCapture(source);
 
         // Assert
-        var lines = output.Trim().Split(new[] { Environment.NewLine }, StringSplitOptions.None)
+        var lines = output.Trim().Split([Environment.NewLine], StringSplitOptions.None)
             .Where(line => !string.IsNullOrWhiteSpace(line))
             .ToArray();
 
@@ -244,7 +244,7 @@ public sealed class ForLoopTests
         var output = ExecuteAndCapture(source);
 
         // Assert
-        var lines = output.Trim().Split(new[] { Environment.NewLine }, StringSplitOptions.None)
+        var lines = output.Trim().Split([Environment.NewLine], StringSplitOptions.None)
             .Where(line => !string.IsNullOrWhiteSpace(line))
             .ToArray();
 
@@ -302,7 +302,7 @@ public sealed class ForLoopTests
         var output = ExecuteAndCapture(source);
 
         // Assert
-        var lines = output.Trim().Split(new[] { Environment.NewLine }, StringSplitOptions.None)
+        var lines = output.Trim().Split([Environment.NewLine], StringSplitOptions.None)
             .Where(line => !string.IsNullOrWhiteSpace(line))
             .ToArray();
 
@@ -328,7 +328,7 @@ public sealed class ForLoopTests
         var output = ExecuteAndCapture(source);
 
         // Assert
-        var lines = output.Trim().Split(new[] { Environment.NewLine }, StringSplitOptions.None)
+        var lines = output.Trim().Split([Environment.NewLine], StringSplitOptions.None)
             .Where(line => !string.IsNullOrWhiteSpace(line))
             .ToArray();
 
