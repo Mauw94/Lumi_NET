@@ -94,6 +94,14 @@ public sealed class BytecodeGenerator
             case BinaryExpression binaryExpression:
                 VisitBinaryExpression(binaryExpression);
                 break;
+            case AssignmentExpression assignmentExpression:
+                if (assignmentExpression.Left is not IdentifierNode targetIdentifier)
+                    throw BytecodeError.InvalidAssignmentTarget();
+
+                Visit(assignmentExpression.Right);
+                var targetLocal = _locals.LookupLocal(targetIdentifier.Name) ?? throw BytecodeError.UndefinedVariable(targetIdentifier.Name);
+                Emit(Instruction.StoreVar(targetLocal.Label));
+                break;
         }
     }
 
@@ -231,10 +239,6 @@ public sealed class BytecodeGenerator
         _locals.ExitScope();
     }
 
-    // TODO: re-assigning does not yet work.
-    // let sum -> 0;
-    // sum = sum + 1;
-    // print sum; prints 0 still.
     private void VisitVariableDeclaration(VariableDeclaration variableDeclaration)
     {
         foreach (var declaration in variableDeclaration.Declarations)

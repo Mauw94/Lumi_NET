@@ -622,7 +622,7 @@ public sealed class Parser
         current?.Kind is TokenKind.Arrow or TokenKind.Assign or TokenKind.PlusAssign or TokenKind.MinusAssign;
 
     private bool IsEqualityOperator() =>
-        current?.Kind is TokenKind.EqualEqual or TokenKind.NotEqual;
+        current?.Kind is TokenKind.EqualEqual or TokenKind.NotEqual or TokenKind.Equal;
 
     private Node ParsePrimaryExpression()
     {

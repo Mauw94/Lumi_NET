@@ -501,4 +501,144 @@ public sealed class BytecodeTests
         Assert.AreNotEqual(iterSlot, stepSlot, "Iterator and $step share the same slot");
         Assert.AreNotEqual(endSlot, stepSlot, "$end and $step share the same slot");
     }
+
+    [TestMethod]
+    public void Test_Assignment_Expression()
+    {
+        // Declare x first, then assign to it: let x -> 10; x = 42;
+        var varDecl = new VariableDeclaration
+        {
+            Kind = "let",
+            Declarations =
+            [
+                new VariableDeclarator
+                {
+                    VarName = new IdentifierNode { Name = "x" },
+                    Init = new NumberNode { Value = 10.0 }
+                }
+            ]
+        };
+
+        var assignmentExpression = new AssignmentExpression
+        {
+            Left = new IdentifierNode { Name = "x" },
+            Operator = "=",
+            Right = new NumberNode { Value = 42.0 }
+        };
+
+        var result = new BytecodeGenerator().Generate(new Program
+        {
+            Body =
+            [
+                varDecl,
+                new ExpressionStatement { Expression = assignmentExpression }
+            ]
+        });
+
+        // Expected bytecode:
+        //   0: PushConst 10    (initialize x)
+        //   1: StoreVar 0      (store in x)
+        //   2: PushConst 42    (assignment value)
+        //   3: StoreVar 0      (store in x)
+        Assert.HasCount(4, result.Instructions);
+        Assert.HasCount(2, result.Constants);
+
+        // Initialization
+        Assert.AreEqual(InstructionKind.PushConst, result.Instructions[0].Kind);
+        Assert.AreEqual(InstructionKind.StoreVar, result.Instructions[1].Kind);
+        Assert.AreEqual(0, result.Instructions[1].SafeGetIntOperand()); // slot 0 = x
+
+        // Assignment
+        Assert.AreEqual(InstructionKind.PushConst, result.Instructions[2].Kind);
+        Assert.AreEqual(InstructionKind.StoreVar, result.Instructions[3].Kind);
+        Assert.AreEqual(0, result.Instructions[3].SafeGetIntOperand()); // slot 0 = x
+
+        // Constants: 10 and 42
+        Assert.AreEqual(10.0, result.Constants[0].Number);
+        Assert.AreEqual(42.0, result.Constants[1].Number);
+    }
+
+    [TestMethod]
+    public void Test_Assignment_Expression_With_Binary_Operation()
+    {
+        // x = 5 + 3
+        var varDecl = new VariableDeclaration
+        {
+            Kind = "let",
+            Declarations =
+            [
+                new VariableDeclarator
+                {
+                    VarName = new IdentifierNode { Name = "x" },
+                    Init = new NumberNode { Value = 0.0 }
+                }
+            ]
+        };
+
+        var assignmentExpression = new AssignmentExpression
+        {
+            Left = new IdentifierNode { Name = "x" },
+            Operator = "=",
+            Right = new BinaryExpression
+            {
+                Left = new NumberNode { Value = 5.0 },
+                Operator = "+",
+                Right = new NumberNode { Value = 3.0 }
+            }
+        };
+
+        var result = new BytecodeGenerator().Generate(new Program
+        {
+            Body =
+            [
+                varDecl,
+                new ExpressionStatement { Expression = assignmentExpression }
+            ]
+        });
+
+        // Expected bytecode:
+        //   0: PushConst 0     (initialize x)
+        //   1: StoreVar 0      (store in x)
+        //   2: PushConst 5     (left operand)
+        //   3: PushConst 3     (right operand)
+        //   4: Add             (compute 5 + 3)
+        //   5: StoreVar 0      (store result in x)
+        Assert.HasCount(6, result.Instructions);
+        Assert.HasCount(3, result.Constants);
+
+        // Initialization
+        Assert.AreEqual(InstructionKind.PushConst, result.Instructions[0].Kind);
+        Assert.AreEqual(InstructionKind.StoreVar, result.Instructions[1].Kind);
+
+        // Assignment with binary operation
+        Assert.AreEqual(InstructionKind.PushConst, result.Instructions[2].Kind);
+        Assert.AreEqual(InstructionKind.PushConst, result.Instructions[3].Kind);
+        Assert.AreEqual(InstructionKind.Add, result.Instructions[4].Kind);
+        Assert.AreEqual(InstructionKind.StoreVar, result.Instructions[5].Kind);
+        Assert.AreEqual(0, result.Instructions[5].SafeGetIntOperand()); // slot 0 = x
+
+        // Constants: 0, 5, 3
+        Assert.AreEqual(0.0, result.Constants[0].Number);
+        Assert.AreEqual(5.0, result.Constants[1].Number);
+        Assert.AreEqual(3.0, result.Constants[2].Number);
+    }
+
+    [TestMethod]
+    public void Test_Assignment_Expression_Undefined_Variable_Throws()
+    {
+        // x = 42 without declaring x first should throw
+        var assignmentExpression = new AssignmentExpression
+        {
+            Left = new IdentifierNode { Name = "x" },
+            Operator = "=",
+            Right = new NumberNode { Value = 42.0 }
+        };
+
+        Assert.ThrowsExactly<BytecodeError>(() =>
+            new BytecodeGenerator().Generate(new Program
+            {
+                Body = [new ExpressionStatement { Expression = assignmentExpression }]
+            })
+        );
+    }
 }

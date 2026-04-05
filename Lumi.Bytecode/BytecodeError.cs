@@ -20,4 +20,5 @@ public sealed class BytecodeError(string message) : Exception(message)
     public static BytecodeError NoActiveScope() => new("No active scope.");
     public static BytecodeError ForStatementMissingIterator() => new("For statement is missing an iterator expression.");
     public static BytecodeError NoValidIteratorFound() => new("No valid iterator found for for statement. Expected an identifier.");
+    public static Exception InvalidAssignmentTarget() => new("Invalid assignment target. Expected a variable or a property.");
 }

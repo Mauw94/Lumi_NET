@@ -38,11 +38,11 @@ public sealed class LexerTests
     {
         var tokens = Tokenize("// This is a comment\n42");
 
-        Assert.AreEqual(TokenKind.Comment, tokens[0].Kind);
-        Assert.AreEqual(" This is a comment", tokens[0].Value);
+        // Comments are now skipped during tokenization, so the first token should be the number
+        Assert.AreEqual(TokenKind.Number, tokens[0].Kind);
+        Assert.AreEqual(42, tokens[0].Number);
 
-        Assert.AreEqual(TokenKind.Number, tokens[1].Kind);
-        Assert.AreEqual(42, tokens[1].Number);
+        Assert.AreEqual(TokenKind.Eof, tokens[1].Kind);
     }
 
     [TestMethod]
@@ -52,11 +52,11 @@ public sealed class LexerTests
             "More comments " +
             "And here */ \n42");
 
-        Assert.AreEqual(TokenKind.Comment, tokens[0].Kind);
-        Assert.AreEqual(" This is a comment More comments And here ", tokens[0].Value);
+        // Comments are now skipped during tokenization, so the first token should be the number
+        Assert.AreEqual(TokenKind.Number, tokens[0].Kind);
+        Assert.AreEqual(42, tokens[0].Number);
 
-        Assert.AreEqual(TokenKind.Number, tokens[1].Kind);
-        Assert.AreEqual(42, tokens[1].Number);
+        Assert.AreEqual(TokenKind.Eof, tokens[1].Kind);
     }
 
     [TestMethod]
