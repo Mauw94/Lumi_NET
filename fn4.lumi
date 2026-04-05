@@ -1,0 +1,9 @@
+fn compute(n) {
+	if (n <= 5) {
+		return n + 10;
+	}
+	return n * n;
+}
+
+
+print compute(4);

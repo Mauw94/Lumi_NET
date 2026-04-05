@@ -1,7 +1,5 @@
 using Lumi.AST;
 using Lumi.Bytecode;
-using Lumi.Parser;
-using Lumi.SemanticAnalyzer;
 using Lumi.VM;
 
 namespace Lumi.Engine.Tests;
@@ -221,6 +219,60 @@ public sealed class FunctionTests
         ";
 
         // Act & Assert - should print 0 without errors
+        ExecuteProgram(source);
+    }
+
+    [TestMethod]
+    public void Test_Function_With_Return_In_If()
+    {
+        // Arrange
+        var source = @"
+            fn compute(n) {
+                if (n <= 5) {
+                    return n + 10;
+                }
+                return n * n;
+            }
+            print compute(4);
+        ";
+
+        // Act & Assert - should print 14 (4 + 10)
+        ExecuteProgram(source);
+    }
+
+    [TestMethod]
+    public void Test_Function_With_Early_Return()
+    {
+        // Arrange
+        var source = @"
+            fn test(n) {
+                if (n > 0) {
+                    return 1;
+                }
+                print 2;
+                return 0;
+            }
+            print test(5);
+        ";
+
+        // Act & Assert - should print 1 (not 2)
+        ExecuteProgram(source);
+    }
+
+    [TestMethod]
+    public void Test_Function_With_Return_No_Value()
+    {
+        // Arrange
+        var source = @"
+            fn test() {
+                print 1;
+                return;
+            }
+            test();
+            print 2;
+        ";
+
+        // Act & Assert - should print 1 then 2
         ExecuteProgram(source);
     }
 

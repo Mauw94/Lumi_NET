@@ -248,10 +248,8 @@ public sealed class VirtualMachine
         if (_callStack.Count == 0)
             throw VirtualMachineError.ReturnWithoutCall();
 
-        // The implicit return pushes Undefined. Pop it so it doesn't pollute the
-        // caller's stack when the call was used as a statement.
-        _stack.Pop();
-
+        // Pop the return address and continue execution at the caller's location.
+        // The return value remains on the stack for the caller to use.
         _ip = _callStack.Pop().ReturnAddress;
     }
 }

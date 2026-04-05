@@ -85,6 +85,10 @@ public sealed class BytecodeGenerator
                 VisitForStatement(forStatement);
                 break;
 
+            case ReturnStatement returnStatement:
+                VisitReturnStatement(returnStatement);
+                break;
+
             case NumberNode number:
                 Emit(Instruction.PushConst(AddConstant(Constant.FromNumber(number.Value))));
                 break;
@@ -381,5 +385,22 @@ public sealed class BytecodeGenerator
 
         // Emit the call.
         Emit(new Instruction(InstructionKind.CallFn, functionName.Name));
+    }
+
+    private void VisitReturnStatement(ReturnStatement returnStatement)
+    {
+        // If there's a return value, evaluate it and leave it on the stack.
+        if (returnStatement.Argument != null)
+        {
+            Visit(returnStatement.Argument);
+        }
+        else
+        {
+            // No explicit return value: push undefined
+            Emit(Instruction.PushConst(AddConstant(Constant.Undefined())));
+        }
+
+        // Emit the return instruction
+        Emit(new Instruction(InstructionKind.Return));
     }
 }
