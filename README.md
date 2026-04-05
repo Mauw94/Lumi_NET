@@ -118,19 +118,9 @@ The codebase uses both forms deliberately:
 
 Use a plain `readonly struct` when the type is on a hot path and you only need construction + field access. Use a `readonly record struct` when you need value equality, positional deconstruction, or the type is primarily data that benefits from the synthesized members.
 
-## TODO / Roadmap
+## Roadmap
 
-Helpful next steps and improvements:
-
-- Exception handling in the VM: Add structured exception objects, `try`/`catch` support in the language and proper error unwinding in the VM. (TODO)
-- Better docs & comments: Add XML docs and inline comments for public APIs, the bytecode format, and the VM instruction semantics. (TODO)
-- Improve tests: Add more unit tests for parser error recovery, complex expression precedence and control flow. (TODO)
-- Expand bytecode: Implement more instructions, efficient opcodes for common cases, and a compact encoding. (TODO)
-- Constant pool improvements: Deduplicate constants and add serialization support. (TODO)
-- Variable scoping & closures: Implement lexical scoping, closures and environment captures. (TODO)
-- Debugging support: Add debug info (mapping bytecode offsets to source positions), stack traces and a simple REPL. (TODO)
-- Performance & profiling: Add benchmarks for the VM, then optimize hot paths or consider a JIT later. (TODO)
-- Packaging & examples: Provide CLI tooling and example programs demonstrating the language features. (TODO)
+See [ROADMAP.md](./docs/ROADMAP.md) for a detailed roadmap of current improvements, planned projects, and long-term vision for the Lumi language.
 
 ## Contributing
 

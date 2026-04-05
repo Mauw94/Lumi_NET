@@ -11,6 +11,7 @@
   </Folder>
   <Folder Name="/Docs/">
     <File Path="README.md" />
+    <File Path="ROADMAP.md" />
   </Folder>
   <Folder Name="/Docs/Scripts/">
     <File Path="for1.lumi" />
