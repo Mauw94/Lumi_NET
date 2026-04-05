@@ -59,7 +59,7 @@ public sealed class BytecodeGenerator
 
             case IdentifierNode identifier:
                 var local = _locals.LookupLocal(identifier.Name) ?? throw BytecodeError.UndefinedVariable(identifier.Name);
-                Emit(new Instruction(InstructionKind.LoadVar, intOperand: local.Label.Id));
+                Emit(Instruction.LoadVar(local.Label));
                 break;
 
             case PrintStatement printStatement:
@@ -76,15 +76,15 @@ public sealed class BytecodeGenerator
                 break;
 
             case NumberNode number:
-                Emit(new Instruction(InstructionKind.PushConst, intOperand: AddConstant(Constant.FromNumber(number.Value))));
+                Emit(Instruction.PushConst(AddConstant(Constant.FromNumber(number.Value))));
                 break;
 
             case BooleanNode boolean:
-                Emit(new Instruction(InstructionKind.PushConst, intOperand: AddConstant(Constant.FromBoolean(boolean.Value))));
+                Emit(Instruction.PushConst(AddConstant(Constant.FromBoolean(boolean.Value))));
                 break;
 
             case StringNode str:
-                Emit(new Instruction(InstructionKind.PushConst, intOperand: AddConstant(Constant.FromString(str.Value))));
+                Emit(Instruction.PushConst(AddConstant(Constant.FromString(str.Value))));
                 break;
 
             case ExpressionStatement expressionStatement:
@@ -105,7 +105,7 @@ public sealed class BytecodeGenerator
     {
         _unpatchedJumps.TryAdd(target, []);
         _unpatchedJumps[target].Add(_instructions.Count);
-        Emit(new Instruction(InstructionKind.Jump, intOperand: 0));
+        Emit(Instruction.Jump(0));
     }
 
     /// <summary>Emits a conditional jump that jumps to <paramref name="target"/> when the top-of-stack is false.</summary>
@@ -113,7 +113,7 @@ public sealed class BytecodeGenerator
     {
         _unpatchedJumps.TryAdd(target, []);
         _unpatchedJumps[target].Add(_instructions.Count);
-        Emit(new Instruction(InstructionKind.JumpIfFalse, intOperand: 0));
+        Emit(Instruction.JumpIfFalse(0));
     }
 
     /// <summary>
@@ -156,12 +156,12 @@ public sealed class BytecodeGenerator
 
         // Store the start value into the iterator variable.
         Visit(forStatement.Start);
-        Emit(new Instruction(InstructionKind.StoreVar, intOperand: varIdx.Id));
+        Emit(Instruction.StoreVar(varIdx));
 
         // Store the end bound in a hidden local.
         var endIdx = _locals.GetOrCreateLocal("$end", LocalKind.Let, VarType.Int);
         Visit(forStatement.End);
-        Emit(new Instruction(InstructionKind.StoreVar, intOperand: endIdx.Id));
+        Emit(Instruction.StoreVar(endIdx));
 
         // Store the step value in a hidden local (defaults to 1).
         var stepIdx = _locals.GetOrCreateLocal("$step", LocalKind.Let, VarType.Int);
@@ -171,17 +171,17 @@ public sealed class BytecodeGenerator
         }
         else
         {
-            Emit(new Instruction(InstructionKind.PushConst, intOperand: AddConstant(Constant.FromNumber(1))));
+            Emit(Instruction.PushConst(AddConstant(Constant.FromNumber(1))));
         }
-        Emit(new Instruction(InstructionKind.StoreVar, intOperand: stepIdx.Id));
+        Emit(Instruction.StoreVar(stepIdx));
 
         // Record the loop-header position for the backward jump.
         var loopStart = _instructions.Count;
         var endLabel = NewLabel();
 
         // Condition: iterator <= end
-        Emit(new Instruction(InstructionKind.LoadVar, intOperand: varIdx.Id));
-        Emit(new Instruction(InstructionKind.LoadVar, intOperand: endIdx.Id));
+        Emit(Instruction.LoadVar(varIdx));
+        Emit(Instruction.LoadVar(endIdx));
         Emit(new Instruction(InstructionKind.Leq));
 
         EmitJumpIfFalse(endLabel);
@@ -190,13 +190,13 @@ public sealed class BytecodeGenerator
         Visit(forStatement.Body);
 
         // Increment: iterator = iterator + step
-        Emit(new Instruction(InstructionKind.LoadVar, intOperand: varIdx.Id));
-        Emit(new Instruction(InstructionKind.LoadVar, intOperand: stepIdx.Id));
-        Emit(new Instruction(InstructionKind.Add));
-        Emit(new Instruction(InstructionKind.StoreVar, intOperand: varIdx.Id));
+        Emit(Instruction.LoadVar(varIdx));
+        Emit(Instruction.LoadVar(stepIdx));
+        Emit(Instruction.Add());
+        Emit(Instruction.StoreVar(varIdx));
 
         // Jump back to condition check.
-        Emit(new Instruction(InstructionKind.Jump, intOperand: loopStart));
+        Emit(Instruction.Jump(loopStart));
         PatchLabel(endLabel);
 
         _locals.ExitScope();
@@ -257,7 +257,7 @@ public sealed class BytecodeGenerator
             {
                 // Emit code to evaluate the initializer so the value is on the stack, then store it.
                 Visit(declaration.Init);
-                Emit(new Instruction(InstructionKind.StoreVar, intOperand: _locals.GetOrCreateLocal(varName.Name, localKind, type).Id));
+                Emit(Instruction.StoreVar(_locals.GetOrCreateLocal(varName.Name, localKind, type)));
             }
             else
             {

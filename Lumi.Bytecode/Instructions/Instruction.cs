@@ -17,7 +17,6 @@ public readonly struct Instruction
         Kind = kind;
     }
 
-    // TODO: add some factory methods for different instruction kinds.
     public Instruction(InstructionKind kind, int intOperand)
     {
         Kind = kind;
@@ -42,4 +41,11 @@ public readonly struct Instruction
     {
         return IntOperand.HasValue ? $"{Kind} {IntOperand.Value}" : (StringOperand != null ? $"{Kind} \"{StringOperand}\"" : Kind.ToString());
     }
+
+    public static Instruction StoreVar(Label label) => new(InstructionKind.StoreVar, label.Id);
+    public static Instruction LoadVar(Label label) => new(InstructionKind.LoadVar, label.Id);
+    public static Instruction PushConst(int constIndex) => new(InstructionKind.PushConst, constIndex);
+    public static Instruction Add() => new(InstructionKind.Add);
+    public static Instruction JumpIfFalse(int operand) => new(InstructionKind.JumpIfFalse, operand);
+    public static Instruction Jump(int operand) => new(InstructionKind.Jump, operand);
 }
