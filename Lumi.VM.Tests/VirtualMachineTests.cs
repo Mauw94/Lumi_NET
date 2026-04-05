@@ -158,6 +158,219 @@ public sealed class VirtualMachineTests
         );
     }
 
+    [TestMethod]
+    public void VM_ForLoop_Prints_All_Values()
+    {
+        // for i in 0 to 3 { print i; }
+        var bytecode = Build(new ForStatement
+        {
+            Iterator = new IdentifierNode { Name = "i" },
+            Start = new NumberNode { Value = 0.0 },
+            End = new NumberNode { Value = 3.0 },
+            Body = new BlockStatement
+            {
+                Body = [new PrintStatement { Argument = new IdentifierNode { Name = "i" } }]
+            }
+        });
+
+        var output = CaptureOutput(() => new VirtualMachine().Execute(bytecode));
+
+        var lines = output.Split(Environment.NewLine);
+        Assert.HasCount(4, lines);
+        Assert.AreEqual("0", lines[0]);
+        Assert.AreEqual("1", lines[1]);
+        Assert.AreEqual("2", lines[2]);
+        Assert.AreEqual("3", lines[3]);
+    }
+
+    [TestMethod]
+    public void VM_ForLoop_WithStep_Prints_Correct_Values()
+    {
+        // for i in 0 to 10 step 2 { print i; }
+        var bytecode = Build(new ForStatement
+        {
+            Iterator = new IdentifierNode { Name = "i" },
+            Start = new NumberNode { Value = 0.0 },
+            End = new NumberNode { Value = 10.0 },
+            Step = new NumberNode { Value = 2.0 },
+            Body = new BlockStatement
+            {
+                Body = [new PrintStatement { Argument = new IdentifierNode { Name = "i" } }]
+            }
+        });
+
+        var output = CaptureOutput(() => new VirtualMachine().Execute(bytecode));
+
+        var lines = output.Split(Environment.NewLine);
+        Assert.HasCount(6, lines);
+        Assert.AreEqual("0", lines[0]);
+        Assert.AreEqual("2", lines[1]);
+        Assert.AreEqual("4", lines[2]);
+        Assert.AreEqual("6", lines[3]);
+        Assert.AreEqual("8", lines[4]);
+        Assert.AreEqual("10", lines[5]);
+    }
+
+    [TestMethod]
+    public void VM_ForLoop_WithIf_Mod_Prints_Even_Numbers()
+    {
+        // for i in 0 to 10 step 1 {
+        //   if (i % 2 == 0) {
+        //     print i;
+        //   }
+        // }
+        var bytecode = Build(new ForStatement
+        {
+            Iterator = new IdentifierNode { Name = "i" },
+            Start = new NumberNode { Value = 0.0 },
+            End = new NumberNode { Value = 10.0 },
+            Step = new NumberNode { Value = 1.0 },
+            Body = new BlockStatement
+            {
+                Body =
+                [
+                    new IfStatement
+                    {
+                        Expr = new BinaryExpression
+                        {
+                            Left = new BinaryExpression
+                            {
+                                Left = new IdentifierNode { Name = "i" },
+                                Operator = "%",
+                                Right = new NumberNode { Value = 2.0 }
+                            },
+                            Operator = "==",
+                            Right = new NumberNode { Value = 0.0 }
+                        },
+                        Stmt = new BlockStatement
+                        {
+                            Body = [new PrintStatement { Argument = new IdentifierNode { Name = "i" } }]
+                        }
+                    }
+                ]
+            }
+        });
+
+        var output = CaptureOutput(() => new VirtualMachine().Execute(bytecode));
+
+        var lines = output.Split(Environment.NewLine);
+        Assert.HasCount(6, lines);
+        Assert.AreEqual("0", lines[0]);
+        Assert.AreEqual("2", lines[1]);
+        Assert.AreEqual("4", lines[2]);
+        Assert.AreEqual("6", lines[3]);
+        Assert.AreEqual("8", lines[4]);
+        Assert.AreEqual("10", lines[5]);
+    }
+
+    [TestMethod]
+    public void VM_ForLoop_WithArithmeticBody_Prints_Squares()
+    {
+        // for i in 1 to 5 { print i * i; }
+        var bytecode = Build(new ForStatement
+        {
+            Iterator = new IdentifierNode { Name = "i" },
+            Start = new NumberNode { Value = 1.0 },
+            End = new NumberNode { Value = 5.0 },
+            Body = new BlockStatement
+            {
+                Body =
+                [
+                    new PrintStatement
+                    {
+                        Argument = new BinaryExpression
+                        {
+                            Left = new IdentifierNode { Name = "i" },
+                            Operator = "*",
+                            Right = new IdentifierNode { Name = "i" }
+                        }
+                    }
+                ]
+            }
+        });
+
+        var output = CaptureOutput(() => new VirtualMachine().Execute(bytecode));
+
+        var lines = output.Split(Environment.NewLine);
+        Assert.HasCount(5, lines);
+        Assert.AreEqual("1", lines[0]);
+        Assert.AreEqual("4", lines[1]);
+        Assert.AreEqual("9", lines[2]);
+        Assert.AreEqual("16", lines[3]);
+        Assert.AreEqual("25", lines[4]);
+    }
+
+    [TestMethod]
+    public void VM_ForLoop_StartGreaterThanEnd_DoesNotExecuteBody()
+    {
+        // for i in 10 to 0 { print i; }
+        // Condition 10 <= 0 is false immediately, so body never runs.
+        var bytecode = Build(new ForStatement
+        {
+            Iterator = new IdentifierNode { Name = "i" },
+            Start = new NumberNode { Value = 10.0 },
+            End = new NumberNode { Value = 0.0 },
+            Body = new BlockStatement
+            {
+                Body = [new PrintStatement { Argument = new IdentifierNode { Name = "i" } }]
+            }
+        });
+
+        var output = CaptureOutput(() => new VirtualMachine().Execute(bytecode));
+
+        Assert.AreEqual(string.Empty, output);
+    }
+
+    [TestMethod]
+    public void VM_ForLoop_VariableDeclaredBeforeLoop_Accumulates()
+    {
+        // let sum -> 0;
+        // for i in 1 to 3 { let sum -> sum + i; }
+        // print sum;
+        //
+        // Note: since each loop iteration opens a new block scope,
+        // re-declaring 'sum' inside creates a *new* local each time.
+        // The outer 'sum' is never modified. This test verifies that
+        // the outer variable survives the loop and prints its original value.
+        var bytecode = Build(
+            new VariableDeclaration
+            {
+                Kind = "let",
+                Declarations =
+                [
+                    new VariableDeclarator
+                    {
+                        VarName = new IdentifierNode { Name = "sum" },
+                        Init = new NumberNode { Value = 0.0 }
+                    }
+                ]
+            },
+            new ForStatement
+            {
+                Iterator = new IdentifierNode { Name = "i" },
+                Start = new NumberNode { Value = 1.0 },
+                End = new NumberNode { Value = 3.0 },
+                Body = new BlockStatement
+                {
+                    Body =
+                    [
+                        new PrintStatement { Argument = new IdentifierNode { Name = "i" } }
+                    ]
+                }
+            },
+            new PrintStatement { Argument = new IdentifierNode { Name = "sum" } }
+        );
+
+        var output = CaptureOutput(() => new VirtualMachine().Execute(bytecode));
+
+        var lines = output.Split(Environment.NewLine);
+        // Loop prints 1, 2, 3 then outer print sum outputs 0
+        Assert.AreEqual("1", lines[0]);
+        Assert.AreEqual("2", lines[1]);
+        Assert.AreEqual("3", lines[2]);
+        Assert.AreEqual("0", lines[3]);
+    }
+
     private static string CaptureOutput(Action action)
     {
         var writer = new StringWriter();

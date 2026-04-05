@@ -71,6 +71,10 @@ public sealed class BytecodeGenerator
                 VisitIfStatement(ifStatement);
                 break;
 
+            case ForStatement forStatement:
+                VisitForStatement(forStatement);
+                break;
+
             case NumberNode number:
                 Emit(new Instruction(InstructionKind.PushConst, intOperand: AddConstant(Constant.FromNumber(number.Value))));
                 break;
@@ -137,8 +141,72 @@ public sealed class BytecodeGenerator
     /// <summary>Adds a new constant.</summary>
     private int AddConstant(Constant constant) => _constantPool.Add(constant);
 
+    private void VisitForStatement(ForStatement forStatement)
+    {
+        _locals.EnterScope();
+
+        if (forStatement.Iterator is null)
+            throw BytecodeError.ForStatementMissingIterator();
+
+        if (forStatement.Iterator is not IdentifierNode)
+            throw BytecodeError.NoValidIteratorFound();
+
+        var iteratorName = ((IdentifierNode)forStatement.Iterator).Name;
+        var varIdx = _locals.GetOrCreateLocal(iteratorName, LocalKind.Var, VarType.Int);
+
+        // Store the start value into the iterator variable.
+        Visit(forStatement.Start);
+        Emit(new Instruction(InstructionKind.StoreVar, intOperand: varIdx.Id));
+
+        // Store the end bound in a hidden local.
+        var endIdx = _locals.GetOrCreateLocal("$end", LocalKind.Let, VarType.Int);
+        Visit(forStatement.End);
+        Emit(new Instruction(InstructionKind.StoreVar, intOperand: endIdx.Id));
+
+        // Store the step value in a hidden local (defaults to 1).
+        var stepIdx = _locals.GetOrCreateLocal("$step", LocalKind.Let, VarType.Int);
+        if (forStatement.Step is not null)
+        {
+            Visit(forStatement.Step);
+        }
+        else
+        {
+            Emit(new Instruction(InstructionKind.PushConst, intOperand: AddConstant(Constant.FromNumber(1))));
+        }
+        Emit(new Instruction(InstructionKind.StoreVar, intOperand: stepIdx.Id));
+
+        // Record the loop-header position for the backward jump.
+        var loopStart = _instructions.Count;
+        var endLabel = NewLabel();
+
+        // Condition: iterator <= end
+        Emit(new Instruction(InstructionKind.LoadVar, intOperand: varIdx.Id));
+        Emit(new Instruction(InstructionKind.LoadVar, intOperand: endIdx.Id));
+        Emit(new Instruction(InstructionKind.Leq));
+
+        EmitJumpIfFalse(endLabel);
+
+        // Body
+        Visit(forStatement.Body);
+
+        // Increment: iterator = iterator + step
+        Emit(new Instruction(InstructionKind.LoadVar, intOperand: varIdx.Id));
+        Emit(new Instruction(InstructionKind.LoadVar, intOperand: stepIdx.Id));
+        Emit(new Instruction(InstructionKind.Add));
+        Emit(new Instruction(InstructionKind.StoreVar, intOperand: varIdx.Id));
+
+        // Jump back to condition check.
+        Emit(new Instruction(InstructionKind.Jump, intOperand: loopStart));
+        PatchLabel(endLabel);
+
+        _locals.ExitScope();
+    }
+
+    // TODO: Test scope management here
     private void VisitIfStatement(IfStatement ifStatement)
     {
+        _locals.EnterScope();
+
         // Evaluate the condition — leaves a bool on the stack.
         Visit(ifStatement.Expr);
 
@@ -159,8 +227,14 @@ public sealed class BytecodeGenerator
         {
             PatchLabel(elseLabel);     // no else: target lands right after then-branch
         }
+
+        _locals.ExitScope();
     }
 
+    // TODO: re-assigning does not yet work.
+    // let sum -> 0;
+    // sum = sum + 1;
+    // print sum; prints 0 still.
     private void VisitVariableDeclaration(VariableDeclaration variableDeclaration)
     {
         foreach (var declaration in variableDeclaration.Declarations)

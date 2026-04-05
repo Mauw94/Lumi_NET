@@ -13,6 +13,9 @@
     <File Path="README.md" />
   </Folder>
   <Folder Name="/Docs/Scripts/">
+    <File Path="for1.lumi" />
+    <File Path="for2.lumi" />
+    <File Path="for3.lumi" />
     <File Path="if.lumi" />
   </Folder>
   <Folder Name="/Engine/">

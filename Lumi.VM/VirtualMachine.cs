@@ -59,14 +59,26 @@ public sealed class VirtualMachine
                 case InstructionKind.Div:
                     _binaryInstruction.Div();
                     break;
+                case InstructionKind.Mod:
+                    _binaryInstruction.Mod();
+                    break;
                 case InstructionKind.StoreVar:
                     StoreVar(in instruction);
+                    break;
+                case InstructionKind.LoadVar:
+                    LoadVar(in instruction);
                     break;
                 case InstructionKind.Lt:
                     _binaryInstruction.Lt();
                     break;
                 case InstructionKind.Gt:
                     _binaryInstruction.Gt();
+                    break;
+                case InstructionKind.Leq:
+                    _binaryInstruction.Leq();
+                    break;
+                case InstructionKind.Eq:
+                    _binaryInstruction.Eq();
                     break;
                 case InstructionKind.Jump:
                     _ip = instruction.SafeGetIntOperand();
@@ -78,9 +90,6 @@ public sealed class VirtualMachine
                 case InstructionKind.JumpIfTrue:
                     if (JumpIfTrue(in instruction))
                         continue;   // Exit the while loop, do not increase _ip, since we have already jumped to the target instruction.
-                    break;
-                case InstructionKind.LoadVar:
-                    LoadVar(in instruction);
                     break;
                 case InstructionKind.Print:
                     Print();

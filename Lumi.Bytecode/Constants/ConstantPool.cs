@@ -33,7 +33,7 @@ internal sealed class ConstantPool
 
     private int StoreNumberConstant(Constant constant)
     {
-        var num = constant.Number!.Value;
+        var num = constant.Number;
 
         if (!_numberIndex.TryGetValue(num, out var ni))
         {
