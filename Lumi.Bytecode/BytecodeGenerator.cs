@@ -231,6 +231,10 @@ public sealed class BytecodeGenerator
         _locals.ExitScope();
     }
 
+    // TODO: re-assigning does not yet work.
+    // let sum -> 0;
+    // sum = sum + 1;
+    // print sum; prints 0 still.
     private void VisitVariableDeclaration(VariableDeclaration variableDeclaration)
     {
         foreach (var declaration in variableDeclaration.Declarations)
