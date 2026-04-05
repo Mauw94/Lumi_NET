@@ -667,7 +667,7 @@ public sealed class ASTTests
         // Assert
         Assert.IsInstanceOfType<BlockStatement>(stmt.Stmt);
         var block = (BlockStatement)stmt.Stmt;
-        Assert.AreEqual(1, block.Body.Count);
+        Assert.HasCount(1, block.Body);
     }
 
     #endregion
@@ -736,7 +736,7 @@ public sealed class ASTTests
         // Assert
         Assert.IsInstanceOfType<BlockStatement>(stmt.Body);
         var block = (BlockStatement)stmt.Body;
-        Assert.AreEqual(2, block.Body.Count);
+        Assert.HasCount(2, block.Body);
     }
 
     #endregion
@@ -779,7 +779,7 @@ public sealed class ASTTests
         };
 
         // Assert
-        Assert.AreEqual(2, decl.Params.Count);
+        Assert.HasCount(2, decl.Params);
         Assert.AreEqual("a", ((IdentifierNode)decl.Params[0]).Name);
         Assert.AreEqual("b", ((IdentifierNode)decl.Params[1]).Name);
     }
