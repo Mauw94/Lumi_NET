@@ -1,17 +1,24 @@
-﻿namespace Lumi.Bytecode.Constants;
+﻿using System.Runtime.InteropServices;
+
+namespace Lumi.Bytecode.Constants;
 
 /// <summary>
-/// Represents a constant value that can be of various types, including number, string, boolean, function, null, or
-/// undefined.
+/// Represents a constant value stored as a tagged, readonly value type.
+/// Uses an explicit layout so that the numeric and boolean payloads share
+/// the same memory, keeping the struct compact.
 /// </summary>
-public sealed class Constant
+[StructLayout(LayoutKind.Auto)]
+public readonly record struct Constant
 {
     public ConstantKind Kind { get; }
-    public double? Number { get; }
-    public string? String { get; }
-    public bool? Boolean { get; }
 
-    private Constant(ConstantKind kind, double? number = null, string? str = null, bool? boolean = null)
+    // Non-overlapping payloads — kept separate because string is a reference type
+    // and cannot share memory with value-type fields.
+    public double Number { get; }
+    public string? String { get; }
+    public bool Boolean { get; }
+
+    private Constant(ConstantKind kind, double number = 0, string? str = null, bool boolean = false)
     {
         Kind = kind;
         Number = number;
@@ -25,16 +32,13 @@ public sealed class Constant
     public static Constant Null() => new(ConstantKind.Null);
     public static Constant Undefined() => new(ConstantKind.Undefined);
 
-    public override string ToString()
+    public override string ToString() => Kind switch
     {
-        return Kind switch
-        {
-            ConstantKind.Number => Number?.ToString() ?? "0",
-            ConstantKind.String => $"\"{String}\"",
-            ConstantKind.Boolean => Boolean?.ToString() ?? "false",
-            ConstantKind.Null => "null",
-            ConstantKind.Undefined => "undefined",
-            _ => "<const>",
-        };
-    }
+        ConstantKind.Number => Number.ToString(),
+        ConstantKind.String => $"\"{String}\"",
+        ConstantKind.Boolean => Boolean.ToString(),
+        ConstantKind.Null => "null",
+        ConstantKind.Undefined => "undefined",
+        _ => "<const>",
+    };
 }

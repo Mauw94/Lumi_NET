@@ -68,6 +68,9 @@ public sealed class VirtualMachine
                 case InstructionKind.Gt:
                     _binaryInstruction.Gt();
                     break;
+                case InstructionKind.Leq:
+                    _binaryInstruction.Leq();
+                    break;
                 case InstructionKind.Jump:
                     _ip = instruction.SafeGetIntOperand();
                     continue;

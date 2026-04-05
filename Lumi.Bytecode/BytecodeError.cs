@@ -18,4 +18,6 @@ public sealed class BytecodeError(string message) : Exception(message)
     public static BytecodeError ExpectedIdentifierInVariableDeclaration() => new($"Expected identifier in variable declaration.");
     public static BytecodeError UndefinedVariable(string name) => new($"Undefined variable: {name}");
     public static BytecodeError NoActiveScope() => new("No active scope.");
+    public static BytecodeError ForStatementMissingIterator() => new("For statement is missing an iterator expression.");
+    public static BytecodeError NoValidIteratorFound() => new("No valid iterator found for for statement. Expected an identifier.");
 }

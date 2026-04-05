@@ -145,23 +145,59 @@ public sealed class BytecodeGenerator
     {
         _locals.EnterScope();
 
-        if (forStatement.Iterator is not null)
-            Visit(forStatement.Iterator);
+        if (forStatement.Iterator is null)
+            throw BytecodeError.ForStatementMissingIterator();
 
-        var loopStartLabel = NewLabel();
-        var loopEndLabel = NewLabel();
+        if (forStatement.Iterator is not IdentifierNode)
+            throw BytecodeError.NoValidIteratorFound();
 
-        EmitJump(loopEndLabel);  // Jump to condition check first (condition may be absent, in which case it defaults to true)
-        PatchLabel(loopStartLabel);  // Loop body starts here
+        var iteratorName = ((IdentifierNode)forStatement.Iterator).Name;
+        var varIdx = _locals.GetOrCreateLocal(iteratorName, LocalKind.Var, VarType.Int);
 
+        // Store the start value into the iterator variable.
+        Visit(forStatement.Start);
+        Emit(new Instruction(InstructionKind.StoreVar, intOperand: varIdx.Id));
+
+        // Store the end bound in a hidden local.
+        var endIdx = _locals.GetOrCreateLocal("$end", LocalKind.Let, VarType.Int);
+        Visit(forStatement.End);
+        Emit(new Instruction(InstructionKind.StoreVar, intOperand: endIdx.Id));
+
+        // Store the step value in a hidden local (defaults to 1).
+        var stepIdx = _locals.GetOrCreateLocal("$step", LocalKind.Let, VarType.Int);
+        if (forStatement.Step is not null)
+        {
+            Visit(forStatement.Step);
+        }
+        else
+        {
+            Emit(new Instruction(InstructionKind.PushConst, intOperand: AddConstant(Constant.FromNumber(1))));
+        }
+        Emit(new Instruction(InstructionKind.StoreVar, intOperand: stepIdx.Id));
+
+        // Record the loop-header position for the backward jump.
+        var loopStart = _instructions.Count;
+        var endLabel = NewLabel();
+
+        // Condition: iterator <= end
+        Emit(new Instruction(InstructionKind.LoadVar, intOperand: varIdx.Id));
+        Emit(new Instruction(InstructionKind.LoadVar, intOperand: endIdx.Id));
+        Emit(new Instruction(InstructionKind.Leq));
+
+        EmitJumpIfFalse(endLabel);
+
+        // Body
         Visit(forStatement.Body);
 
-        if (forStatement.Step is not null)
-            Visit(forStatement.Step);
+        // Increment: iterator = iterator + step
+        Emit(new Instruction(InstructionKind.LoadVar, intOperand: varIdx.Id));
+        Emit(new Instruction(InstructionKind.LoadVar, intOperand: stepIdx.Id));
+        Emit(new Instruction(InstructionKind.Add));
+        Emit(new Instruction(InstructionKind.StoreVar, intOperand: varIdx.Id));
 
-        EmitJump(loopStartLabel);  // Jump back to the start of the loop
-
-        PatchLabel(loopEndLabel);  // Loop ends here
+        // Jump back to condition check.
+        Emit(new Instruction(InstructionKind.Jump, intOperand: loopStart));
+        PatchLabel(endLabel);
 
         _locals.ExitScope();
     }

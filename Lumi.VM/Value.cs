@@ -30,9 +30,9 @@ internal readonly struct Value
 
     public static Value ConstantToValue(Constant constant) => constant.Kind switch
     {
-        ConstantKind.Number => FromNumber(constant.Number!.Value),
+        ConstantKind.Number => FromNumber(constant.Number),
         ConstantKind.String => FromString(constant.String!),
-        ConstantKind.Boolean => FromBoolean(constant.Boolean!.Value),
+        ConstantKind.Boolean => FromBoolean(constant.Boolean),
         _ => throw VirtualMachineError.UnkownConstantKind(constant.Kind),
     };
 

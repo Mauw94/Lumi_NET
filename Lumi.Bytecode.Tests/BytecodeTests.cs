@@ -288,4 +288,217 @@ public sealed class BytecodeTests
         // Unconditional Jump jumps past else-branch (index 7 = one past last)
         Assert.AreEqual(7, result.Instructions[4].SafeGetIntOperand());
     }
+
+    [TestMethod]
+    public void Test_ForStatement_DefaultStep()
+    {
+        // for i in 0 to 3 { print i }
+        //
+        // Locals (scoped, not visible after generation):
+        //   slot 0 = i        (iterator)
+        //   slot 1 = $end     (end bound)
+        //   slot 2 = $step    (step value)
+        //
+        // Constants:
+        //   0: Number(0)   — start
+        //   1: Number(3)   — end
+        //   2: Number(1)   — default step
+        //
+        // Expected bytecode:
+        //    0: PushConst 0          — push start (0)
+        //    1: StoreVar 0           — i = 0
+        //    2: PushConst 1          — push end (3)
+        //    3: StoreVar 1           — $end = 3
+        //    4: PushConst 2          — push step (1)
+        //    5: StoreVar 2           — $step = 1
+        //    6: LoadVar 0            — push i          ← loopStart
+        //    7: LoadVar 1            — push $end
+        //    8: Leq                  — i <= $end
+        //    9: JumpIfFalse -> 17    — exit loop
+        //   10: LoadVar 0            — push i (print arg)
+        //   11: Print                — print i
+        //   12: LoadVar 0            — push i (increment)
+        //   13: LoadVar 2            — push $step
+        //   14: Add                  — i + step
+        //   15: StoreVar 0           — i = result
+        //   16: Jump 6               — back to loopStart
+        //   17: <end>
+
+        var forStmt = new ForStatement
+        {
+            Iterator = new IdentifierNode { Name = "i" },
+            Start = new NumberNode { Value = 0.0 },
+            End = new NumberNode { Value = 3.0 },
+            Body = new PrintStatement { Argument = new IdentifierNode { Name = "i" } }
+        };
+
+        var result = new BytecodeGenerator().Generate(new Program { Body = [forStmt] });
+
+        Assert.HasCount(17, result.Instructions);
+        Assert.HasCount(3, result.Constants);
+
+        // Initialization
+        Assert.AreEqual(InstructionKind.PushConst, result.Instructions[0].Kind);
+        Assert.AreEqual(InstructionKind.StoreVar, result.Instructions[1].Kind);
+        Assert.AreEqual(0, result.Instructions[1].SafeGetIntOperand()); // slot 0 = i
+
+        // End bound
+        Assert.AreEqual(InstructionKind.PushConst, result.Instructions[2].Kind);
+        Assert.AreEqual(InstructionKind.StoreVar, result.Instructions[3].Kind);
+        Assert.AreEqual(1, result.Instructions[3].SafeGetIntOperand()); // slot 1 = $end
+
+        // Default step
+        Assert.AreEqual(InstructionKind.PushConst, result.Instructions[4].Kind);
+        Assert.AreEqual(InstructionKind.StoreVar, result.Instructions[5].Kind);
+        Assert.AreEqual(2, result.Instructions[5].SafeGetIntOperand()); // slot 2 = $step
+
+        // Loop condition
+        Assert.AreEqual(InstructionKind.LoadVar, result.Instructions[6].Kind);  // load i
+        Assert.AreEqual(InstructionKind.LoadVar, result.Instructions[7].Kind);  // load $end
+        Assert.AreEqual(InstructionKind.Leq, result.Instructions[8].Kind);
+        Assert.AreEqual(InstructionKind.JumpIfFalse, result.Instructions[9].Kind);
+        Assert.AreEqual(17, result.Instructions[9].SafeGetIntOperand()); // exit to end
+
+        // Body: print i
+        Assert.AreEqual(InstructionKind.LoadVar, result.Instructions[10].Kind);
+        Assert.AreEqual(InstructionKind.Print, result.Instructions[11].Kind);
+
+        // Increment
+        Assert.AreEqual(InstructionKind.LoadVar, result.Instructions[12].Kind);  // load i
+        Assert.AreEqual(InstructionKind.LoadVar, result.Instructions[13].Kind);  // load $step
+        Assert.AreEqual(InstructionKind.Add, result.Instructions[14].Kind);
+        Assert.AreEqual(InstructionKind.StoreVar, result.Instructions[15].Kind); // store i
+
+        // Backward jump
+        Assert.AreEqual(InstructionKind.Jump, result.Instructions[16].Kind);
+        Assert.AreEqual(6, result.Instructions[16].SafeGetIntOperand()); // back to loop condition
+
+        // Constants
+        Assert.AreEqual(0.0, result.Constants[0].Number); // start
+        Assert.AreEqual(3.0, result.Constants[1].Number); // end
+        Assert.AreEqual(1.0, result.Constants[2].Number); // default step
+    }
+
+    [TestMethod]
+    public void Test_ForStatement_ExplicitStep()
+    {
+        // for i in 0 to 3 step 2 { print i }
+        // 
+        // Same structure as default step, but step constant is 2 instead of 1.
+        var forStmt = new ForStatement
+        {
+            Iterator = new IdentifierNode { Name = "i" },
+            Start = new NumberNode { Value = 0.0 },
+            End = new NumberNode { Value = 10.0 },
+            Step = new NumberNode { Value = 2.0 },
+            Body = new PrintStatement { Argument = new IdentifierNode { Name = "i" } }
+        };
+
+        var result = new BytecodeGenerator().Generate(new Program { Body = [forStmt] });
+
+        Assert.HasCount(17, result.Instructions);
+        Assert.HasCount(3, result.Constants);
+
+        // The step constant should be 2.0 instead of the default 1.0
+        Assert.AreEqual(0.0, result.Constants[0].Number);  // start
+        Assert.AreEqual(10.0, result.Constants[1].Number); // end
+        Assert.AreEqual(2.0, result.Constants[2].Number);  // explicit step
+
+        // Verify the step is stored in slot 2
+        Assert.AreEqual(InstructionKind.StoreVar, result.Instructions[5].Kind);
+        Assert.AreEqual(2, result.Instructions[5].SafeGetIntOperand());
+
+        // Backward jump and forward jump targets should be correct
+        Assert.AreEqual(6, result.Instructions[16].SafeGetIntOperand());  // Jump back to loopStart
+        Assert.AreEqual(17, result.Instructions[9].SafeGetIntOperand()); // JumpIfFalse to end
+    }
+
+    [TestMethod]
+    public void Test_ForStatement_BlockBody()
+    {
+        // for i in 1 to 5 { let x -> i; print i }
+        //
+        // The body is a BlockStatement with two statements.
+        // This verifies that the body's scope is managed correctly and that
+        // the backward/forward jumps remain correct with a larger body.
+        var forStmt = new ForStatement
+        {
+            Iterator = new IdentifierNode { Name = "i" },
+            Start = new NumberNode { Value = 1.0 },
+            End = new NumberNode { Value = 5.0 },
+            Body = new BlockStatement
+            {
+                Body =
+                [
+                    new VariableDeclaration
+                    {
+                        Kind = "let",
+                        Declarations =
+                        [
+                            new VariableDeclarator
+                            {
+                                VarName = new IdentifierNode { Name = "x" },
+                                Init = new IdentifierNode { Name = "i" }
+                            }
+                        ]
+                    },
+                    new PrintStatement { Argument = new IdentifierNode { Name = "x" } }
+                ]
+            }
+        };
+
+        var result = new BytecodeGenerator().Generate(new Program { Body = [forStmt] });
+
+        // Verify the loop structure is intact:
+        // The backward jump should target index 6 (loop condition start).
+        var backwardJump = result.Instructions[^1];
+        Assert.AreEqual(InstructionKind.Jump, backwardJump.Kind);
+        Assert.AreEqual(6, backwardJump.SafeGetIntOperand());
+
+        // The JumpIfFalse should exit past the last instruction.
+        Assert.AreEqual(InstructionKind.JumpIfFalse, result.Instructions[9].Kind);
+        Assert.AreEqual(result.Instructions.Count, result.Instructions[9].SafeGetIntOperand());
+    }
+
+    [TestMethod]
+    public void Test_ForStatement_NonIdentifierIterator_Throws()
+    {
+        // Using a NumberNode as the iterator should throw BytecodeError.
+        var forStmt = new ForStatement
+        {
+            Iterator = new NumberNode { Value = 0.0 },
+            Start = new NumberNode { Value = 0.0 },
+            End = new NumberNode { Value = 5.0 },
+            Body = new PrintStatement { Argument = new NumberNode { Value = 1.0 } }
+        };
+
+        var gen = new BytecodeGenerator();
+        Assert.ThrowsExactly<BytecodeError>(() => gen.Generate(new Program { Body = [forStmt] }));
+    }
+
+    [TestMethod]
+    public void Test_ForStatement_UniqueLocalSlots()
+    {
+        // Verify that the iterator, $end, and $step each get unique local slots
+        // by checking the StoreVar operands in the initialization section.
+        var forStmt = new ForStatement
+        {
+            Iterator = new IdentifierNode { Name = "i" },
+            Start = new NumberNode { Value = 0.0 },
+            End = new NumberNode { Value = 5.0 },
+            Body = new PrintStatement { Argument = new IdentifierNode { Name = "i" } }
+        };
+
+        var result = new BytecodeGenerator().Generate(new Program { Body = [forStmt] });
+
+        // Extract the three StoreVar slots from the initialization section (indices 1, 3, 5).
+        var iterSlot = result.Instructions[1].SafeGetIntOperand();
+        var endSlot = result.Instructions[3].SafeGetIntOperand();
+        var stepSlot = result.Instructions[5].SafeGetIntOperand();
+
+        // All three must be distinct.
+        Assert.AreNotEqual(iterSlot, endSlot, "Iterator and $end share the same slot");
+        Assert.AreNotEqual(iterSlot, stepSlot, "Iterator and $step share the same slot");
+        Assert.AreNotEqual(endSlot, stepSlot, "$end and $step share the same slot");
+    }
 }

@@ -71,4 +71,15 @@ internal sealed class BinaryInstruction(Stack stack) : VirtualMachineInstruction
         else
             Stack.Push(Value.FromBoolean(false));
     }
+
+    public void Leq()
+    {
+        var a = Stack.Pop();
+        var b = Stack.Pop();
+
+        if (a.Kind == ValueKind.Number && b.Kind == ValueKind.Number)
+            Stack.Push(Value.FromBoolean(b.Number <= a.Number));
+        else
+            Stack.Push(Value.FromBoolean(false));
+    }
 }

@@ -17,6 +17,7 @@ public readonly struct Instruction
         Kind = kind;
     }
 
+    // TODO: add some factory methods for different instruction kinds.
     public Instruction(InstructionKind kind, int intOperand)
     {
         Kind = kind;
