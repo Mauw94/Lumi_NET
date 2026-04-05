@@ -93,13 +93,6 @@ public sealed class Lexer(string source)
         {
             token = ReadString(startLine, startCol);
         }
-        else if (c == '/')
-        {
-            var next = PeekChar(1);
-            if (next == '/') token = ReadLineComment(startLine, startCol);
-            else if (next == '*') token = ReadBlockComment(startLine, startCol);
-            else token = ReadOperator(startLine, startCol);
-        }
         else
         {
             token = ReadOperator(startLine, startCol);
@@ -231,41 +224,6 @@ public sealed class Lexer(string source)
         return Token.WithValue(TokenKind.String, sb.ToString(), startLine, startCol, _line, _column);
     }
 
-    private Token ReadLineComment(int startLine, int startCol)
-    {
-        Advance(); // /
-        Advance(); // /
-        var sb = new System.Text.StringBuilder();
-        while (_pos < _source.Length)
-        {
-            var c = _source[_pos];
-            if (c == '\n') break;
-            sb.Append(c);
-            Advance();
-        }
-        return Token.WithValue(TokenKind.Comment, sb.ToString(), startLine, startCol, _line, _column);
-    }
-
-    private Token ReadBlockComment(int startLine, int startCol)
-    {
-        Advance(); // /
-        Advance(); // *
-        var sb = new System.Text.StringBuilder();
-        bool found = false;
-        while (_pos < _source.Length)
-        {
-            var c = _source[_pos];
-            if (c == '*' && PeekChar(1) == '/')
-            {
-                Advance(); Advance(); found = true; break;
-            }
-            sb.Append(c);
-            Advance();
-        }
-        if (!found) throw LexError.UnterminatedComment;
-        return Token.WithValue(TokenKind.Comment, sb.ToString(), startLine, startCol, _line, _column);
-    }
-
     private Token ReadOperator(int startLine, int startCol)
     {
         var c = _source[_pos];
@@ -318,11 +276,56 @@ public sealed class Lexer(string source)
         while (_pos < _source.Length)
         {
             var c = _source[_pos];
+
             if (char.IsWhiteSpace(c))
             {
                 if (c == '\n') { _line++; _column = 1; }
                 else { _column++; }
                 Advance();
+            }
+            else if (c == '/' && PeekChar(1) == '/')
+            {
+                // Skip line comment
+                Advance(); // /
+                Advance(); // /
+                while (_pos < _source.Length)
+                {
+                    var ch = _source[_pos];
+                    if (ch == '\n')
+                    {
+                        _line++;
+                        _column = 1;
+                        Advance();
+                        break;
+                    }
+                    Advance();
+                }
+            }
+            else if (c == '/' && PeekChar(1) == '*')
+            {
+                // Skip block comment
+                Advance(); // /
+                Advance(); // *
+                bool found = false;
+                while (_pos < _source.Length)
+                {
+                    var ch = _source[_pos];
+                    if (ch == '\n')
+                    {
+                        _line++;
+                        _column = 1;
+                    }
+                    else if (ch == '*' && PeekChar(1) == '/')
+                    {
+                        Advance(); // *
+                        Advance(); // /
+                        found = true;
+                        break;
+                    }
+                    Advance();
+                }
+                if (!found)
+                    throw LexError.UnterminatedComment;
             }
             else break;
         }
