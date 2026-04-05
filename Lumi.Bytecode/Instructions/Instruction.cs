@@ -48,4 +48,5 @@ public readonly struct Instruction
     public static Instruction Add() => new(InstructionKind.Add);
     public static Instruction JumpIfFalse(int operand) => new(InstructionKind.JumpIfFalse, operand);
     public static Instruction Jump(int operand) => new(InstructionKind.Jump, operand);
+    public static Instruction CallFn(string functionName) => new(InstructionKind.CallFn, functionName);
 }

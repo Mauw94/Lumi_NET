@@ -14,8 +14,10 @@ public sealed class VirtualMachine
     private readonly Stack _stack;
     private readonly BinaryInstruction _binaryInstruction;
     private readonly List<Value?> _variables = [];
+    private readonly Stack<CallFrame> _callStack = [];
     private IReadOnlyList<Instruction> _instructions;
     private IReadOnlyList<Constant> _constants;
+    private IReadOnlyDictionary<string, int> _functionAddresses = new Dictionary<string, int>();
     private int _ip;
     private int _executedInstructionCount;
 
@@ -37,6 +39,7 @@ public sealed class VirtualMachine
     {
         _instructions = bytecode.Instructions;
         _constants = bytecode.Constants;
+        _functionAddresses = bytecode.FunctionAddresses;
         _ip = _executedInstructionCount;
 
         while (_ip < _instructions.Count)
@@ -85,11 +88,20 @@ public sealed class VirtualMachine
                     continue;
                 case InstructionKind.JumpIfFalse:
                     if (JumpIfFalse(in instruction))
-                        continue;   // Exit the while loop, do not increase _ip, since we have already jumped to the target instruction.
+                        continue;
                     break;
                 case InstructionKind.JumpIfTrue:
                     if (JumpIfTrue(in instruction))
-                        continue;   // Exit the while loop, do not increase _ip, since we have already jumped to the target instruction.
+                        continue;
+                    break;
+                case InstructionKind.CallFn:
+                    CallFn(in instruction);
+                    continue;
+                case InstructionKind.Return:
+                    ReturnFromFunction();
+                    continue;
+                case InstructionKind.Pop:
+                    _stack.Pop();
                     break;
                 case InstructionKind.Print:
                     Print();
@@ -183,5 +195,35 @@ public sealed class VirtualMachine
     {
         var value = _stack.Pop();
         Console.WriteLine(value.PrintValue());
+    }
+
+    /// <summary>
+    /// Calls a function by saving the return address and jumping to its entry point.
+    /// </summary>
+    private void CallFn(in Instruction instruction)
+    {
+        var functionName = instruction.StringOperand ?? throw VirtualMachineError.InvalidFunctionCall("Function name is null");
+
+        if (!_functionAddresses.TryGetValue(functionName, out var functionAddress))
+            throw VirtualMachineError.UndefinedFunction(functionName);
+
+        _callStack.Push(new CallFrame(ReturnAddress: _ip + 1));
+        _ip = functionAddress;
+    }
+
+    /// <summary>
+    /// Returns from the current function. The return value (top of stack) is
+    /// preserved; the saved return address is restored.
+    /// </summary>
+    private void ReturnFromFunction()
+    {
+        if (_callStack.Count == 0)
+            throw VirtualMachineError.ReturnWithoutCall();
+
+        // The implicit return pushes Undefined. Pop it so it doesn't pollute the
+        // caller's stack when the call was used as a statement.
+        _stack.Pop();
+
+        _ip = _callStack.Pop().ReturnAddress;
     }
 }

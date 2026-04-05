@@ -51,6 +51,14 @@ public sealed class SemanticAnalyzer
                 VisitVariableDeclaration(varDecl);
                 break;
 
+            case FunctionDeclaration funcDecl:
+                VisitFunctionDeclaration(funcDecl);
+                break;
+
+            case CallExpression callExpr:
+                VisitCallExpression(callExpr);
+                break;
+
             case IdentifierNode identifier:
                 VisitIdentifierNode(identifier);
                 break;
@@ -93,6 +101,20 @@ public sealed class SemanticAnalyzer
 
     private void VisitProgram(Program program)
     {
+        // First pass: register all function declarations at the global level
+        foreach (var statement in program.Body)
+        {
+            if (statement is FunctionDeclaration funcDecl)
+            {
+                if (funcDecl.Id is not IdentifierNode functionName)
+                    throw SemanticAnalyzerError.InvalidFunctionDeclaration();
+
+                var symbol = new Symbol(functionName.Name, SymbolKind.Function, TypeKind.Unknown);
+                _scopes.RegisterSymbol(symbol);
+            }
+        }
+
+        // Second pass: analyze all statements (including function bodies)
         foreach (var statement in program.Body)
             Visit(statement);
     }
@@ -214,6 +236,50 @@ public sealed class SemanticAnalyzer
     private void VisitUnaryExpression(UnaryExpression unaryExpr)
     {
         Visit(unaryExpr.Argument);
+    }
+
+    private void VisitFunctionDeclaration(FunctionDeclaration funcDecl)
+    {
+        if (funcDecl.Id is not IdentifierNode functionName)
+            throw SemanticAnalyzerError.InvalidFunctionDeclaration();
+
+        // Function is already registered by VisitProgram's first pass,
+        // so we only need to analyze the body here.
+
+        // Create a new scope for the function body
+        _scopes.EnterScope();
+
+        // Register parameters as variables in the function scope
+        foreach (var param in funcDecl.Params)
+        {
+            if (param is not IdentifierNode paramName)
+                throw SemanticAnalyzerError.InvalidFunctionParameter();
+
+            var paramSymbol = new Symbol(paramName.Name, SymbolKind.Variable, TypeKind.Unknown);
+            _scopes.RegisterSymbol(paramSymbol);
+        }
+
+        // Analyze the function body
+        Visit(funcDecl.Body);
+
+        _scopes.ExitScope();
+    }
+
+    private void VisitCallExpression(CallExpression callExpr)
+    {
+        if (callExpr.Callee is not IdentifierNode functionName)
+            throw SemanticAnalyzerError.InvalidFunctionCall();
+
+        // Look up the function
+        var function = _scopes.LookupSymbol(functionName.Name);
+        if (function is null || function.Value.Kind != SymbolKind.Function)
+            throw SemanticAnalyzerError.UndefinedFunction(functionName.Name);
+
+        // Analyze arguments
+        foreach (var arg in callExpr.Arguments)
+        {
+            Visit(arg);
+        }
     }
 
     /// <summary>

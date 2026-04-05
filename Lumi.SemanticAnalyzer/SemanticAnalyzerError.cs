@@ -19,4 +19,10 @@ public sealed class SemanticAnalyzerError(string message) : Exception(message)
         => new($"Invalid assignment target. Expected a variable");
     public static SemanticAnalyzerError NoActiveScope()
         => new("No active scope");
+    public static SemanticAnalyzerError InvalidFunctionDeclaration()
+        => new("Invalid function declaration. Expected a function name (identifier)");
+    public static SemanticAnalyzerError InvalidFunctionParameter()
+        => new("Invalid function parameter. Expected a parameter name (identifier)");
+    public static SemanticAnalyzerError InvalidFunctionCall()
+        => new("Invalid function call. Expected a function name (identifier)");
 }

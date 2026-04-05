@@ -27,4 +27,10 @@ internal sealed class VirtualMachineError(string message) : Exception(message)
     internal static VirtualMachineError UndefinedVariable(int slot) => new($"Undefined variable at slot {slot}.");
 
     internal static Exception InvalidJumpCondition(Value condition) => new($"Invalid jump condition: expected a boolean value but got {condition.Kind}.");
+
+    internal static VirtualMachineError UndefinedFunction(string functionName) => new($"Undefined function: {functionName}");
+
+    internal static VirtualMachineError InvalidFunctionCall(string message) => new($"Invalid function call: {message}");
+
+    internal static VirtualMachineError ReturnWithoutCall() => new("Return instruction executed without a corresponding function call.");
 }

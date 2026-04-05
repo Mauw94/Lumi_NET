@@ -1,0 +1,6 @@
+fn compute(x) { 
+	let r -> x + 10; 
+	print r; 
+}
+
+compute(11); // Prints 21

@@ -16,6 +16,9 @@ public sealed class BytecodeError(string message) : Exception(message)
         => new($"Instruction of kind {instructionKind} does not have an integer operand.");
     public static BytecodeError UnsupportedOperator(string ope) => new($"Unsupported operator: {ope}");
     public static BytecodeError ExpectedIdentifierInVariableDeclaration() => new($"Expected identifier in variable declaration.");
+    public static BytecodeError ExpectedIdentifierInFunctionDeclaration() => new($"Expected identifier in function declaration.");
+    public static BytecodeError ExpectedIdentifierInFunctionParameter() => new($"Expected identifier in function parameter.");
+    public static BytecodeError ExpectedIdentifierInFunctionCall() => new($"Expected identifier in function call.");
     public static BytecodeError UndefinedVariable(string name) => new($"Undefined variable: {name}");
     public static BytecodeError NoActiveScope() => new("No active scope.");
     public static BytecodeError ForStatementMissingIterator() => new("For statement is missing an iterator expression.");
