@@ -33,6 +33,8 @@ internal readonly struct Value
         ConstantKind.Number => FromNumber(constant.Number),
         ConstantKind.String => FromString(constant.String!),
         ConstantKind.Boolean => FromBoolean(constant.Boolean),
+        ConstantKind.Null => new(ValueKind.Null),
+        ConstantKind.Undefined => new(ValueKind.Undefined),
         _ => throw VirtualMachineError.UnkownConstantKind(constant.Kind),
     };
 
@@ -41,6 +43,8 @@ internal readonly struct Value
         ValueKind.Number => Number.ToString(),
         ValueKind.String => String ?? string.Empty,
         ValueKind.Boolean => Bool.ToString(),
+        ValueKind.Null => "null",
+        ValueKind.Undefined => "undefined",
         _ => throw VirtualMachineError.UnkownValueKind(Kind),
     };
 }

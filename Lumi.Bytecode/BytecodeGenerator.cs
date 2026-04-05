@@ -13,12 +13,14 @@ public sealed class BytecodeGenerator
     private readonly List<Instruction> _instructions = new(capacity: 64);
     private readonly ConstantPool _constantPool = new();
     private readonly Dictionary<Label, List<int>> _unpatchedJumps = [];
+    private readonly Dictionary<string, int> _functionAddresses = [];
     private readonly LocalManager _locals = new();
     private int _nextLabelId = 0;
 
     public IReadOnlyList<Instruction> Instructions => _instructions;
     public IReadOnlyList<Constant> Constants => _constantPool.Values;
     public IReadOnlyList<Local> Locals => _locals.AllLocals;
+    public IReadOnlyDictionary<string, int> FunctionAddresses => _functionAddresses;
 
     public BytecodeGenerator()
     {
@@ -57,6 +59,14 @@ public sealed class BytecodeGenerator
                 VisitVariableDeclaration(variableDeclaration);
                 break;
 
+            case FunctionDeclaration functionDeclaration:
+                VisitFunctionDeclaration(functionDeclaration);
+                break;
+
+            case CallExpression callExpression:
+                VisitCallExpression(callExpression);
+                break;
+
             case IdentifierNode identifier:
                 var local = _locals.LookupLocal(identifier.Name) ?? throw BytecodeError.UndefinedVariable(identifier.Name);
                 Emit(Instruction.LoadVar(local.Label));
@@ -89,6 +99,10 @@ public sealed class BytecodeGenerator
 
             case ExpressionStatement expressionStatement:
                 Visit(expressionStatement.Expression);
+                break;
+
+            case UnaryExpression unaryExpression:
+                VisitUnaryExpression(unaryExpression);
                 break;
 
             case BinaryExpression binaryExpression:
@@ -271,6 +285,20 @@ public sealed class BytecodeGenerator
         }
     }
 
+    private void VisitUnaryExpression(UnaryExpression unaryExpression)
+    {
+        Visit(unaryExpression.Argument);
+
+        var kind = unaryExpression.Operator switch
+        {
+            "-" => InstructionKind.Negate,
+            "!" => InstructionKind.Not,
+            _ => throw BytecodeError.UnsupportedOperator(unaryExpression.Operator)
+        };
+
+        Emit(new Instruction(kind));
+    }
+
     private void VisitBinaryExpression(BinaryExpression binaryExpression)
     {
         Visit(binaryExpression.Left);   // Evaluate left side
@@ -293,5 +321,65 @@ public sealed class BytecodeGenerator
         };
 
         Emit(new Instruction(kind));    // Emit the operator instruction, which will consume the two operands from the stack
+    }
+
+    private void VisitFunctionDeclaration(FunctionDeclaration functionDeclaration)
+    {
+        if (functionDeclaration.Id is not IdentifierNode functionName)
+            throw BytecodeError.ExpectedIdentifierInFunctionDeclaration();
+
+        // Jump over the function body so it isn't executed during normal program flow.
+        var skipLabel = NewLabel();
+        EmitJump(skipLabel);
+
+        // Record the function entry point (the instruction right after the jump).
+        _functionAddresses[functionName.Name] = _instructions.Count;
+
+        // Create a new scope for the function body.
+        _locals.EnterScope();
+
+        // Register parameters as locals and emit StoreVar instructions
+        // to pop the caller's arguments into them.
+        // Arguments are pushed left-to-right, so we pop right-to-left.
+        var parameterLabels = new List<Label>(functionDeclaration.Params.Count);
+        foreach (var param in functionDeclaration.Params)
+        {
+            if (param is not IdentifierNode paramName)
+                throw BytecodeError.ExpectedIdentifierInFunctionParameter();
+
+            parameterLabels.Add(_locals.GetOrCreateLocal(paramName.Name, LocalKind.Var, VarType.Unknown));
+        }
+
+        for (int i = parameterLabels.Count - 1; i >= 0; i--)
+        {
+            Emit(Instruction.StoreVar(parameterLabels[i]));
+        }
+
+        // Generate bytecode for the function body.
+        Visit(functionDeclaration.Body);
+
+        // Implicit return: push undefined and return.
+        Emit(Instruction.PushConst(AddConstant(Constant.Undefined())));
+        Emit(new Instruction(InstructionKind.Return));
+
+        _locals.ExitScope();
+
+        // Patch the skip-jump so normal execution resumes here.
+        PatchLabel(skipLabel);
+    }
+
+    private void VisitCallExpression(CallExpression callExpression)
+    {
+        if (callExpression.Callee is not IdentifierNode functionName)
+            throw BytecodeError.ExpectedIdentifierInFunctionCall();
+
+        // Push arguments left-to-right.
+        foreach (var arg in callExpression.Arguments)
+        {
+            Visit(arg);
+        }
+
+        // Emit the call.
+        Emit(new Instruction(InstructionKind.CallFn, functionName.Name));
     }
 }

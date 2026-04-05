@@ -1,0 +1,10 @@
+fn compute(n) {
+	if (n > 5) {
+		print "Greater than 5";
+	} else {
+		print "Less than or equal to 5";
+	}
+}
+
+compute(7);
+compute(3);

@@ -485,4 +485,138 @@ public sealed class SemanticAnalyzerTests
         Assert.IsFalse(result.IsValid, "Program should have at least one error");
         Assert.IsGreaterThanOrEqualTo(1, result.Errors.Count, "Program should report at least one undefined variable error");
     }
+
+    [TestMethod]
+    public void Analyze_FunctionCall_CorrectArgCount_NoErrors()
+    {
+        // fn add(a, b) { print a + b; }
+        // add(1, 2);
+        var program = new Program
+        {
+            Body =
+            [
+                new FunctionDeclaration
+                {
+                    Id = new IdentifierNode { Name = "add" },
+                    Params = [new IdentifierNode { Name = "a" }, new IdentifierNode { Name = "b" }],
+                    Body = new BlockStatement
+                    {
+                        Body = [new PrintStatement { Argument = new BinaryExpression { Left = new IdentifierNode { Name = "a" }, Operator = "+", Right = new IdentifierNode { Name = "b" } } }]
+                    }
+                },
+                new ExpressionStatement
+                {
+                    Expression = new CallExpression
+                    {
+                        Callee = new IdentifierNode { Name = "add" },
+                        Arguments = [new NumberNode { Value = 1.0 }, new NumberNode { Value = 2.0 }]
+                    }
+                }
+            ]
+        };
+
+        var result = new SemanticAnalyzer().Analyze(program);
+
+        Assert.IsTrue(result.IsValid);
+        Assert.IsEmpty(result.Errors);
+    }
+
+    [TestMethod]
+    public void Analyze_FunctionCall_TooFewArgs_ReturnsError()
+    {
+        // fn add(a, b) { print a + b; }
+        // add(1);
+        var program = new Program
+        {
+            Body =
+            [
+                new FunctionDeclaration
+                {
+                    Id = new IdentifierNode { Name = "add" },
+                    Params = [new IdentifierNode { Name = "a" }, new IdentifierNode { Name = "b" }],
+                    Body = new BlockStatement { Body = [] }
+                },
+                new ExpressionStatement
+                {
+                    Expression = new CallExpression
+                    {
+                        Callee = new IdentifierNode { Name = "add" },
+                        Arguments = [new NumberNode { Value = 1.0 }]
+                    }
+                }
+            ]
+        };
+
+        var result = new SemanticAnalyzer().Analyze(program);
+
+        Assert.IsFalse(result.IsValid);
+        Assert.HasCount(1, result.Errors);
+        Assert.Contains("expects 2 argument(s) but was called with 1", result.Errors[0].Message);
+    }
+
+    [TestMethod]
+    public void Analyze_FunctionCall_TooManyArgs_ReturnsError()
+    {
+        // fn greet(name) { print name; }
+        // greet("a", "b", "c");
+        var program = new Program
+        {
+            Body =
+            [
+                new FunctionDeclaration
+                {
+                    Id = new IdentifierNode { Name = "greet" },
+                    Params = [new IdentifierNode { Name = "name" }],
+                    Body = new BlockStatement { Body = [] }
+                },
+                new ExpressionStatement
+                {
+                    Expression = new CallExpression
+                    {
+                        Callee = new IdentifierNode { Name = "greet" },
+                        Arguments = [new StringNode { Value = "a" }, new StringNode { Value = "b" }, new StringNode { Value = "c" }]
+                    }
+                }
+            ]
+        };
+
+        var result = new SemanticAnalyzer().Analyze(program);
+
+        Assert.IsFalse(result.IsValid);
+        Assert.HasCount(1, result.Errors);
+        Assert.Contains("expects 1 argument(s) but was called with 3", result.Errors[0].Message);
+    }
+
+    [TestMethod]
+    public void Analyze_FunctionCall_ZeroParamsWithArgs_ReturnsError()
+    {
+        // fn noop() { }
+        // noop(42);
+        var program = new Program
+        {
+            Body =
+            [
+                new FunctionDeclaration
+                {
+                    Id = new IdentifierNode { Name = "noop" },
+                    Params = [],
+                    Body = new BlockStatement { Body = [] }
+                },
+                new ExpressionStatement
+                {
+                    Expression = new CallExpression
+                    {
+                        Callee = new IdentifierNode { Name = "noop" },
+                        Arguments = [new NumberNode { Value = 42.0 }]
+                    }
+                }
+            ]
+        };
+
+        var result = new SemanticAnalyzer().Analyze(program);
+
+        Assert.IsFalse(result.IsValid);
+        Assert.HasCount(1, result.Errors);
+        Assert.Contains("expects 0 argument(s) but was called with 1", result.Errors[0].Message);
+    }
 }

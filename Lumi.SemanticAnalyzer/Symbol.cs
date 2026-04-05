@@ -7,4 +7,5 @@ namespace Lumi.SemanticAnalyzer;
 /// <param name="Kind">Whether the symbol is a variable, constant, or function.</param>
 /// <param name="Type">The inferred or declared type of the symbol.</param>
 /// <param name="IsReadOnly">True if the symbol cannot be reassigned (const).</param>
-public readonly record struct Symbol(string Name, SymbolKind Kind, TypeKind Type, bool IsReadOnly = false);
+/// <param name="ParameterCount">For function symbols, the number of declared parameters. Null for non-function symbols.</param>
+public readonly record struct Symbol(string Name, SymbolKind Kind, TypeKind Type, bool IsReadOnly = false, int? ParameterCount = null);

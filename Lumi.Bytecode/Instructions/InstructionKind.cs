@@ -26,6 +26,8 @@ public enum InstructionKind
     Gt,
     Leq,
     Geq,
+    Negate,
+    Not,
     Jump,
     JumpIfTrue,
     JumpIfFalse,
