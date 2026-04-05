@@ -128,7 +128,9 @@ Contributions are welcome. Open an issue or a pull request with a small, focused
 
 ## License
 
-This project does not include an explicit license file. Add a license if you plan to share it publicly.
+This project is licensed under the [MIT License](./LICENSE) — a permissive open-source license that allows you to use, modify, and distribute this code freely, including in commercial projects. The only requirement is to include a copy of the license and copyright notice.
+
+See [LICENSE](./LICENSE) for the full text.
 
 ## Contact
 
