@@ -110,6 +110,11 @@ public class ForStatement : Node
     public required Node Body { get; set; }
 }
 
+public class ReturnStatement : Node
+{
+    public Node? Argument { get; set; }
+}
+
 // Literals and misc
 public class ArrayLiteral : Node
 {

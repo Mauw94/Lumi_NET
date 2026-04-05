@@ -130,6 +130,9 @@ public sealed class Parser
                     case "for":
                         result = ParseForStatement;
                         break;
+                    case "return":
+                        result = ParseReturnStatement;
+                        break;
                     default:
                         // temporary placeholder to avoid infinite loop
                         Advance();
@@ -308,6 +311,30 @@ public sealed class Parser
             var span = CreateSpanFromTokens();
 
             return new PrintStatement { Argument = expr, Span = span };
+        }
+    }
+
+    private Node ParseReturnStatement
+    {
+        get
+        {
+            Advance(); // consume 'return'
+
+            // Return statement can have an optional expression
+            Node? argument = null;
+
+            // Check if there's an expression to return
+            if (!Check(TokenKind.Semicolon) && !Check(TokenKind.RightBrace) && !IsEof())
+            {
+                argument = ParseExpression();
+            }
+
+            if (Check(TokenKind.Semicolon))
+                Advance();
+
+            var span = CreateSpanFromTokens();
+
+            return new ReturnStatement { Argument = argument, Span = span };
         }
     }
 

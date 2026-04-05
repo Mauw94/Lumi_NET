@@ -240,6 +240,8 @@ public sealed class SemanticAnalyzer
 
     private void VisitFunctionDeclaration(FunctionDeclaration funcDecl)
     {
+        // TODO: check if function names are no reserved keywords?
+
         if (funcDecl.Id is not IdentifierNode functionName)
             throw SemanticAnalyzerError.InvalidFunctionDeclaration();
 

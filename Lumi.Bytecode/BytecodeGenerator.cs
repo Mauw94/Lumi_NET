@@ -85,6 +85,10 @@ public sealed class BytecodeGenerator
                 VisitForStatement(forStatement);
                 break;
 
+            case ReturnStatement returnStatement:
+                VisitReturnStatement(returnStatement);
+                break;
+
             case NumberNode number:
                 Emit(Instruction.PushConst(AddConstant(Constant.FromNumber(number.Value))));
                 break;
@@ -335,6 +339,10 @@ public sealed class BytecodeGenerator
         // Record the function entry point (the instruction right after the jump).
         _functionAddresses[functionName.Name] = _instructions.Count;
 
+        // Reset the slot counter so function-local variables are numbered from 0,
+        // relative to the function's base pointer at runtime.
+        var savedSlotCounter = _locals.SaveAndResetSlotCounter();
+
         // Create a new scope for the function body.
         _locals.EnterScope();
 
@@ -364,6 +372,9 @@ public sealed class BytecodeGenerator
 
         _locals.ExitScope();
 
+        // Restore the global slot counter so outer-scope numbering resumes correctly.
+        _locals.RestoreSlotCounter(savedSlotCounter);
+
         // Patch the skip-jump so normal execution resumes here.
         PatchLabel(skipLabel);
     }
@@ -381,5 +392,22 @@ public sealed class BytecodeGenerator
 
         // Emit the call.
         Emit(new Instruction(InstructionKind.CallFn, functionName.Name));
+    }
+
+    private void VisitReturnStatement(ReturnStatement returnStatement)
+    {
+        // If there's a return value, evaluate it and leave it on the stack.
+        if (returnStatement.Argument != null)
+        {
+            Visit(returnStatement.Argument);
+        }
+        else
+        {
+            // No explicit return value: push undefined
+            Emit(Instruction.PushConst(AddConstant(Constant.Undefined())));
+        }
+
+        // Emit the return instruction
+        Emit(new Instruction(InstructionKind.Return));
     }
 }

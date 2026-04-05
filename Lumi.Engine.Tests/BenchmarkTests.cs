@@ -75,6 +75,28 @@ public sealed class BenchmarkTests
     }
 
     [TestMethod]
+    public void Test_Finonacci()
+    {
+        // Arrange
+        var source = @"
+            fn fib(n) {
+                if (n <= 1) {
+                    return n;
+                } else {
+                    return fib(n - 1) + fib(n - 2);
+                }
+            }
+
+            print fib(25);
+        ";
+
+        // Act + Benchmark
+        const int iterations = 100;
+        Warmup(source);
+        CollectBenchmarkData(iterations, source);
+    }
+
+    [TestMethod]
     public void Test_Store_100_Variables_Phases()
     {
         var source = string.Join(" ", Enumerable.Range(1, 100).Select(i => $"let x{i} -> {i};"));

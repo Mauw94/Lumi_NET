@@ -33,6 +33,27 @@ internal sealed class LocalManager
     }
 
     /// <summary>
+    /// Saves the current slot counter and resets it to zero.
+    /// Used when entering a function so its locals are numbered from 0 (relative to the function's base pointer).
+    /// </summary>
+    /// <returns>The saved slot counter to pass to <see cref="RestoreSlotCounter"/>.</returns>
+    public int SaveAndResetSlotCounter()
+    {
+        var saved = _nextSlotId;
+        _nextSlotId = 0;
+        return saved;
+    }
+
+    /// <summary>
+    /// Restores a previously saved slot counter (returned by <see cref="SaveAndResetSlotCounter"/>).
+    /// Called after a function body has been compiled so global-scope numbering resumes correctly.
+    /// </summary>
+    public void RestoreSlotCounter(int savedCounter)
+    {
+        _nextSlotId = savedCounter;
+    }
+
+    /// <summary>
     /// Gets the existing label for the specified local variable name and kind in the current scope, or creates a new
     /// one if it does not exist.
     /// </summary>
