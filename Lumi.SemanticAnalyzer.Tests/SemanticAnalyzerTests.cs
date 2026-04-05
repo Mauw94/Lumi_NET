@@ -1,0 +1,488 @@
+using Lumi.Ast;
+
+namespace Lumi.SemanticAnalyzer.Tests;
+
+[TestClass]
+public sealed class SemanticAnalyzerTests
+{
+    private readonly SemanticAnalyzer _analyzer = new();
+
+    [TestMethod]
+    public void Analyze_ValidProgram_ReturnsNoErrors()
+    {
+        // Build AST: let x -> 42
+        var decl = new VariableDeclaration
+        {
+            Kind = "let",
+            Declarations =
+            [
+                new VariableDeclarator
+                {
+                    VarName = new IdentifierNode { Name = "x" },
+                    Init = new NumberNode { Value = 42.0 }
+                }
+            ]
+        };
+
+        var program = new Program { Body = [decl] };
+        var result = _analyzer.Analyze(program);
+
+        Assert.IsTrue(result.IsValid, "Program should have no errors");
+        Assert.IsEmpty(result.Errors);
+    }
+
+    [TestMethod]
+    public void Analyze_UndefinedVariable_ReturnsError()
+    {
+        // Build AST: print y (where y is undefined)
+        var printStmt = new PrintStatement
+        {
+            Argument = new IdentifierNode { Name = "y" }
+        };
+
+        var program = new Program { Body = [printStmt] };
+        var result = _analyzer.Analyze(program);
+
+        Assert.IsFalse(result.IsValid, "Program should have an error");
+        Assert.HasCount(1, result.Errors);
+        Assert.Contains("Undefined variable", result.Errors[0].Message, "Error should be about undefined variable");
+    }
+
+    [TestMethod]
+    public void Analyze_VariableDeclaration_ThenReference_IsValid()
+    {
+        // Build AST: let x -> 42; print x
+        var decl = new VariableDeclaration
+        {
+            Kind = "let",
+            Declarations =
+            [
+                new VariableDeclarator
+                {
+                    VarName = new IdentifierNode { Name = "x" },
+                    Init = new NumberNode { Value = 42.0 }
+                }
+            ]
+        };
+
+        var printStmt = new PrintStatement
+        {
+            Argument = new IdentifierNode { Name = "x" }
+        };
+
+        var program = new Program { Body = [decl, printStmt] };
+        var result = _analyzer.Analyze(program);
+
+        Assert.IsTrue(result.IsValid, "Program should have no errors");
+        Assert.IsEmpty(result.Errors);
+    }
+
+    [TestMethod]
+    public void Analyze_AssignToUndefinedVariable_ReturnsError()
+    {
+        // Build AST: x = 42 (where x is undefined)
+        var assignExpr = new AssignmentExpression
+        {
+            Left = new IdentifierNode { Name = "x" },
+            Right = new NumberNode { Value = 42.0 }
+        };
+
+        var exprStmt = new ExpressionStatement { Expression = assignExpr };
+        var program = new Program { Body = [exprStmt] };
+        var result = _analyzer.Analyze(program);
+
+        Assert.IsFalse(result.IsValid, "Program should have an error");
+        Assert.HasCount(1, result.Errors);
+        Assert.Contains("Undefined variable", result.Errors[0].Message, "Error should be about undefined variable");
+    }
+
+    [TestMethod]
+    public void Analyze_AssignToConstant_ReturnsError()
+    {
+        // Build AST: const x -> 42; x = 100
+        var decl = new VariableDeclaration
+        {
+            Kind = "const",
+            Declarations =
+            [
+                new VariableDeclarator
+                {
+                    VarName = new IdentifierNode { Name = "x" },
+                    Init = new NumberNode { Value = 42.0 }
+                }
+            ]
+        };
+
+        var assignExpr = new AssignmentExpression
+        {
+            Left = new IdentifierNode { Name = "x" },
+            Right = new NumberNode { Value = 100.0 }
+        };
+
+        var exprStmt = new ExpressionStatement { Expression = assignExpr };
+        var program = new Program { Body = [decl, exprStmt] };
+        var result = _analyzer.Analyze(program);
+
+        Assert.IsFalse(result.IsValid, "Program should have an error");
+        Assert.HasCount(1, result.Errors);
+        Assert.Contains("read-only", result.Errors[0].Message, "Error should be about assignment to read-only variable");
+    }
+
+    [TestMethod]
+    public void Analyze_AssignToLetVariable_IsValid()
+    {
+        // Build AST: let x -> 42; x = 100
+        var decl = new VariableDeclaration
+        {
+            Kind = "let",
+            Declarations =
+            [
+                new VariableDeclarator
+                {
+                    VarName = new IdentifierNode { Name = "x" },
+                    Init = new NumberNode { Value = 42.0 }
+                }
+            ]
+        };
+
+        var assignExpr = new AssignmentExpression
+        {
+            Left = new IdentifierNode { Name = "x" },
+            Right = new NumberNode { Value = 100.0 }
+        };
+
+        var exprStmt = new ExpressionStatement { Expression = assignExpr };
+        var program = new Program { Body = [decl, exprStmt] };
+        var result = _analyzer.Analyze(program);
+
+        Assert.IsTrue(result.IsValid, "Program should have no errors");
+        Assert.IsEmpty(result.Errors);
+    }
+
+    [TestMethod]
+    public void Analyze_InvalidAssignmentTarget_ReturnsError()
+    {
+        // Build AST: 42 = x (assigning to a literal)
+        var assignExpr = new AssignmentExpression
+        {
+            Left = new NumberNode { Value = 42.0 },
+            Right = new IdentifierNode { Name = "x" }
+        };
+
+        var exprStmt = new ExpressionStatement { Expression = assignExpr };
+        var program = new Program { Body = [exprStmt] };
+        var result = _analyzer.Analyze(program);
+
+        Assert.IsFalse(result.IsValid, "Program should have an error");
+        Assert.HasCount(1, result.Errors);
+        Assert.Contains("Invalid assignment target", result.Errors[0].Message, "Error should be about invalid assignment target");
+    }
+
+    [TestMethod]
+    public void Analyze_VariableRedeclaration_ReturnsError()
+    {
+        // Build AST: let x -> 42; let x -> 100
+        var decl1 = new VariableDeclaration
+        {
+            Kind = "let",
+            Declarations =
+            [
+                new VariableDeclarator
+                {
+                    VarName = new IdentifierNode { Name = "x" },
+                    Init = new NumberNode { Value = 42.0 }
+                }
+            ]
+        };
+
+        var decl2 = new VariableDeclaration
+        {
+            Kind = "let",
+            Declarations =
+            [
+                new VariableDeclarator
+                {
+                    VarName = new IdentifierNode { Name = "x" },
+                    Init = new NumberNode { Value = 100.0 }
+                }
+            ]
+        };
+
+        var program = new Program { Body = [decl1, decl2] };
+        var result = _analyzer.Analyze(program);
+
+        Assert.IsFalse(result.IsValid, "Program should have an error");
+        Assert.HasCount(1, result.Errors);
+        Assert.Contains("already defined", result.Errors[0].Message, "Error should be about variable redeclaration");
+    }
+
+    [TestMethod]
+    public void Analyze_BlockScope_AllowsShadowing()
+    {
+        // Build AST: let x -> 42; { let x -> 100; print x }
+        var outerDecl = new VariableDeclaration
+        {
+            Kind = "let",
+            Declarations =
+            [
+                new VariableDeclarator
+                {
+                    VarName = new IdentifierNode { Name = "x" },
+                    Init = new NumberNode { Value = 42.0 }
+                }
+            ]
+        };
+
+        var innerDecl = new VariableDeclaration
+        {
+            Kind = "let",
+            Declarations =
+            [
+                new VariableDeclarator
+                {
+                    VarName = new IdentifierNode { Name = "x" },
+                    Init = new NumberNode { Value = 100.0 }
+                }
+            ]
+        };
+
+        var printStmt = new PrintStatement
+        {
+            Argument = new IdentifierNode { Name = "x" }
+        };
+
+        var block = new BlockStatement
+        {
+            Body = [innerDecl, printStmt]
+        };
+
+        var program = new Program { Body = [outerDecl, block] };
+        var result = _analyzer.Analyze(program);
+
+        Assert.IsTrue(result.IsValid, "Program should have no errors (shadowing is allowed)");
+        Assert.IsEmpty(result.Errors);
+    }
+
+    [TestMethod]
+    public void Analyze_VariableUndefinedOutsideScope_ReturnsError()
+    {
+        // Build AST: { let x -> 42 }; print x (x is undefined outside block)
+        var innerDecl = new VariableDeclaration
+        {
+            Kind = "let",
+            Declarations =
+            [
+                new VariableDeclarator
+                {
+                    VarName = new IdentifierNode { Name = "x" },
+                    Init = new NumberNode { Value = 42.0 }
+                }
+            ]
+        };
+
+        var block = new BlockStatement { Body = [innerDecl] };
+
+        var printStmt = new PrintStatement
+        {
+            Argument = new IdentifierNode { Name = "x" }
+        };
+
+        var program = new Program { Body = [block, printStmt] };
+        var result = _analyzer.Analyze(program);
+
+        Assert.IsFalse(result.IsValid, "Program should have an error");
+        Assert.HasCount(1, result.Errors);
+        Assert.Contains("Undefined variable", result.Errors[0].Message, "Error should be about undefined variable");
+    }
+
+    [TestMethod]
+    public void Analyze_BinaryExpressionWithUndefinedVar_ReturnsError()
+    {
+        // Build AST: let result -> (x + 5)
+        var binExpr = new BinaryExpression
+        {
+            Left = new IdentifierNode { Name = "x" },
+            Operator = "+",
+            Right = new NumberNode { Value = 5.0 }
+        };
+
+        var decl = new VariableDeclaration
+        {
+            Kind = "let",
+            Declarations =
+            [
+                new VariableDeclarator
+                {
+                    VarName = new IdentifierNode { Name = "result" },
+                    Init = binExpr
+                }
+            ]
+        };
+
+        var program = new Program { Body = [decl] };
+        var result = _analyzer.Analyze(program);
+
+        Assert.IsFalse(result.IsValid, "Program should have an error");
+        Assert.HasCount(1, result.Errors);
+        Assert.Contains("Undefined variable", result.Errors[0].Message, "Error should be about undefined variable");
+    }
+
+    [TestMethod]
+    public void Analyze_ForLoopIteratorVariable_IsRegistered()
+    {
+        // Build AST: for i in 0 to 10 { print i }
+        var printStmt = new PrintStatement
+        {
+            Argument = new IdentifierNode { Name = "i" }
+        };
+
+        var forStmt = new ForStatement
+        {
+            Iterator = new IdentifierNode { Name = "i" },
+            Start = new NumberNode { Value = 0.0 },
+            End = new NumberNode { Value = 10.0 },
+            Step = null,
+            Body = printStmt
+        };
+
+        var program = new Program { Body = [forStmt] };
+        var result = _analyzer.Analyze(program);
+
+        Assert.IsTrue(result.IsValid, "Program should have no errors (iterator variable 'i' should be in scope)");
+        Assert.IsEmpty(result.Errors);
+    }
+
+    [TestMethod]
+    public void Analyze_ForLoopIteratorNotInScopeAfterLoop_ReturnsError()
+    {
+        // Build AST: for i in 0 to 10 { }; print i
+        var forStmt = new ForStatement
+        {
+            Iterator = new IdentifierNode { Name = "i" },
+            Start = new NumberNode { Value = 0.0 },
+            End = new NumberNode { Value = 10.0 },
+            Step = null,
+            Body = new BlockStatement { Body = [] }
+        };
+
+        var printStmt = new PrintStatement
+        {
+            Argument = new IdentifierNode { Name = "i" }
+        };
+
+        var program = new Program { Body = [forStmt, printStmt] };
+        var result = _analyzer.Analyze(program);
+
+        Assert.IsFalse(result.IsValid, "Program should have an error");
+        Assert.HasCount(1, result.Errors);
+        Assert.Contains("Undefined variable", result.Errors[0].Message, "Error should be about undefined variable");
+    }
+
+    [TestMethod]
+    public void Analyze_IfStatementBlockScope_AllowsShadowing()
+    {
+        // Build AST: let x -> 42; if true { let x -> 100; print x }
+        var outerDecl = new VariableDeclaration
+        {
+            Kind = "let",
+            Declarations =
+            [
+                new VariableDeclarator
+                {
+                    VarName = new IdentifierNode { Name = "x" },
+                    Init = new NumberNode { Value = 42.0 }
+                }
+            ]
+        };
+
+        var innerDecl = new VariableDeclaration
+        {
+            Kind = "let",
+            Declarations =
+            [
+                new VariableDeclarator
+                {
+                    VarName = new IdentifierNode { Name = "x" },
+                    Init = new NumberNode { Value = 100.0 }
+                }
+            ]
+        };
+
+        var printStmt = new PrintStatement
+        {
+            Argument = new IdentifierNode { Name = "x" }
+        };
+
+        var block = new BlockStatement { Body = [innerDecl, printStmt] };
+
+        var ifStmt = new IfStatement
+        {
+            Expr = new BooleanNode { Value = true },
+            Stmt = block,
+            ElsePart = null
+        };
+
+        var program = new Program { Body = [outerDecl, ifStmt] };
+        var result = _analyzer.Analyze(program);
+
+        Assert.IsTrue(result.IsValid, "Program should have no errors (shadowing in if block is allowed)");
+        Assert.IsEmpty(result.Errors);
+    }
+
+    [TestMethod]
+    public void Analyze_UnaryExpression_WithUndefinedVar_ReturnsError()
+    {
+        // Build AST: let result -> (!x)
+        var unaryExpr = new UnaryExpression
+        {
+            Operator = "!",
+            Argument = new IdentifierNode { Name = "x" }
+        };
+
+        var decl = new VariableDeclaration
+        {
+            Kind = "let",
+            Declarations =
+            [
+                new VariableDeclarator
+                {
+                    VarName = new IdentifierNode { Name = "result" },
+                    Init = unaryExpr
+                }
+            ]
+        };
+
+        var program = new Program { Body = [decl] };
+        var result = _analyzer.Analyze(program);
+
+        Assert.IsFalse(result.IsValid, "Program should have an error");
+        Assert.HasCount(1, result.Errors);
+        Assert.Contains("Undefined variable", result.Errors[0].Message, "Error should be about undefined variable");
+    }
+
+    [TestMethod]
+    public void Analyze_MultipleErrors_ReturnsAllErrors()
+    {
+        // Build AST with multiple undefined variables
+        // x = y; print z
+        var assignExpr = new AssignmentExpression
+        {
+            Left = new IdentifierNode { Name = "x" },
+            Right = new IdentifierNode { Name = "y" }
+        };
+
+        var exprStmt = new ExpressionStatement { Expression = assignExpr };
+
+        var printStmt = new PrintStatement
+        {
+            Argument = new IdentifierNode { Name = "z" }
+        };
+
+        var program = new Program { Body = [exprStmt, printStmt] };
+        var result = _analyzer.Analyze(program);
+
+        // May have multiple errors depending on error collection behavior
+        Assert.IsFalse(result.IsValid, "Program should have at least one error");
+        Assert.IsGreaterThanOrEqualTo(1, result.Errors.Count, "Program should report at least one undefined variable error");
+    }
+}

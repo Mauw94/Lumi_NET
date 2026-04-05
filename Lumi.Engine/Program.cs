@@ -1,5 +1,7 @@
-﻿using Lumi.Bytecode;
+﻿using Lumi.Ast;
+using Lumi.Bytecode;
 using Lumi.Parser;
+using Lumi.SemanticAnalyzer;
 using Lumi.VM;
 
 while (true)
@@ -20,8 +22,8 @@ while (true)
             Repl();
             break;
     }
-
 }
+
 static async Task<string> LoadScript(string scriptName)
 {
     var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", ".."));
@@ -40,17 +42,10 @@ static void ExecuteScript(string source)
         Console.WriteLine("Result: ");
         var parser = new Parser(source);
         var ast = parser.Parse();
-        if (parser.HasErrors)
-        {
-            Console.WriteLine("Errors encountered during parsing: ");
-            foreach (var error in parser.Errors)
-            {
-                Console.WriteLine(error);
-            }
-            return;
-        }
-        var vm = new VirtualMachine();
-        vm.Execute(new BytecodeGenerator().Generate(new Parser(source).Parse()));
+
+        PrintParseErrors(parser);
+        SemanticAnalysis(ast);
+        ExecuteBytecode(ast);
     }
     catch (Exception ex)
     {
@@ -60,9 +55,6 @@ static void ExecuteScript(string source)
 
 static void Repl()
 {
-    var bytecodeGenerator = new BytecodeGenerator();
-    var vm = new VirtualMachine();
-
     while (true)
     {
         Console.Write("> ");
@@ -74,13 +66,56 @@ static void Repl()
         {
             var parser = new Parser(input.Trim());
             var ast = parser.Parse();
-            var bytecodeResult = bytecodeGenerator.Generate(ast);
 
-            vm.Execute(bytecodeResult);
+            PrintParseErrors(parser);
+            SemanticAnalysis(ast);
+            ExecuteBytecode(ast);
         }
         catch (Exception ex)
         {
             Console.WriteLine(ex.ToString());
         }
     }
+}
+
+static void PrintParseErrors(Parser parser)
+{
+    if (parser.HasErrors)
+    {
+        Console.WriteLine("Errors encountered during parsing: ");
+        foreach (var error in parser.Errors)
+        {
+            Console.WriteLine(error);
+        }
+        return;
+    }
+}
+
+static void SemanticAnalysis(Node? ast)
+{
+    var semanticAnalyzer = new SemanticAnalyzer();
+
+    if (ast is Lumi.Ast.Program program)
+    {
+        var analysisResult = semanticAnalyzer.Analyze(program);
+        if (!analysisResult.IsValid)
+        {
+            foreach (var error in analysisResult.Errors)
+            {
+                Console.WriteLine($"Semantic error: {error.Message}");
+            }
+        }
+    }
+}
+
+static void ExecuteBytecode(Node? ast)
+{
+    if (ast == null)
+    {
+        Console.WriteLine("Error: AST is null");
+        return;
+    }
+
+    var vm = new VirtualMachine();
+    vm.Execute(new BytecodeGenerator().Generate(ast));
 }
