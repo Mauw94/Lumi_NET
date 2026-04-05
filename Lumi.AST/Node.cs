@@ -1,6 +1,4 @@
-﻿using Lumi.AST;
-
-namespace Lumi.Ast;
+﻿namespace Lumi.AST;
 
 /// <summary>
 /// Represents a node in the abstract syntax tree (AST) for the Lumi programming language. 

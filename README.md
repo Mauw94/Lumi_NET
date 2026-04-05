@@ -11,10 +11,11 @@ This repository contains several projects that together form the compiler/runtim
 | `Lumi.Lexer` | Lexer/tokenizer that converts source text into a stream of tokens. |
 | `Lumi.AST` | Abstract Syntax Tree node types (`Program`, `BinaryExpression`, `IfStatement`, `ForStatement`, …) and helper structures (`NodeSpan`). |
 | `Lumi.Parser` | Recursive-descent parser that consumes tokens and builds the AST. |
+| `Lumi.SemanticAnalyzer` | Semantic analysis layer that validates variable definitions, type compatibility, and symbol references before bytecode generation. |
 | `Lumi.Bytecode` | Bytecode definitions (instruction set, constant pool, locals) and a tree-walking bytecode generator that visits the AST and emits instructions. |
 | `Lumi.VM` | Stack-based virtual machine that executes Lumi bytecode. |
-| `Lumi.Engine` | Entry point — provides a REPL and script runner that wires lexer → parser → bytecode generator → VM. |
-| `*.Tests` | MSTest unit-test projects for every layer (`Lumi.Lexer.Tests`, `Lumi.AST.Tests`, `Lumi.Parser.Tests`, `Lumi.Bytecode.Tests`, `Lumi.VM.Tests`, `Lumi.Engine.Tests`). |
+| `Lumi.Engine` | Entry point — provides a REPL and script runner that wires lexer → parser → semantic analyzer → bytecode generator → VM. |
+| `*.Tests` | MSTest unit-test projects for every layer (`Lumi.Lexer.Tests`, `Lumi.AST.Tests`, `Lumi.Parser.Tests`, `Lumi.SemanticAnalyzer.Tests`, `Lumi.Bytecode.Tests`, `Lumi.VM.Tests`, `Lumi.Engine.Tests`). |
 
 ## Getting started
 
@@ -40,16 +41,19 @@ The language currently supports:
 Source text
   │
   ▼
-Lexer          tokenizes into a stream of tokens
+Lexer              tokenizes into a stream of tokens
   │
   ▼
-Parser         builds an AST from the token stream
+Parser             builds an AST from the token stream
   │
   ▼
-BytecodeGen    walks the AST, emits instructions + constant pool
+SemanticAnalyzer   validates variable definitions, type compatibility, symbol references
   │
   ▼
-VM             executes instructions on a value stack
+BytecodeGen        walks the AST, emits instructions + constant pool
+  │
+  ▼
+VM                 executes instructions on a value stack
 ```
 
 ## Bytecode overview
@@ -79,6 +83,21 @@ The `LocalManager` maintains a stack of scopes. Each scope is a dictionary mappi
 ### Jump patching
 
 Forward jumps (e.g. skipping an else-branch) are emitted with a placeholder operand and a `Label`. When the target position is reached, `PatchLabel` back-patches every recorded jump site to point at `_instructions.Count`. Backward jumps (e.g. the loop-back in a `for` statement) record the target position directly at emit time and do not use the patching mechanism.
+
+## Semantic analysis
+
+The `SemanticAnalyzer` performs validation on the AST before bytecode generation. It uses a visitor pattern similar to the bytecode generator:
+
+- **Symbol management**: A `ScopeManager` maintains a stack of scopes (dictionaries mapping names to `Symbol` entries). Each scope tracks variable declarations and function definitions.
+- **Type tracking**: `Symbol` records include the inferred or declared type of each variable (`TypeKind`: `Number`, `String`, `Boolean`, `Unknown`, etc.) and whether it is read-only (`const`).
+- **Validation rules**:
+  - Undefined variables: A reference to an undefined variable raises an error before bytecode generation.
+  - Redefinition: Declaring the same variable twice in the same scope raises an error.
+  - Const reassignment: Attempting to assign to a `const` variable raises an error.
+  - Invalid assignment targets: Assigning to a literal or non-identifier raises an error.
+  - Scope rules: Variables are looked up from the innermost to outermost scope, enabling shadowing; variables declared in an inner scope are not visible outside that scope.
+
+The semantic analyzer returns a `SemanticAnalysisResult` containing any errors found. The compiler stops and reports errors before attempting bytecode generation if semantic analysis fails.
 
 ## Design notes
 

@@ -1,0 +1,10 @@
+namespace Lumi.SemanticAnalyzer;
+
+/// <summary>
+/// Represents a symbol (variable or function) in the current scope.
+/// </summary>
+/// <param name="Name">The name of the symbol.</param>
+/// <param name="Kind">Whether the symbol is a variable, constant, or function.</param>
+/// <param name="Type">The inferred or declared type of the symbol.</param>
+/// <param name="IsReadOnly">True if the symbol cannot be reassigned (const).</param>
+public readonly record struct Symbol(string Name, SymbolKind Kind, TypeKind Type, bool IsReadOnly = false);
