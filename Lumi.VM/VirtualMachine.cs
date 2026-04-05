@@ -15,6 +15,7 @@ public sealed class VirtualMachine
     private readonly BinaryInstruction _binaryInstruction;
     private readonly List<Value?> _variables = [];
     private readonly Stack<CallFrame> _callStack = [];
+    private readonly Queue<Value?[]> _variableSnapshotPool = [];
     private IReadOnlyList<Instruction> _instructions;
     private IReadOnlyList<Constant> _constants;
     private IReadOnlyDictionary<string, int> _functionAddresses = new Dictionary<string, int>();
@@ -29,6 +30,30 @@ public sealed class VirtualMachine
         _constants = [];
         _ip = 0;
         _executedInstructionCount = 0;
+    }
+
+    /// <summary>
+    /// Gets a variable snapshot array from the pool or creates a new one.
+    /// </summary>
+    private Value?[] RentVariableSnapshot(int capacity)
+    {
+        if (_variableSnapshotPool.TryDequeue(out var snapshot))
+        {
+            // Reuse existing array, resize if needed
+            if (snapshot.Length < capacity)
+                System.Array.Resize(ref snapshot, capacity);
+            return snapshot;
+        }
+        return new Value?[System.Math.Max(capacity, 16)];
+    }
+
+    /// <summary>
+    /// Returns a variable snapshot array to the pool for reuse.
+    /// </summary>
+    private void ReturnVariableSnapshot(Value?[] snapshot)
+    {
+        System.Array.Clear(snapshot, 0, snapshot.Length);
+        _variableSnapshotPool.Enqueue(snapshot);
     }
 
     /// <summary>
@@ -226,7 +251,10 @@ public sealed class VirtualMachine
     }
 
     /// <summary>
-    /// Calls a function by saving the return address and jumping to its entry point.
+    /// Calls a function by saving the return address and a snapshot of the current
+    /// variables, then jumping to the function's entry point. The snapshot protects
+    /// against recursive calls overwriting the caller's variable state. Uses object pooling
+    /// to reduce allocation pressure.
     /// </summary>
     private void CallFn(in Instruction instruction)
     {
@@ -235,21 +263,39 @@ public sealed class VirtualMachine
         if (!_functionAddresses.TryGetValue(functionName, out var functionAddress))
             throw VirtualMachineError.UndefinedFunction(functionName);
 
-        _callStack.Push(new CallFrame(ReturnAddress: _ip + 1));
+        // Snapshot the caller's variables from the pool to reduce allocations.
+        var snapshot = RentVariableSnapshot(_variables.Count);
+        _variables.CopyTo(snapshot);
+
+        _callStack.Push(new CallFrame(ReturnAddress: _ip + 1, SavedVariables: snapshot));
         _ip = functionAddress;
     }
 
     /// <summary>
-    /// Returns from the current function. The return value (top of stack) is
-    /// preserved; the saved return address is restored.
+    /// Returns from the current function. The return value (top of stack) is preserved;
+    /// the caller's variable snapshot is restored to prevent corruption from recursive calls.
+    /// The snapshot is returned to the pool for reuse.
     /// </summary>
     private void ReturnFromFunction()
     {
         if (_callStack.Count == 0)
             throw VirtualMachineError.ReturnWithoutCall();
 
-        // Pop the return address and continue execution at the caller's location.
-        // The return value remains on the stack for the caller to use.
-        _ip = _callStack.Pop().ReturnAddress;
+        var returnValue = _stack.Pop();
+        var frame = _callStack.Pop();
+
+        // Restore the caller's variable snapshot so recursive calls do not corrupt the caller's local state.
+        _variables.Clear();
+        foreach (var v in frame.SavedVariables)
+            _variables.Add(v);
+
+        // Return the snapshot to the pool for reuse.
+        ReturnVariableSnapshot(frame.SavedVariables);
+
+        // Push the return value back for the caller to use.
+        _stack.Push(returnValue);
+
+        // Resume execution at the return address.
+        _ip = frame.ReturnAddress;
     }
 }

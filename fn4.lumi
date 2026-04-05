@@ -5,5 +5,4 @@ fn compute(n) {
 	return n * n;
 }
 
-
 print compute(4);
