@@ -120,7 +120,7 @@ Use a plain `readonly struct` when the type is on a hot path and you only need c
 
 ## Roadmap
 
-See [ROADMAP.md](./docs/ROADMAP.md) for a detailed roadmap of current improvements, planned projects, and long-term vision for the Lumi language.
+See [ROADMAP.md](./ROADMAP.md) for a detailed roadmap of current improvements, planned projects, and long-term vision for the Lumi language.
 
 ## Contributing
 
