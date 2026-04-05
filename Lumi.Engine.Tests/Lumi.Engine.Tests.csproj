@@ -12,7 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Lumi.Ast\Lumi.AST.csproj" />
+    <ProjectReference Include="..\Lumi.AST\Lumi.AST.csproj" />
     <ProjectReference Include="..\Lumi.Bytecode\Lumi.Bytecode.csproj" />
     <ProjectReference Include="..\Lumi.Parser\Lumi.Parser.csproj" />
     <ProjectReference Include="..\Lumi.SemanticAnalyzer\Lumi.SemanticAnalyzer.csproj" />
