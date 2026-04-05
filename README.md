@@ -29,11 +29,16 @@ The language currently supports:
 
 - **Literals** — numbers (`42`), strings (`"hello"`), booleans (`true` / `false`).
 - **Arithmetic & comparison** — `+`, `-`, `*`, `/`, `%`, `==`, `!=`, `<`, `>`, `<=`, `>=`.
+- **Logical operators** — `&&`, `||`, `!`.
 - **Variable declarations** — `let`, `var`, `const` with optional type annotations (`let x: int -> 42`).
 - **Control flow** — `if` / `else` statements.
 - **Loops** — `for` loops with an iterator, start/end range, and optional step (`for i in 0..10 step 2 { ... }`).
 - **Block scoping** — braces create new lexical scopes; inner declarations shadow outer ones.
+- **Functions** — `fn` declarations with parameters, return statements, and calls.
+- **Arrays** — array literals and basic support (indexing and methods being added).
 - **Print** — built-in `print` statement for output.
+
+For a detailed analysis of implemented vs. missing language features and recommendations for what to add next, see [LANGUAGE_FEATURES.md](./docs/LANGUAGE_FEATURES.md).
 
 ## Compiler pipeline
 
