@@ -1,7 +1,6 @@
 ﻿using Lumi.Bytecode;
 using Lumi.Bytecode.Constants;
 using Lumi.Bytecode.Instructions;
-using Lumi.VM.BinaryInstructions;
 
 namespace Lumi.VM;
 
@@ -11,50 +10,22 @@ namespace Lumi.VM;
 /// </summary>
 public sealed class VirtualMachine
 {
-    private readonly Stack _stack;
-    private readonly BinaryInstruction _binaryInstruction;
-    private readonly List<Value?> _variables = [];
+    private const int InitialVariableCapacity = 256;
+    private const int MaxStackSize = 1024;
+
+    // Evaluation stack, fixed-size array with top pointer.
+    private readonly Value[] _stack = new Value[MaxStackSize];
+    private int _stackTop;
+
+    // Variable storage, fixed-size with count.
+    private Value[] _variables = new Value[InitialVariableCapacity];
+    private int _variableCount;
+
     private readonly Stack<CallFrame> _callStack = [];
-    private readonly Queue<Value?[]> _variableSnapshotPool = [];
-    private IReadOnlyList<Instruction> _instructions;
-    private IReadOnlyList<Constant> _constants;
     private IReadOnlyDictionary<string, int> _functionAddresses = new Dictionary<string, int>();
     private int _ip;
+    private int _basePointer;
     private int _executedInstructionCount;
-
-    public VirtualMachine()
-    {
-        _stack = new Stack();
-        _binaryInstruction = new BinaryInstruction(_stack);
-        _instructions = [];
-        _constants = [];
-        _ip = 0;
-        _executedInstructionCount = 0;
-    }
-
-    /// <summary>
-    /// Gets a variable snapshot array from the pool or creates a new one.
-    /// </summary>
-    private Value?[] RentVariableSnapshot(int capacity)
-    {
-        if (_variableSnapshotPool.TryDequeue(out var snapshot))
-        {
-            // Reuse existing array, resize if needed
-            if (snapshot.Length < capacity)
-                System.Array.Resize(ref snapshot, capacity);
-            return snapshot;
-        }
-        return new Value?[System.Math.Max(capacity, 16)];
-    }
-
-    /// <summary>
-    /// Returns a variable snapshot array to the pool for reuse.
-    /// </summary>
-    private void ReturnVariableSnapshot(Value?[] snapshot)
-    {
-        System.Array.Clear(snapshot, 0, snapshot.Length);
-        _variableSnapshotPool.Enqueue(snapshot);
-    }
 
     /// <summary>
     /// Executes the provided bytecode by interpreting its instructions sequentially.
@@ -62,80 +33,173 @@ public sealed class VirtualMachine
     /// <param name="bytecode">The bytecode to execute, containing the instructions and constants to be processed.</param>
     public void Execute(BytecodeResult bytecode)
     {
-        _instructions = bytecode.Instructions;
-        _constants = bytecode.Constants;
+        var instructions = (List<Instruction>)bytecode.Instructions;
+        var constants = (List<Constant>)bytecode.Constants;
         _functionAddresses = bytecode.FunctionAddresses;
         _ip = _executedInstructionCount;
+        var instructionCount = instructions.Count;
 
-        while (_ip < _instructions.Count)
+        while (_ip < instructionCount)
         {
-            var instruction = _instructions[_ip];
+            var instruction = instructions[_ip];
             switch (instruction.Kind)
             {
                 case InstructionKind.PushConst:
-                    PushConst(in instruction);
+                    _stack[_stackTop++] = Value.ConstantToValue(constants[instruction.IntOperand.GetValueOrDefault()]);
                     break;
+
                 case InstructionKind.Add:
-                    _binaryInstruction.Add();
-                    break;
+                    {
+                        var b = _stack[--_stackTop];
+                        var a = _stack[--_stackTop];
+                        _stack[_stackTop++] = Value.FromNumber(a.Number + b.Number);
+                        break;
+                    }
+
                 case InstructionKind.Sub:
-                    _binaryInstruction.Sub();
-                    break;
+                    {
+                        var b = _stack[--_stackTop];
+                        var a = _stack[--_stackTop];
+                        _stack[_stackTop++] = Value.FromNumber(a.Number - b.Number);
+                        break;
+                    }
+
                 case InstructionKind.Mul:
-                    _binaryInstruction.Mul();
-                    break;
+                    {
+                        var b = _stack[--_stackTop];
+                        var a = _stack[--_stackTop];
+                        _stack[_stackTop++] = Value.FromNumber(a.Number * b.Number);
+                        break;
+                    }
+
                 case InstructionKind.Div:
-                    _binaryInstruction.Div();
-                    break;
+                    {
+                        var b = _stack[--_stackTop];
+                        var a = _stack[--_stackTop];
+                        _stack[_stackTop++] = Value.FromNumber(a.Number / b.Number);
+                        break;
+                    }
+
                 case InstructionKind.Mod:
-                    _binaryInstruction.Mod();
-                    break;
+                    {
+                        var b = _stack[--_stackTop];
+                        var a = _stack[--_stackTop];
+                        _stack[_stackTop++] = Value.FromNumber(a.Number % b.Number);
+                        break;
+                    }
+
                 case InstructionKind.StoreVar:
-                    StoreVar(in instruction);
-                    break;
+                    {
+                        var slot = _basePointer + instruction.IntOperand.GetValueOrDefault();
+                        if (slot >= _variables.Length)
+                            GrowVariables(slot);
+                        _variables[slot] = _stack[--_stackTop];
+                        if (slot >= _variableCount)
+                            _variableCount = slot + 1;
+                        break;
+                    }
+
                 case InstructionKind.LoadVar:
-                    LoadVar(in instruction);
-                    break;
+                    {
+                        var slot = _basePointer + instruction.IntOperand.GetValueOrDefault();
+                        _stack[_stackTop++] = _variables[slot];
+                        break;
+                    }
+
                 case InstructionKind.Lt:
-                    _binaryInstruction.Lt();
-                    break;
+                    {
+                        var b = _stack[--_stackTop];
+                        var a = _stack[--_stackTop];
+                        _stack[_stackTop++] = Value.FromBoolean(a.Number < b.Number);
+                        break;
+                    }
+
                 case InstructionKind.Gt:
-                    _binaryInstruction.Gt();
-                    break;
+                    {
+                        var b = _stack[--_stackTop];
+                        var a = _stack[--_stackTop];
+                        _stack[_stackTop++] = Value.FromBoolean(a.Number > b.Number);
+                        break;
+                    }
+
                 case InstructionKind.Leq:
-                    _binaryInstruction.Leq();
-                    break;
+                    {
+                        var b = _stack[--_stackTop];
+                        var a = _stack[--_stackTop];
+                        _stack[_stackTop++] = Value.FromBoolean(a.Number <= b.Number);
+                        break;
+                    }
+
                 case InstructionKind.Eq:
-                    _binaryInstruction.Eq();
-                    break;
+                    {
+                        var b = _stack[--_stackTop];
+                        var a = _stack[--_stackTop];
+                        _stack[_stackTop++] = Value.FromBoolean(a.Number == b.Number);
+                        break;
+                    }
+
                 case InstructionKind.Negate:
-                    Negate();
+                    _stack[_stackTop - 1] = Value.FromNumber(-_stack[_stackTop - 1].Number);
                     break;
+
                 case InstructionKind.Not:
-                    Not();
+                    _stack[_stackTop - 1] = Value.FromBoolean(!_stack[_stackTop - 1].Bool);
                     break;
+
                 case InstructionKind.Jump:
-                    _ip = instruction.SafeGetIntOperand();
+                    _ip = instruction.IntOperand.GetValueOrDefault();
                     continue;
+
                 case InstructionKind.JumpIfFalse:
-                    if (JumpIfFalse(in instruction))
+                    if (!_stack[--_stackTop].Bool)
+                    {
+                        _ip = instruction.IntOperand.GetValueOrDefault();
                         continue;
+                    }
                     break;
+
                 case InstructionKind.JumpIfTrue:
-                    if (JumpIfTrue(in instruction))
+                    if (_stack[--_stackTop].Bool)
+                    {
+                        _ip = instruction.IntOperand.GetValueOrDefault();
                         continue;
+                    }
                     break;
+
                 case InstructionKind.CallFn:
-                    CallFn(in instruction);
-                    continue;
+                    {
+                        var functionName = instruction.StringOperand!;
+                        if (!_functionAddresses.TryGetValue(functionName, out var functionAddress))
+                            throw VirtualMachineError.UndefinedFunction(functionName);
+
+                        _callStack.Push(new CallFrame(ReturnAddress: _ip + 1, PreviousBasePointer: _basePointer));
+                        _basePointer = _variableCount;
+                        _ip = functionAddress;
+                        continue;
+                    }
+
                 case InstructionKind.Return:
-                    ReturnFromFunction();
-                    continue;
+                    {
+                        if (_callStack.Count == 0)
+                            throw VirtualMachineError.ReturnWithoutCall();
+
+                        var returnValue = _stack[--_stackTop];
+                        var frame = _callStack.Pop();
+
+                        _variableCount = _basePointer;
+                        _basePointer = frame.PreviousBasePointer;
+
+                        _stack[_stackTop++] = returnValue;
+                        _ip = frame.ReturnAddress;
+                        continue;
+                    }
+
                 case InstructionKind.Pop:
-                    _stack.Pop();
+                    _stackTop--;
                     break;
+
                 case InstructionKind.Print:
-                    Print();
+                    Console.WriteLine(_stack[--_stackTop].PrintValue());
                     break;
             }
             _ip += 1;
@@ -143,159 +207,13 @@ public sealed class VirtualMachine
         _executedInstructionCount = _ip;
     }
 
-    /// <summary>
-    /// Performs a conditional jump based on the value at the top of the stack. If the value is a Boolean and is false,
-    /// updates the instruction pointer to the operand specified by the given instruction.
-    /// </summary>
-    /// <param name="instruction">The instruction containing the target operand for the jump operation.</param>
-    /// <returns>true if the value at the top of the stack is a Boolean and is false; otherwise, false.</returns>
-    private bool JumpIfFalse(in Instruction instruction)
+    private void GrowVariables(int requiredSlot)
     {
-        var condition = _stack.Pop();
+        var newSize = _variables.Length;
 
-        if (condition.Kind != ValueKind.Boolean)
-            throw VirtualMachineError.InvalidJumpCondition(condition);
+        while (newSize <= requiredSlot)
+            newSize *= 2;
 
-        if (condition.Bool is false)
-            _ip = instruction.SafeGetIntOperand();
-
-        return condition.Bool is false;
-    }
-
-    /// <summary>
-    /// Evaluates the condition at the top of the stack and updates the instruction pointer to the specified target if
-    /// the condition is true.
-    /// </summary>
-    /// <param name="instruction">The instruction containing the target operand to jump to if the condition is true.</param>
-    /// <returns>true if the condition is true and the jump is performed; otherwise, false.</returns>
-    private bool JumpIfTrue(in Instruction instruction)
-    {
-        var condition = _stack.Pop();
-
-        if (condition.Kind != ValueKind.Boolean)
-            throw VirtualMachineError.InvalidJumpCondition(condition);
-
-        if (condition.Bool is true)
-            _ip = instruction.SafeGetIntOperand();
-
-        return condition.Bool is true;
-    }
-
-    /// <summary>
-    /// Pushes a constant value, specified by the given instruction, onto the evaluation stack.
-    /// </summary>
-    /// <param name="instruction">The instruction containing the operand that identifies which constant to push onto the stack.</param>
-    private void PushConst(in Instruction instruction)
-    {
-        _stack.Push(Value.ConstantToValue(_constants[instruction.SafeGetIntOperand()]));
-    }
-
-    /// <summary>
-    /// Stores the value from the top of the evaluation stack into the variable slot specified by the given instruction.
-    /// </summary>
-    /// <remarks>If the variable slot index specified by the instruction exceeds the current variable list
-    /// size, the list is automatically expanded to accommodate the new slot.</remarks>
-    /// <param name="instruction">The instruction containing the operand that specifies the target variable slot.</param>
-    private void StoreVar(in Instruction instruction)
-    {
-        var slot = instruction.SafeGetIntOperand();
-        var value = _stack.Pop();
-
-        // Grow the list on demand so any slot id can be stored without pre-sizing.
-        while (_variables.Count <= slot)
-            _variables.Add(null);
-
-        _variables[slot] = value;
-    }
-
-    /// <summary>
-    /// Loads the value of a variable specified by the given instruction and pushes it onto the evaluation stack.
-    /// </summary>
-    /// <param name="instruction">The instruction containing the operand that identifies the variable to load.</param>
-    private void LoadVar(in Instruction instruction)
-    {
-        var slot = instruction.SafeGetIntOperand();
-        if (slot >= _variables.Count || _variables[slot] is not Value value)
-            throw VirtualMachineError.UndefinedVariable(slot);
-
-        _stack.Push(value);
-    }
-
-    /// <summary>Removes the top item from the stack and writes its formatted value to the console output.</summary>
-    private void Print()
-    {
-        var value = _stack.Pop();
-        Console.WriteLine(value.PrintValue());
-    }
-
-    /// <summary>Negates the numeric value on top of the stack.</summary>
-    private void Negate()
-    {
-        var value = _stack.Pop();
-
-        if (value.Kind != ValueKind.Number)
-            throw VirtualMachineError.InvalidUnaryOperation(value, "Negate");
-
-        _stack.Push(Value.FromNumber(-value.Number));
-    }
-
-    /// <summary>Logically inverts the boolean value on top of the stack.</summary>
-    private void Not()
-    {
-        var value = _stack.Pop();
-
-        if (value.Kind != ValueKind.Boolean)
-            throw VirtualMachineError.InvalidUnaryOperation(value, "Not");
-
-        _stack.Push(Value.FromBoolean(!value.Bool));
-    }
-
-    /// <summary>
-    /// Calls a function by saving the return address and a snapshot of the current
-    /// variables, then jumping to the function's entry point. The snapshot protects
-    /// against recursive calls overwriting the caller's variable state. Uses object pooling
-    /// to reduce allocation pressure.
-    /// </summary>
-    private void CallFn(in Instruction instruction)
-    {
-        var functionName = instruction.StringOperand ?? throw VirtualMachineError.InvalidFunctionCall("Function name is null");
-
-        if (!_functionAddresses.TryGetValue(functionName, out var functionAddress))
-            throw VirtualMachineError.UndefinedFunction(functionName);
-
-        // Snapshot the caller's variables from the pool to reduce allocations.
-        var snapshot = RentVariableSnapshot(_variables.Count);
-        _variables.CopyTo(snapshot);
-
-        _callStack.Push(new CallFrame(ReturnAddress: _ip + 1, SavedVariables: snapshot));
-        _ip = functionAddress;
-    }
-
-    /// <summary>
-    /// Returns from the current function. The return value (top of stack) is preserved;
-    /// the caller's variable snapshot is restored to prevent corruption from recursive calls.
-    /// The snapshot is returned to the pool for reuse.
-    /// </summary>
-    private void ReturnFromFunction()
-    {
-        if (_callStack.Count == 0)
-            throw VirtualMachineError.ReturnWithoutCall();
-
-        var returnValue = _stack.Pop();
-        var frame = _callStack.Pop();
-
-        // Restore the caller's variable snapshot so recursive calls do not corrupt the caller's local state.
-        _variables.Clear();
-        foreach (var v in frame.SavedVariables)
-            _variables.Add(v);
-
-        // Return the snapshot to the pool for reuse.
-        ReturnVariableSnapshot(frame.SavedVariables);
-
-        // Push the return value back for the caller to use.
-        _stack.Push(returnValue);
-
-        // Resume execution at the return address.
-        _ip = frame.ReturnAddress;
+        Array.Resize(ref _variables, newSize);
     }
 }

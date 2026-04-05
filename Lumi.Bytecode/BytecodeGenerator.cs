@@ -339,6 +339,10 @@ public sealed class BytecodeGenerator
         // Record the function entry point (the instruction right after the jump).
         _functionAddresses[functionName.Name] = _instructions.Count;
 
+        // Reset the slot counter so function-local variables are numbered from 0,
+        // relative to the function's base pointer at runtime.
+        var savedSlotCounter = _locals.SaveAndResetSlotCounter();
+
         // Create a new scope for the function body.
         _locals.EnterScope();
 
@@ -367,6 +371,9 @@ public sealed class BytecodeGenerator
         Emit(new Instruction(InstructionKind.Return));
 
         _locals.ExitScope();
+
+        // Restore the global slot counter so outer-scope numbering resumes correctly.
+        _locals.RestoreSlotCounter(savedSlotCounter);
 
         // Patch the skip-jump so normal execution resumes here.
         PatchLabel(skipLabel);

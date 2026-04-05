@@ -2,46 +2,45 @@
 
 /// <summary>
 /// Represents a last-in, first-out (LIFO) collection of Value objects.
+/// Uses a fixed-size array with a top pointer for maximum performance.
 /// </summary>
 internal sealed class Stack
 {
     private const int MaxStackSize = 1024;
-    // List used as the backing store so Peek(offset) is O(1) with no allocation
-    private readonly List<Value> _values = new();
+    private readonly Value[] _values = new Value[MaxStackSize];
+    private int _top;
 
-    public int Count => _values.Count;
+    public int Count => _top;
 
     public void Push(Value value)
     {
-        if (_values.Count >= MaxStackSize)
+        if (_top >= MaxStackSize)
             throw VirtualMachineError.StackOverflow();
 
-        _values.Add(value);
+        _values[_top++] = value;
     }
 
     public Value Pop()
     {
-        if (_values.Count == 0)
+        if (_top == 0)
             throw VirtualMachineError.StackUnderflow();
 
-        var value = _values[^1];
-        _values.RemoveAt(_values.Count - 1);
-        return value;
+        return _values[--_top];
     }
 
     public Value Peek()
     {
-        if (_values.Count == 0)
+        if (_top == 0)
             throw VirtualMachineError.StackUnderflow();
 
-        return _values[^1];
+        return _values[_top - 1];
     }
 
     public Value Peek(int offset)
     {
-        if (offset < 0 || offset >= _values.Count)
+        if (offset < 0 || offset >= _top)
             throw VirtualMachineError.InvalidPeekOffset();
 
-        return _values[_values.Count - 1 - offset];
+        return _values[_top - 1 - offset];
     }
 }

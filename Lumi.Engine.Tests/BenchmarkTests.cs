@@ -91,7 +91,7 @@ public sealed class BenchmarkTests
         ";
 
         // Act + Benchmark
-        const int iterations = 1;
+        const int iterations = 100;
         Warmup(source);
         CollectBenchmarkData(iterations, source);
     }
