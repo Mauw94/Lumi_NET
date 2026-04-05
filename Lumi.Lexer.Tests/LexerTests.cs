@@ -91,7 +91,7 @@ public sealed class LexerTests
     {
         var tokens = Tokenize("== -> ;");
 
-        Assert.AreEqual(TokenKind.Equal, tokens[0].Kind);
+        Assert.AreEqual(TokenKind.EqualEqual, tokens[0].Kind);
         Assert.AreEqual(TokenKind.Arrow, tokens[1].Kind);
         Assert.AreEqual(TokenKind.Semicolon, tokens[2].Kind);
     }

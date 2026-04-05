@@ -4,18 +4,18 @@ using Lumi.VM;
 
 while (true)
 {
-    Console.WriteLine("Execute script or REPL? (script/repl)");
+    Console.WriteLine("Execute S or R? (script/repl)");
     var choice = Console.ReadLine()?.ToLower().Trim();
 
-    switch (choice)
+    switch (choice?.ToLower())
     {
-        case "script":
+        case "s":
             Console.WriteLine("Enter script name (no extension): ");
             var scriptName = Console.ReadLine()?.ToLower().Trim();
             if (string.IsNullOrEmpty(scriptName)) break;
             ExecuteScript(await LoadScript(scriptName));
             break;
-        case "repl":
+        case "r":
             Console.WriteLine("Entering REPL mode. Type your code below:");
             Repl();
             break;
@@ -38,6 +38,17 @@ static void ExecuteScript(string source)
     try
     {
         Console.WriteLine("Result: ");
+        var parser = new Parser(source);
+        var ast = parser.Parse();
+        if (parser.HasErrors)
+        {
+            Console.WriteLine("Errors encountered during parsing: ");
+            foreach (var error in parser.Errors)
+            {
+                Console.WriteLine(error);
+            }
+            return;
+        }
         var vm = new VirtualMachine();
         vm.Execute(new BytecodeGenerator().Generate(new Parser(source).Parse()));
     }

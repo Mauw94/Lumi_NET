@@ -39,6 +39,36 @@ public sealed class BytecodeTests
     }
 
     [TestMethod]
+    public void Test_Binary_Modulo_Expression()
+    {
+        // Build AST: (1 + 2)
+        var expr = new BinaryExpression
+        {
+            Left = new NumberNode { Value = 10.0 },
+            Operator = "%",
+            Right = new NumberNode { Value = 2.0 }
+        };
+
+        var program = new Program { Body = [new ExpressionStatement { Expression = expr }] };
+
+        var gen = new BytecodeGenerator();
+        var result = gen.Generate(program);
+
+        // Expect: PushConst 1, PushConst 2, Add
+        Assert.HasCount(3, result.Instructions, "Instruction count mismatch");
+        Assert.HasCount(2, result.Constants, "Constants count mismatch");
+
+        Assert.AreEqual(InstructionKind.PushConst, result.Instructions[0].Kind);
+        Assert.AreEqual(InstructionKind.PushConst, result.Instructions[1].Kind);
+        Assert.AreEqual(InstructionKind.Add, result.Instructions[2].Kind);
+
+        Assert.AreEqual(ConstantKind.Number, result.Constants[0].Kind);
+        Assert.AreEqual(10.0, result.Constants[0].Number);
+        Assert.AreEqual(ConstantKind.Number, result.Constants[1].Kind);
+        Assert.AreEqual(2.0, result.Constants[1].Number);
+    }
+
+    [TestMethod]
     public void Test_VariableDeclaration_WithInit()
     {
         // Build AST: let x -> 42

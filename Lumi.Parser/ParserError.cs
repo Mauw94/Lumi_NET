@@ -12,7 +12,7 @@ namespace Lumi.Parser
     /// <param name="message">The error message that describes the parsing error.</param>
     /// <param name="position">The position in the source code where the error occurred, represented by a line and column number.</param>
     /// <param name="expected">An optional string indicating the expected token or syntax that was not found during parsing.</param>
-    internal sealed class ParserError(string message, Position position, string? expected = null) : Exception(message)
+    public sealed class ParserError(string message, Position position, string? expected = null) : Exception(message)
     {
         public Position Position { get; } = position;
         public string? Expected { get; } = expected;

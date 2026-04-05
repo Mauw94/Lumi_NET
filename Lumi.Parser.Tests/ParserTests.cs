@@ -86,6 +86,50 @@ public sealed class ParserTests
         Assert.IsInstanceOfType<NumberNode>(printStmt.Argument);
     }
 
+    [TestMethod]
+    public void Test_For_Statement()
+    {
+        var source = "for i in 0 to 10 { print i; }";
+        var program = ParseProgram(source);
+
+        Assert.HasCount(1, program.Body);
+        Assert.IsInstanceOfType<ForStatement>(program.Body[0]);
+        var forStmt = (ForStatement)program.Body[0];
+
+        Assert.IsInstanceOfType<IdentifierNode>(forStmt.Iterator);
+        Assert.IsInstanceOfType<NumberNode>(forStmt.Start);
+        Assert.IsInstanceOfType<NumberNode>(forStmt.End);
+        Assert.IsInstanceOfType<BlockStatement>(forStmt.Body);
+        var block = (BlockStatement)forStmt.Body;
+
+        Assert.IsInstanceOfType<PrintStatement>(block.Body[0]);
+        var printStmt = (PrintStatement)block.Body[0];
+
+        Assert.IsInstanceOfType<IdentifierNode>(printStmt.Argument);
+    }
+
+    [TestMethod]
+    public void Test_For_With_If_Block()
+    {
+        var source = "for i in 0 to 10 { if (i % 2 == 0) { print i; } }";
+        var program = ParseProgram(source);
+
+        Assert.HasCount(1, program.Body);
+        Assert.IsInstanceOfType<ForStatement>(program.Body[0]);
+        var forStmt = (ForStatement)program.Body[0];
+
+        Assert.IsInstanceOfType<IdentifierNode>(forStmt.Iterator);
+        Assert.IsInstanceOfType<NumberNode>(forStmt.Start);
+        Assert.IsInstanceOfType<NumberNode>(forStmt.End);
+        Assert.IsInstanceOfType<BlockStatement>(forStmt.Body);
+        var block = (BlockStatement)forStmt.Body;
+
+        Assert.IsInstanceOfType<IfStatement>(block.Body[0]);
+        var ifStatement = (IfStatement)block.Body[0];
+
+        Assert.IsInstanceOfType<BinaryExpression>(ifStatement.Expr);
+    }
+
     private static Program ParseProgram(string source)
     {
         var parser = new Parser(source);

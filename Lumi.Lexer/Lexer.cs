@@ -275,7 +275,7 @@ public sealed class Lexer(string source)
             var next = _source[_pos + 1];
             switch (c)
             {
-                case '=' when next == '=': Advance(); Advance(); return Token.WithPositions(TokenKind.Equal, startLine, startCol, _line, _column);
+                case '=' when next == '=': Advance(); Advance(); return Token.WithPositions(TokenKind.EqualEqual, startLine, startCol, _line, _column);
                 case '!' when next == '=': Advance(); Advance(); return Token.WithPositions(TokenKind.NotEqual, startLine, startCol, _line, _column);
                 case '<' when next == '=': Advance(); Advance(); return Token.WithPositions(TokenKind.LessThanEqual, startLine, startCol, _line, _column);
                 case '>' when next == '=': Advance(); Advance(); return Token.WithPositions(TokenKind.GreaterThanEqual, startLine, startCol, _line, _column);

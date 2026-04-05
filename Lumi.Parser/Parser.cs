@@ -13,6 +13,9 @@ public sealed class Parser
 {
     //private string _source;
     //private bool _strictMode;
+    public bool HasErrors => errorRecovery.HasErrors();
+    public IReadOnlyList<ParserError> Errors => errorRecovery.Errors;
+
     private readonly Lexer.Lexer lexer;
     private Token? current;
     private Token? previous;

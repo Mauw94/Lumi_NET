@@ -59,6 +59,9 @@ public sealed class VirtualMachine
                 case InstructionKind.Div:
                     _binaryInstruction.Div();
                     break;
+                case InstructionKind.Mod:
+                    _binaryInstruction.Mod();
+                    break;
                 case InstructionKind.StoreVar:
                     StoreVar(in instruction);
                     break;
@@ -73,6 +76,9 @@ public sealed class VirtualMachine
                     break;
                 case InstructionKind.Leq:
                     _binaryInstruction.Leq();
+                    break;
+                case InstructionKind.Eq:
+                    _binaryInstruction.Eq();
                     break;
                 case InstructionKind.Jump:
                     _ip = instruction.SafeGetIntOperand();
