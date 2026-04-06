@@ -11,6 +11,11 @@ public sealed class SemanticAnalyzer
 {
     private readonly ScopeManager _scopes = new();
 
+    public SemanticAnalyzer()
+    {
+        _scopes.EnterScope(); // Global scope
+    }
+
     /// <summary>
     /// Analyzes the given program node and returns a semantic analysis result.
     /// </summary>
@@ -19,8 +24,6 @@ public sealed class SemanticAnalyzer
     public SemanticAnalysisResult Analyze(Program program)
     {
         var errors = new List<SemanticAnalyzerError>();
-
-        _scopes.EnterScope(); // Global scope
 
         try
         {
@@ -31,9 +34,11 @@ public sealed class SemanticAnalyzer
             errors.Add(err);
         }
 
-        _scopes.ExitScope();
-
         return new SemanticAnalysisResult(errors);
+    }
+    public void Dispose()
+    {
+        _scopes.ExitScope();
     }
 
     private void Visit(Node node)
