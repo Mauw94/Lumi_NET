@@ -32,6 +32,9 @@
     <Project Path="Lumi.Lexer.Tests/Lumi.Lexer.Tests.csproj" />
     <Project Path="Lumi.Lexer/Lumi.Lexer.csproj" />
   </Folder>
+  <Folder Name="/Language/">
+    <Project Path="Lumi.Language/Lumi.Language.csproj" />
+  </Folder>
   <Folder Name="/Parser/">
     <Project Path="Lumi.Parser.Tests/Lumi.Parser.Tests.csproj" />
     <Project Path="Lumi.Parser/Lumi.Parser.csproj" />

@@ -1,4 +1,5 @@
 ﻿using System.Globalization;
+using Lumi.Language;
 
 namespace Lumi.Lexer;
 
@@ -8,19 +9,6 @@ namespace Lumi.Lexer;
 /// <param name="source">The source string to be tokenized. This value cannot be null.</param>
 public sealed class Lexer(string source)
 {
-    private static readonly HashSet<string> _keywords = new(StringComparer.Ordinal)
-    {
-        "let","const","var","fn","if","else","return","async","await","yield",
-        "import","export","new","class","extends","static","get","set",
-        "try","catch","finally","throw","break","continue","switch","case",
-        "default","for","while","do","in","of","with","delete",
-        "instanceof","typeof","void","debugger","enum","interface","package",
-        "private","protected","public","implements","abstract","bool","byte",
-        "char","double","final","float","goto","int","long","str",
-        "native","short","synchronized","throws","transient","volatile","to",
-        "step","print"
-    };
-
     private readonly string _source = source ?? string.Empty;
     private int _pos = 0;
     private int _line = 1;
@@ -114,19 +102,14 @@ public sealed class Lexer(string source)
 
         var identifier = _source[start.._pos];
 
-        switch (identifier)
+        return IdentifierClassifier.Classify(identifier) switch
         {
-            case "true": return Token.WithValue(TokenKind.Boolean, "true", startLine, startCol, _line, _column);
-            case "false": return Token.WithValue(TokenKind.Boolean, "false", startLine, startCol, _line, _column);
-            case "null": return Token.WithPositions(TokenKind.Null, startLine, startCol, _line, _column);
-            case "undefined": return Token.WithPositions(TokenKind.Undefined, startLine, startCol, _line, _column);
-            case "this": return Token.WithValue(TokenKind.Keyword, "this", startLine, startCol, _line, _column);
-            case "super": return Token.WithValue(TokenKind.Keyword, "super", startLine, startCol, _line, _column);
-            default:
-                if (_keywords.Contains(identifier))
-                    return Token.WithValue(TokenKind.Keyword, identifier, startLine, startCol, _line, _column);
-                return Token.WithValue(TokenKind.Identifier, identifier, startLine, startCol, _line, _column);
-        }
+            IdentifierClassification.BooleanLiteral => Token.WithValue(TokenKind.Boolean, identifier, startLine, startCol, _line, _column),
+            IdentifierClassification.NullLiteral => Token.WithPositions(TokenKind.Null, startLine, startCol, _line, _column),
+            IdentifierClassification.UndefinedLiteral => Token.WithPositions(TokenKind.Undefined, startLine, startCol, _line, _column),
+            IdentifierClassification.Keyword or IdentifierClassification.ContextualKeyword => Token.WithValue(TokenKind.Keyword, identifier, startLine, startCol, _line, _column),
+            _ => Token.WithValue(TokenKind.Identifier, identifier, startLine, startCol, _line, _column)
+        };
     }
 
     private Token ReadNumber(int startLine, int startCol)

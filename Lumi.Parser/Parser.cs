@@ -1,4 +1,5 @@
 ﻿using Lumi.AST;
+using Lumi.Language;
 using Lumi.Lexer;
 
 namespace Lumi.Parser;
@@ -20,19 +21,6 @@ public sealed class Parser
     private Token? previous;
     private readonly ErrorRecovery errorRecovery;
     private ParsingContext context;
-
-    private static readonly HashSet<string> _keywords = new(StringComparer.Ordinal)
-    {
-        "let","const","var","fn","if","else","return","async","await","yield",
-        "import","export","new","class","extends","static","get","set",
-        "try","catch","finally","throw","break","continue","switch","case",
-        "default","for","while","do","in","of","with","delete",
-        "instanceof","typeof","void","debugger","enum","interface","package",
-        "private","protected","public","implements","abstract","bool","byte",
-        "char","double","final","float","goto","int","long","str",
-        "native","short","synchronized","throws","transient","volatile","to",
-        "step","print"
-    };
 
     public Parser(string source)
     {
@@ -886,7 +874,7 @@ public sealed class Parser
 
         keyword = tok.Value ?? string.Empty;
 
-        return _keywords.Contains(keyword);
+        return IdentifierClassifier.IsKeywordLike(keyword);
     }
 
     private bool CheckKeyword(string kw)
