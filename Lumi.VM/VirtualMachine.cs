@@ -115,6 +115,21 @@ public sealed class VirtualMachine
                         break;
                     }
 
+                case InstructionKind.IndexArray:
+                    {
+                        var index = (int)_stack[--_stackTop].Number;
+                        var array = _stack[--_stackTop];
+
+                        if (array.Kind != ValueKind.Array || array.Array is null)
+                            throw VirtualMachineError.IndexTargetNotArray(array.Kind);
+
+                        if (index < 0 || index >= array.Array.Count)
+                            throw VirtualMachineError.IndexOutOfRange(index, array.Array.Count);
+
+                        _stack[_stackTop++] = array.Array[index];
+                        break;
+                    }
+
                 case InstructionKind.LoadVar:
                     {
                         var slot = _basePointer + instruction.SafeGetIntOperand();

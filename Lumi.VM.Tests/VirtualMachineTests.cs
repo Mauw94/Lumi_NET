@@ -429,4 +429,113 @@ public sealed class VirtualMachineTests
         return gen.Generate(new Program { Body = [.. nodes] });
     }
 
+    [TestMethod]
+    public void VM_ArrayIndex_Returns_Correct_Element()
+    {
+        // let items -> [10, 20, 30]; print items[1];
+        var bytecode = Build(
+            new VariableDeclaration
+            {
+                Kind = "let",
+                Declarations =
+                [
+                    new VariableDeclarator
+                    {
+                        VarName = new IdentifierNode { Name = "items" },
+                        Init = new ArrayLiteral
+                        {
+                            Elements =
+                            [
+                                new NumberNode { Value = 10.0 },
+                                new NumberNode { Value = 20.0 },
+                                new NumberNode { Value = 30.0 }
+                            ]
+                        }
+                    }
+                ]
+            },
+            new PrintStatement
+            {
+                Argument = new IndexExpression
+                {
+                    Object = new IdentifierNode { Name = "items" },
+                    Index = new NumberNode { Value = 1.0 }
+                }
+            }
+        );
+
+        var output = CaptureOutput(() => new VirtualMachine().Execute(bytecode));
+
+        Assert.AreEqual("20", output);
+    }
+
+    [TestMethod]
+    public void VM_ArrayIndex_OutOfBounds_Throws()
+    {
+        // let x -> [1, 2]; x[5]
+        var bytecode = Build(
+            new VariableDeclaration
+            {
+                Kind = "let",
+                Declarations =
+                [
+                    new VariableDeclarator
+                    {
+                        VarName = new IdentifierNode { Name = "x" },
+                        Init = new ArrayLiteral
+                        {
+                            Elements = [new NumberNode { Value = 1.0 }, new NumberNode { Value = 2.0 }]
+                        }
+                    }
+                ]
+            },
+            new ExpressionStatement
+            {
+                Expression = new IndexExpression
+                {
+                    Object = new IdentifierNode { Name = "x" },
+                    Index = new NumberNode { Value = 5.0 }
+                }
+            }
+        );
+
+        var threw = false;
+        try { new VirtualMachine().Execute(bytecode); }
+        catch { threw = true; }
+        Assert.IsTrue(threw, "Expected an exception for out-of-bounds index");
+    }
+
+    [TestMethod]
+    public void VM_ArrayIndex_OnNonArray_Throws()
+    {
+        // let x -> 42; x[0]
+        var bytecode = Build(
+            new VariableDeclaration
+            {
+                Kind = "let",
+                Declarations =
+                [
+                    new VariableDeclarator
+                    {
+                        VarName = new IdentifierNode { Name = "x" },
+                        Init = new NumberNode { Value = 42.0 }
+                    }
+                ]
+            },
+            new ExpressionStatement
+            {
+                Expression = new IndexExpression
+                {
+                    Object = new IdentifierNode { Name = "x" },
+                    Index = new NumberNode { Value = 0.0 }
+                }
+            }
+        );
+
+        var threw = false;
+        try { new VirtualMachine().Execute(bytecode); }
+        catch { threw = true; }
+        Assert.IsTrue(threw, "Expected an exception when indexing a non-array value");
+    }
+
 }

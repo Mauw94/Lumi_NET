@@ -121,6 +121,12 @@ public class ArrayLiteral : Node
     public List<Node> Elements { get; set; } = [];
 }
 
+public class IndexExpression : Node
+{
+    public required Node Object { get; set; }
+    public required Node Index { get; set; }
+}
+
 public class IdentifierNode : Node
 {
     public string Name { get; set; } = string.Empty;

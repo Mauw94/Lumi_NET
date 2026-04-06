@@ -50,4 +50,5 @@ public readonly struct Instruction
     public static Instruction Jump(int operand) => new(InstructionKind.Jump, operand);
     public static Instruction CallFn(string functionName) => new(InstructionKind.CallFn, functionName);
     public static Instruction MakeArray(int elementCount) => new(InstructionKind.MakeArray, elementCount);
+    public static Instruction IndexArray() => new(InstructionKind.IndexArray);
 }

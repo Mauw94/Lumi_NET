@@ -603,6 +603,19 @@ public sealed class Parser
                 continue;
             }
 
+            if (Check(TokenKind.LeftBracket))
+            {
+                Advance();
+                var index = ParseExpression();
+                Expect(TokenKind.RightBracket);
+
+                var span = CreateSpanFromTokens();
+
+                expr = new IndexExpression { Object = expr, Index = index, Span = span };
+
+                continue;
+            }
+
             break;
         }
 

@@ -96,6 +96,11 @@ public sealed class SemanticAnalyzer
                 VisitArrayLiteral(arrayLiteral);
                 break;
 
+            case IndexExpression indexExpr:
+                Visit(indexExpr.Object);
+                Visit(indexExpr.Index);
+                break;
+
             // Literal nodes require no semantic analysis
             case NumberNode:
             case StringNode:

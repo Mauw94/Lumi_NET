@@ -105,6 +105,12 @@ public sealed class BytecodeGenerator
                 VisitArrayLiteral(arrayLiteral);
                 break;
 
+            case IndexExpression indexExpression:
+                Visit(indexExpression.Object);
+                Visit(indexExpression.Index);
+                Emit(Instruction.IndexArray());
+                break;
+
             case ExpressionStatement expressionStatement:
                 Visit(expressionStatement.Expression);
                 break;

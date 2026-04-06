@@ -168,6 +168,62 @@ public sealed class ParserTests
         Assert.IsInstanceOfType<BinaryExpression>(ifStatement.Expr);
     }
 
+    [TestMethod]
+    public void Test_Parsing_Array_Index_Simple()
+    {
+        // let x -> [1,2,3]; print x[1];
+        var source = "let x -> [1,2,3]; print x[1];";
+        var program = ParseProgram(source);
+
+        Assert.HasCount(2, program.Body);
+        var printStmt = (PrintStatement)program.Body[1];
+
+        Assert.IsInstanceOfType<IndexExpression>(printStmt.Argument);
+        var indexExpr = (IndexExpression)printStmt.Argument;
+
+        Assert.IsInstanceOfType<IdentifierNode>(indexExpr.Object);
+        Assert.AreEqual("x", ((IdentifierNode)indexExpr.Object).Name);
+        Assert.IsInstanceOfType<NumberNode>(indexExpr.Index);
+        Assert.AreEqual(1, ((NumberNode)indexExpr.Index).Value);
+    }
+
+    [TestMethod]
+    public void Test_Parsing_Array_Index_With_Expression()
+    {
+        // let x -> [1,2,3]; print x[1 + 1];
+        var source = "let x -> [1,2,3]; print x[1 + 1];";
+        var program = ParseProgram(source);
+
+        Assert.HasCount(2, program.Body);
+        var printStmt = (PrintStatement)program.Body[1];
+
+        Assert.IsInstanceOfType<IndexExpression>(printStmt.Argument);
+        var indexExpr = (IndexExpression)printStmt.Argument;
+
+        Assert.IsInstanceOfType<IdentifierNode>(indexExpr.Object);
+        Assert.IsInstanceOfType<BinaryExpression>(indexExpr.Index);
+        Assert.AreEqual("+", ((BinaryExpression)indexExpr.Index).Operator);
+    }
+
+    [TestMethod]
+    public void Test_Parsing_Inline_Array_Literal_Index()
+    {
+        // print [10,20,30][0];
+        var source = "print [10,20,30][0];";
+        var program = ParseProgram(source);
+
+        Assert.HasCount(1, program.Body);
+        var printStmt = (PrintStatement)program.Body[0];
+
+        Assert.IsInstanceOfType<IndexExpression>(printStmt.Argument);
+        var indexExpr = (IndexExpression)printStmt.Argument;
+
+        Assert.IsInstanceOfType<ArrayLiteral>(indexExpr.Object);
+        Assert.HasCount(3, ((ArrayLiteral)indexExpr.Object).Elements);
+        Assert.IsInstanceOfType<NumberNode>(indexExpr.Index);
+        Assert.AreEqual(0, ((NumberNode)indexExpr.Index).Value);
+    }
+
     private static Program ParseProgram(string source)
     {
         var parser = new Parser(source);

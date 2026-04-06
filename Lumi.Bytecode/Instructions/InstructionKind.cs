@@ -36,6 +36,7 @@ public enum InstructionKind
     LoadVar,
     StoreVar,
     MakeArray,
+    IndexArray,
     Print,
     Nop,
     Halt,

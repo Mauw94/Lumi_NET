@@ -657,4 +657,95 @@ public sealed class SemanticAnalyzerTests
         Assert.IsTrue(result.IsValid);
         Assert.IsEmpty(result.Errors);
     }
+
+    [TestMethod]
+    public void Analyze_ArrayIndexExpression_Valid_ReturnsNoErrors()
+    {
+        // let x -> [1, 2, 3]; print x[0];
+        var decl = new VariableDeclaration
+        {
+            Kind = "let",
+            Declarations =
+            [
+                new VariableDeclarator
+                {
+                    VarName = new IdentifierNode { Name = "x" },
+                    Init = new ArrayLiteral
+                    {
+                        Elements = [new NumberNode { Value = 1.0 }, new NumberNode { Value = 2.0 }, new NumberNode { Value = 3.0 }]
+                    }
+                }
+            ]
+        };
+
+        var printStmt = new PrintStatement
+        {
+            Argument = new IndexExpression
+            {
+                Object = new IdentifierNode { Name = "x" },
+                Index = new NumberNode { Value = 0.0 }
+            }
+        };
+
+        var program = new Program { Body = [decl, printStmt] };
+        var result = new SemanticAnalyzer().Analyze(program);
+
+        Assert.IsTrue(result.IsValid);
+        Assert.IsEmpty(result.Errors);
+    }
+
+    [TestMethod]
+    public void Analyze_ArrayIndexExpression_UndefinedObject_ReturnsError()
+    {
+        // print y[0]; (y is undefined)
+        var printStmt = new PrintStatement
+        {
+            Argument = new IndexExpression
+            {
+                Object = new IdentifierNode { Name = "y" },
+                Index = new NumberNode { Value = 0.0 }
+            }
+        };
+
+        var program = new Program { Body = [printStmt] };
+        var result = new SemanticAnalyzer().Analyze(program);
+
+        Assert.IsFalse(result.IsValid);
+        Assert.HasCount(1, result.Errors);
+        Assert.Contains("Undefined variable", result.Errors[0].Message);
+    }
+
+    [TestMethod]
+    public void Analyze_ArrayIndexExpression_UndefinedVariableInIndex_ReturnsError()
+    {
+        // let x -> [1, 2, 3]; print x[n]; (n is undefined)
+        var decl = new VariableDeclaration
+        {
+            Kind = "let",
+            Declarations =
+            [
+                new VariableDeclarator
+                {
+                    VarName = new IdentifierNode { Name = "x" },
+                    Init = new ArrayLiteral { Elements = [new NumberNode { Value = 1.0 }] }
+                }
+            ]
+        };
+
+        var printStmt = new PrintStatement
+        {
+            Argument = new IndexExpression
+            {
+                Object = new IdentifierNode { Name = "x" },
+                Index = new IdentifierNode { Name = "n" }
+            }
+        };
+
+        var program = new Program { Body = [decl, printStmt] };
+        var result = new SemanticAnalyzer().Analyze(program);
+
+        Assert.IsFalse(result.IsValid);
+        Assert.HasCount(1, result.Errors);
+        Assert.Contains("Undefined variable", result.Errors[0].Message);
+    }
 }
