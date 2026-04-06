@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Lumi.AST\Lumi.AST.csproj" />
+    <ProjectReference Include="..\Lumi.Language\Lumi.Language.csproj" />
   </ItemGroup>
 
 </Project>

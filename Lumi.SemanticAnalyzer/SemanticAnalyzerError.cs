@@ -27,4 +27,8 @@ public sealed class SemanticAnalyzerError(string message) : Exception(message)
         => new("Invalid function call. Expected a function name (identifier)");
     public static SemanticAnalyzerError ArgumentCountMismatch(string functionName, int expected, int actual)
         => new($"Function '{functionName}' expects {expected} argument(s) but was called with {actual}");
+    public static SemanticAnalyzerError FunctionNameIsKeyword(string name)
+        => new($"Function name '{name}' is a reserved keyword");
+    public static SemanticAnalyzerError VarNameIsKeyword(string name)
+        => new($"Variable name '{name}' is a reserved keyword");
 }

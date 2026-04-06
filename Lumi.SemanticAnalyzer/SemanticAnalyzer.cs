@@ -1,4 +1,5 @@
 using Lumi.AST;
+using Lumi.Language;
 
 namespace Lumi.SemanticAnalyzer;
 
@@ -134,6 +135,9 @@ public sealed class SemanticAnalyzer
             if (declarator.VarName is not IdentifierNode varName)
                 throw SemanticAnalyzerError.InvalidAssignmentTarget();
 
+            if (KeywordCatalog.Contains(varName.Name))
+                throw SemanticAnalyzerError.VarNameIsKeyword(varName.Name);
+
             var isReadOnly = varDecl.Kind == "const";
             var inferred = TypeKind.Unknown;
 
@@ -240,10 +244,11 @@ public sealed class SemanticAnalyzer
 
     private void VisitFunctionDeclaration(FunctionDeclaration funcDecl)
     {
-        // TODO: check if function names are no reserved keywords?
-
         if (funcDecl.Id is not IdentifierNode functionName)
             throw SemanticAnalyzerError.InvalidFunctionDeclaration();
+
+        if (KeywordCatalog.Contains(functionName.Name))
+            throw SemanticAnalyzerError.FunctionNameIsKeyword(functionName.Name);
 
         // Function is already registered by VisitProgram's first pass,
         // so we only need to analyze the body here.
