@@ -4,6 +4,7 @@ using Lumi.Parser;
 using Lumi.SemanticAnalyzer;
 using Lumi.VM;
 
+// TODO: this needs to be split into two separate projects
 while (true)
 {
     Console.WriteLine("Execute S or R? (script/repl)");
@@ -26,7 +27,7 @@ while (true)
 
 static async Task<string> LoadScript(string scriptName)
 {
-    var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", ".."));
+    var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "Examples"));
     var path = Path.Combine(root, scriptName + ".lumi");
 
     if (!File.Exists(path)) throw new FileNotFoundException($"Script not found: {path}", path);

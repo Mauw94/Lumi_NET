@@ -10,25 +10,13 @@
     <Project Path="Lumi.Bytecode/Lumi.Bytecode.csproj" />
   </Folder>
   <Folder Name="/Docs/">
-    <File Path="README.md" />
-    <File Path="ROADMAP.md" />
+    <File Path="Docs/README.md" />
+    <File Path="Docs/ROADMAP.md" />
   </Folder>
-  <Folder Name="/Docs/Scripts/">
-    <File Path="fib.lumi" />
-    <File Path="fn1.lumi" />
-    <File Path="fn2.lumi" />
-    <File Path="fn3.lumi" />
-    <File Path="fn4.lumi" />
-    <File Path="for1.lumi" />
-    <File Path="for2.lumi" />
-    <File Path="for3.lumi" />
-    <File Path="if.lumi" />
-    <File Path="list1.lumi" />
-  </Folder>
-  <Folder Name="/Engine/">
-    <Project Path="Lumi.Engine.Tests/Lumi.Engine.Tests.csproj" Id="a73834e7-2885-4baf-ab46-ebdcf7f6261b" />
-    <Project Path="Lumi.Engine/Lumi.Engine.csproj" Id="a3a41d6f-a471-4f9c-abf5-944e9ba6c766" />
-  </Folder>
+   <Folder Name="/Engine/">
+     <Project Path="Lumi.Engine.Tests/Lumi.Engine.Tests.csproj" Id="a73834e7-2885-4baf-ab46-ebdcf7f6261b" />
+     <Project Path="Lumi.Engine/Lumi.Engine.csproj" Id="a3a41d6f-a471-4f9c-abf5-944e9ba6c766" />
+   </Folder>
   <Folder Name="/Lexer/">
     <Project Path="Lumi.Lexer.Tests/Lumi.Lexer.Tests.csproj" />
     <Project Path="Lumi.Lexer/Lumi.Lexer.csproj" />
