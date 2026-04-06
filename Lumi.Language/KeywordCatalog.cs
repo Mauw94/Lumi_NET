@@ -18,7 +18,7 @@ public static class KeywordCatalog
         "private", "protected", "public", "implements", "abstract", "bool", "byte",
         "char", "double", "final", "float", "goto", "int", "long", "str",
         "native", "short", "synchronized", "throws", "transient", "volatile", "to",
-        "step", "print"
+        "step", "print", "list"
     }.ToFrozenSet(StringComparer.Ordinal);
 
     public static IReadOnlySet<string> All => _all;

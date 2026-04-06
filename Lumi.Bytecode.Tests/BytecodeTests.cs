@@ -154,6 +154,37 @@ public sealed class BytecodeTests
     }
 
     [TestMethod]
+    public void Test_VariableDeclaration_WithListType()
+    {
+        // Build AST: let items: list
+        var decl = new VariableDeclaration
+        {
+            Kind = "let",
+            Declarations =
+            [
+                new VariableDeclarator
+                {
+                    VarName = new IdentifierNode { Name = "items" },
+                    VarType = new IdentifierNode { Name = "list" }
+                }
+            ]
+        };
+
+        var program = new Program { Body = [decl] };
+
+        var gen = new BytecodeGenerator();
+        var result = gen.Generate(program);
+
+        Assert.HasCount(0, result.Instructions);
+        Assert.HasCount(0, result.Constants);
+
+        var local = result.Locals.Single();
+        Assert.AreEqual("items", local.Name);
+        Assert.AreEqual(LocalKind.Let, local.Kind);
+        Assert.AreEqual(VarType.List, local.Type);
+    }
+
+    [TestMethod]
     public void Test_String_Constant()
     {
         // Build AST: "hello"

@@ -23,6 +23,7 @@
     <File Path="for2.lumi" />
     <File Path="for3.lumi" />
     <File Path="if.lumi" />
+    <File Path="list1.lumi" />
   </Folder>
   <Folder Name="/Engine/">
     <Project Path="Lumi.Engine.Tests/Lumi.Engine.Tests.csproj" Id="a73834e7-2885-4baf-ab46-ebdcf7f6261b" />

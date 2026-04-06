@@ -619,4 +619,42 @@ public sealed class SemanticAnalyzerTests
         Assert.HasCount(1, result.Errors);
         Assert.Contains("expects 0 argument(s) but was called with 1", result.Errors[0].Message);
     }
+
+    [TestMethod]
+    public void Analyze_ListLiteralDeclaration_ReturnsNoErrors()
+    {
+        var program = new Program
+        {
+            Body =
+            [
+                new VariableDeclaration
+                {
+                    Kind = "let",
+                    Declarations =
+                    [
+                        new VariableDeclarator
+                        {
+                            VarName = new IdentifierNode { Name = "items" },
+                            VarType = new IdentifierNode { Name = "list" },
+                            Init = new ArrayLiteral
+                            {
+                                Elements =
+                                [
+                                    new NumberNode { Value = 1.0 },
+                                    new NumberNode { Value = 2.0 },
+                                    new NumberNode { Value = 3.0 }
+                                ]
+                            }
+                        }
+                    ]
+                },
+                new PrintStatement { Argument = new IdentifierNode { Name = "items" } }
+            ]
+        };
+
+        var result = new SemanticAnalyzer().Analyze(program);
+
+        Assert.IsTrue(result.IsValid);
+        Assert.IsEmpty(result.Errors);
+    }
 }

@@ -92,6 +92,10 @@ public sealed class SemanticAnalyzer
                 VisitUnaryExpression(unaryExpr);
                 break;
 
+            case ArrayLiteral arrayLiteral:
+                VisitArrayLiteral(arrayLiteral);
+                break;
+
             // Literal nodes require no semantic analysis
             case NumberNode:
             case StringNode:
@@ -242,6 +246,14 @@ public sealed class SemanticAnalyzer
         Visit(unaryExpr.Argument);
     }
 
+    private void VisitArrayLiteral(ArrayLiteral arrayLiteral)
+    {
+        foreach (var element in arrayLiteral.Elements)
+        {
+            Visit(element);
+        }
+    }
+
     private void VisitFunctionDeclaration(FunctionDeclaration funcDecl)
     {
         if (funcDecl.Id is not IdentifierNode functionName)
@@ -303,6 +315,7 @@ public sealed class SemanticAnalyzer
             NumberNode => TypeKind.Number,
             StringNode => TypeKind.String,
             BooleanNode => TypeKind.Boolean,
+            ArrayLiteral => TypeKind.Array,
             BinaryExpression => TypeKind.Number, // Simplified: assume arithmetic results in numbers
             _ => TypeKind.Unknown
         };

@@ -33,4 +33,6 @@ internal sealed class VirtualMachineError(string message) : Exception(message)
     internal static VirtualMachineError InvalidFunctionCall(string message) => new($"Invalid function call: {message}");
 
     internal static VirtualMachineError ReturnWithoutCall() => new("Return instruction executed without a corresponding function call.");
+
+    internal static VirtualMachineError InvalidArrayElementCount(int count) => new($"Array element count cannot be negative: {count}.");
 }
