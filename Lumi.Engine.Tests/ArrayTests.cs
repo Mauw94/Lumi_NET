@@ -1,0 +1,76 @@
+using Lumi.AST;
+using Lumi.Bytecode;
+using Lumi.VM;
+
+namespace Lumi.Engine.Tests;
+
+/// <summary>
+/// End-to-end tests for array indexing through the full pipeline: Lexer → Parser → SemanticAnalyzer → Bytecode → VM.
+/// </summary>
+[TestClass]
+[DoNotParallelize]
+public sealed class ArrayTests
+{
+    [TestMethod]
+    public void Test_Array_Index_Print_First_Element()
+    {
+        var source = "let x -> [1, 2, 3]; print x[0];";
+
+        var output = ExecuteAndCapture(source);
+
+        Assert.AreEqual("1", output.Trim());
+    }
+
+    [TestMethod]
+    public void Test_Array_Index_Print_Middle_Element()
+    {
+        var source = "let x -> [10, 20, 30]; print x[1];";
+
+        var output = ExecuteAndCapture(source);
+
+        Assert.AreEqual("20", output.Trim());
+    }
+
+    [TestMethod]
+    public void Test_Array_Index_Variable_As_Index()
+    {
+        var source = "let x -> [10, 20, 30]; let i -> 2; print x[i];";
+
+        var output = ExecuteAndCapture(source);
+
+        Assert.AreEqual("30", output.Trim());
+    }
+
+    private static string ExecuteAndCapture(string source)
+    {
+        var originalOut = Console.Out;
+        try
+        {
+            using var writer = new StringWriter();
+            Console.SetOut(writer);
+
+            var parser = new Lumi.Parser.Parser(source);
+            var ast = parser.Parse();
+
+            if (parser.HasErrors)
+                return $"Parse errors: {string.Join(", ", parser.Errors)}";
+
+            if (ast is Program program)
+            {
+                var semanticAnalyzer = new Lumi.SemanticAnalyzer.SemanticAnalyzer();
+                var analysisResult = semanticAnalyzer.Analyze(program);
+                if (!analysisResult.IsValid)
+                    return $"Semantic errors: {string.Join(", ", analysisResult.Errors.Select(e => e.Message))}";
+            }
+
+            var bytecodeResult = new BytecodeGenerator().Generate(ast);
+            new VirtualMachine().Execute(bytecodeResult);
+
+            return writer.ToString();
+        }
+        finally
+        {
+            Console.SetOut(originalOut);
+        }
+    }
+}

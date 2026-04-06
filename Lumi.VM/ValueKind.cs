@@ -8,6 +8,7 @@ internal enum ValueKind
     Number,
     String,
     Boolean,
+    Array,
     Function,
     Null,
     Undefined

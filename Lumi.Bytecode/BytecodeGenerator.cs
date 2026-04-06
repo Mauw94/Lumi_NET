@@ -101,6 +101,16 @@ public sealed class BytecodeGenerator
                 Emit(Instruction.PushConst(AddConstant(Constant.FromString(str.Value))));
                 break;
 
+            case ArrayLiteral arrayLiteral:
+                VisitArrayLiteral(arrayLiteral);
+                break;
+
+            case IndexExpression indexExpression:
+                Visit(indexExpression.Object);
+                Visit(indexExpression.Index);
+                Emit(Instruction.IndexArray());
+                break;
+
             case ExpressionStatement expressionStatement:
                 Visit(expressionStatement.Expression);
                 break;
@@ -255,6 +265,16 @@ public sealed class BytecodeGenerator
         }
 
         _locals.ExitScope();
+    }
+
+    private void VisitArrayLiteral(ArrayLiteral arrayLiteral)
+    {
+        foreach (var element in arrayLiteral.Elements)
+        {
+            Visit(element);
+        }
+
+        Emit(Instruction.MakeArray(arrayLiteral.Elements.Count));
     }
 
     private void VisitVariableDeclaration(VariableDeclaration variableDeclaration)

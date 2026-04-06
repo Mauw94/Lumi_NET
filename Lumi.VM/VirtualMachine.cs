@@ -99,9 +99,40 @@ public sealed class VirtualMachine
                         break;
                     }
 
+                case InstructionKind.MakeArray:
+                    {
+                        var count = instruction.SafeGetIntOperand();
+                        if (count < 0)
+                            throw VirtualMachineError.InvalidArrayElementCount(count);
+
+                        var values = new Value[count];
+                        for (int i = count - 1; i >= 0; i--)
+                        {
+                            values[i] = _stack[--_stackTop];
+                        }
+
+                        _stack[_stackTop++] = Value.FromArray(values);
+                        break;
+                    }
+
+                case InstructionKind.IndexArray:
+                    {
+                        var index = (int)_stack[--_stackTop].Number;
+                        var array = _stack[--_stackTop];
+
+                        if (array.Kind != ValueKind.Array || array.Array is null)
+                            throw VirtualMachineError.IndexTargetNotArray(array.Kind);
+
+                        if (index < 0 || index >= array.Array.Count)
+                            throw VirtualMachineError.IndexOutOfRange(index, array.Array.Count);
+
+                        _stack[_stackTop++] = array.Array[index];
+                        break;
+                    }
+
                 case InstructionKind.LoadVar:
                     {
-                        var slot = _basePointer + instruction.IntOperand.GetValueOrDefault();
+                        var slot = _basePointer + instruction.SafeGetIntOperand();
                         _stack[_stackTop++] = _variables[slot];
                         break;
                     }
@@ -147,13 +178,13 @@ public sealed class VirtualMachine
                     break;
 
                 case InstructionKind.Jump:
-                    _ip = instruction.IntOperand.GetValueOrDefault();
+                    _ip = instruction.SafeGetIntOperand();
                     continue;
 
                 case InstructionKind.JumpIfFalse:
                     if (!_stack[--_stackTop].Bool)
                     {
-                        _ip = instruction.IntOperand.GetValueOrDefault();
+                        _ip = instruction.SafeGetIntOperand();
                         continue;
                     }
                     break;
@@ -161,7 +192,7 @@ public sealed class VirtualMachine
                 case InstructionKind.JumpIfTrue:
                     if (_stack[--_stackTop].Bool)
                     {
-                        _ip = instruction.IntOperand.GetValueOrDefault();
+                        _ip = instruction.SafeGetIntOperand();
                         continue;
                     }
                     break;

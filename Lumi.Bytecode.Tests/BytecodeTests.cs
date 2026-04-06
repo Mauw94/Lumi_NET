@@ -154,6 +154,37 @@ public sealed class BytecodeTests
     }
 
     [TestMethod]
+    public void Test_VariableDeclaration_WithListType()
+    {
+        // Build AST: let items: list
+        var decl = new VariableDeclaration
+        {
+            Kind = "let",
+            Declarations =
+            [
+                new VariableDeclarator
+                {
+                    VarName = new IdentifierNode { Name = "items" },
+                    VarType = new IdentifierNode { Name = "list" }
+                }
+            ]
+        };
+
+        var program = new Program { Body = [decl] };
+
+        var gen = new BytecodeGenerator();
+        var result = gen.Generate(program);
+
+        Assert.HasCount(0, result.Instructions);
+        Assert.HasCount(0, result.Constants);
+
+        var local = result.Locals.Single();
+        Assert.AreEqual("items", local.Name);
+        Assert.AreEqual(LocalKind.Let, local.Kind);
+        Assert.AreEqual(VarType.List, local.Type);
+    }
+
+    [TestMethod]
     public void Test_String_Constant()
     {
         // Build AST: "hello"
@@ -640,5 +671,143 @@ public sealed class BytecodeTests
                 Body = [new ExpressionStatement { Expression = assignmentExpression }]
             })
         );
+    }
+
+    [TestMethod]
+    public void Test_ArrayIndex_EmitsCorrectInstructions()
+    {
+        // let x -> [1, 2]; x[0]
+        // Expected bytecode:
+        //   0: PushConst 1
+        //   1: PushConst 2
+        //   2: MakeArray 2
+        //   3: StoreVar 0       (x)
+        //   4: LoadVar 0        (x)
+        //   5: PushConst 0      (index)
+        //   6: IndexArray
+        var decl = new VariableDeclaration
+        {
+            Kind = "let",
+            Declarations =
+            [
+                new VariableDeclarator
+                {
+                    VarName = new IdentifierNode { Name = "x" },
+                    Init = new ArrayLiteral
+                    {
+                        Elements = [new NumberNode { Value = 1.0 }, new NumberNode { Value = 2.0 }]
+                    }
+                }
+            ]
+        };
+
+        var indexExpr = new IndexExpression
+        {
+            Object = new IdentifierNode { Name = "x" },
+            Index = new NumberNode { Value = 0.0 }
+        };
+
+        var result = new BytecodeGenerator().Generate(new Program
+        {
+            Body = [decl, new ExpressionStatement { Expression = indexExpr }]
+        });
+
+        Assert.AreEqual(InstructionKind.MakeArray, result.Instructions[2].Kind);
+        Assert.AreEqual(2, result.Instructions[2].SafeGetIntOperand());
+        Assert.AreEqual(InstructionKind.StoreVar, result.Instructions[3].Kind);
+        Assert.AreEqual(InstructionKind.LoadVar, result.Instructions[4].Kind);
+        Assert.AreEqual(InstructionKind.PushConst, result.Instructions[5].Kind);
+        Assert.AreEqual(InstructionKind.IndexArray, result.Instructions[6].Kind);
+    }
+
+    [TestMethod]
+    public void Test_ArrayIndex_InlineArrayLiteral_EmitsCorrectInstructions()
+    {
+        // [10, 20, 30][1]
+        // Expected bytecode:
+        //   0: PushConst 10
+        //   1: PushConst 20
+        //   2: PushConst 30
+        //   3: MakeArray 3
+        //   4: PushConst 1      (index)
+        //   5: IndexArray
+        var indexExpr = new IndexExpression
+        {
+            Object = new ArrayLiteral
+            {
+                Elements =
+                [
+                    new NumberNode { Value = 10.0 },
+                    new NumberNode { Value = 20.0 },
+                    new NumberNode { Value = 30.0 }
+                ]
+            },
+            Index = new NumberNode { Value = 1.0 }
+        };
+
+        var result = new BytecodeGenerator().Generate(new Program
+        {
+            Body = [new ExpressionStatement { Expression = indexExpr }]
+        });
+
+        Assert.HasCount(6, result.Instructions);
+        Assert.AreEqual(InstructionKind.MakeArray, result.Instructions[3].Kind);
+        Assert.AreEqual(3, result.Instructions[3].SafeGetIntOperand());
+        Assert.AreEqual(InstructionKind.PushConst, result.Instructions[4].Kind);
+        Assert.AreEqual(InstructionKind.IndexArray, result.Instructions[5].Kind);
+    }
+
+    [TestMethod]
+    public void Test_ArrayIndex_WithBinaryExpressionIndex_EmitsCorrectInstructions()
+    {
+        // let x -> [1, 2, 3]; x[1 + 1]
+        // Index expression should emit: LoadVar(x), PushConst(1), PushConst(1), Add, IndexArray
+        var decl = new VariableDeclaration
+        {
+            Kind = "let",
+            Declarations =
+            [
+                new VariableDeclarator
+                {
+                    VarName = new IdentifierNode { Name = "x" },
+                    Init = new ArrayLiteral
+                    {
+                        Elements =
+                        [
+                            new NumberNode { Value = 1.0 },
+                            new NumberNode { Value = 2.0 },
+                            new NumberNode { Value = 3.0 }
+                        ]
+                    }
+                }
+            ]
+        };
+
+        var indexExpr = new IndexExpression
+        {
+            Object = new IdentifierNode { Name = "x" },
+            Index = new BinaryExpression
+            {
+                Left = new NumberNode { Value = 1.0 },
+                Operator = "+",
+                Right = new NumberNode { Value = 1.0 }
+            }
+        };
+
+        var result = new BytecodeGenerator().Generate(new Program
+        {
+            Body = [decl, new ExpressionStatement { Expression = indexExpr }]
+        });
+
+        // After StoreVar(x): LoadVar(x), PushConst(1), PushConst(1), Add, IndexArray
+        var loadVarIdx = result.Instructions
+            .Select((ins, i) => (ins, i))
+            .Last(t => t.ins.Kind == InstructionKind.StoreVar).i + 1;
+
+        Assert.AreEqual(InstructionKind.LoadVar, result.Instructions[loadVarIdx].Kind);
+        Assert.AreEqual(InstructionKind.PushConst, result.Instructions[loadVarIdx + 1].Kind);
+        Assert.AreEqual(InstructionKind.PushConst, result.Instructions[loadVarIdx + 2].Kind);
+        Assert.AreEqual(InstructionKind.Add, result.Instructions[loadVarIdx + 3].Kind);
+        Assert.AreEqual(InstructionKind.IndexArray, result.Instructions[loadVarIdx + 4].Kind);
     }
 }

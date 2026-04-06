@@ -4,6 +4,7 @@ using Lumi.Parser;
 using Lumi.SemanticAnalyzer;
 using Lumi.VM;
 
+// TODO: this needs to be split into two separate projects
 while (true)
 {
     Console.WriteLine("Execute S or R? (script/repl)");
@@ -26,7 +27,7 @@ while (true)
 
 static async Task<string> LoadScript(string scriptName)
 {
-    var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", ".."));
+    var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "Examples"));
     var path = Path.Combine(root, scriptName + ".lumi");
 
     if (!File.Exists(path)) throw new FileNotFoundException($"Script not found: {path}", path);
@@ -36,6 +37,10 @@ static async Task<string> LoadScript(string scriptName)
 
 static void ExecuteScript(string source)
 {
+    var vm = new VirtualMachine();
+    var bytecodeGenerator = new BytecodeGenerator();
+    var semanticAnalyzer = new SemanticAnalyzer();
+
     Console.Clear();
     try
     {
@@ -44,8 +49,8 @@ static void ExecuteScript(string source)
         var ast = parser.Parse();
 
         PrintParseErrors(parser);
-        SemanticAnalysis(ast);
-        ExecuteBytecode(ast);
+        SemanticAnalysis(semanticAnalyzer, ast);
+        ExecuteBytecode(vm, bytecodeGenerator, ast);
     }
     catch (Exception ex)
     {
@@ -55,6 +60,10 @@ static void ExecuteScript(string source)
 
 static void Repl()
 {
+    var vm = new VirtualMachine();
+    var bytecodeGenerator = new BytecodeGenerator();
+    var semanticAnalyzer = new SemanticAnalyzer();
+
     while (true)
     {
         Console.Write("> ");
@@ -68,8 +77,8 @@ static void Repl()
             var ast = parser.Parse();
 
             PrintParseErrors(parser);
-            SemanticAnalysis(ast);
-            ExecuteBytecode(ast);
+            SemanticAnalysis(semanticAnalyzer, ast);
+            ExecuteBytecode(vm, bytecodeGenerator, ast);
         }
         catch (Exception ex)
         {
@@ -91,10 +100,8 @@ static void PrintParseErrors(Parser parser)
     }
 }
 
-static void SemanticAnalysis(Node? ast)
+static void SemanticAnalysis(SemanticAnalyzer semanticAnalyzer, Node? ast)
 {
-    var semanticAnalyzer = new SemanticAnalyzer();
-
     if (ast is Lumi.AST.Program program)
     {
         var analysisResult = semanticAnalyzer.Analyze(program);
@@ -108,7 +115,7 @@ static void SemanticAnalysis(Node? ast)
     }
 }
 
-static void ExecuteBytecode(Node? ast)
+static void ExecuteBytecode(VirtualMachine vm, BytecodeGenerator bytecodeGenerator, Node? ast)
 {
     if (ast == null)
     {
@@ -116,6 +123,5 @@ static void ExecuteBytecode(Node? ast)
         return;
     }
 
-    var vm = new VirtualMachine();
-    vm.Execute(new BytecodeGenerator().Generate(ast));
+    vm.Execute(bytecodeGenerator.Generate(ast));
 }

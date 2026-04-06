@@ -15,6 +15,7 @@ public enum VarType
     Char,
     Long,
     Short,
+    List,
 }
 
 internal static class VarTypeExtensions
@@ -34,6 +35,7 @@ internal static class VarTypeExtensions
         "char" => VarType.Char,
         "long" => VarType.Long,
         "short" => VarType.Short,
+        "list" => VarType.List,
         _ => VarType.Unknown,
     };
 }

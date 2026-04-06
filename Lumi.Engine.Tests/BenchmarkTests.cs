@@ -97,6 +97,18 @@ public sealed class BenchmarkTests
     }
 
     [TestMethod]
+    public void Test_Array_And_Indexing()
+    {
+        // Arrange
+        var source = "let arr -> [10, 20, 30, 40, 50]; print arr[3];";
+
+        // Act + Benchmark
+        const int iterations = 1000;
+        Warmup(source);
+        CollectBenchmarkData(iterations, source);
+    }
+
+    [TestMethod]
     public void Test_Store_100_Variables_Phases()
     {
         var source = string.Join(" ", Enumerable.Range(1, 100).Select(i => $"let x{i} -> {i};"));

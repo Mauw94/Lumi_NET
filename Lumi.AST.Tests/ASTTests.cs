@@ -897,6 +897,72 @@ public sealed class ASTTests
 
     #endregion
 
+    #region IndexExpression Tests
+
+    [TestMethod]
+    public void Test_IndexExpression_Creation()
+    {
+        // Arrange & Act
+        var expr = new IndexExpression
+        {
+            Object = new IdentifierNode { Name = "x" },
+            Index = new NumberNode { Value = 1 }
+        };
+
+        // Assert
+        Assert.IsInstanceOfType<IdentifierNode>(expr.Object);
+        Assert.AreEqual("x", ((IdentifierNode)expr.Object).Name);
+        Assert.IsInstanceOfType<NumberNode>(expr.Index);
+        Assert.AreEqual(1, ((NumberNode)expr.Index).Value);
+    }
+
+    [TestMethod]
+    public void Test_IndexExpression_With_ArrayLiteral_Object()
+    {
+        // Arrange & Act: [10, 20, 30][2]
+        var expr = new IndexExpression
+        {
+            Object = new ArrayLiteral
+            {
+                Elements =
+                [
+                    new NumberNode { Value = 10 },
+                    new NumberNode { Value = 20 },
+                    new NumberNode { Value = 30 }
+                ]
+            },
+            Index = new NumberNode { Value = 2 }
+        };
+
+        // Assert
+        Assert.IsInstanceOfType<ArrayLiteral>(expr.Object);
+        Assert.HasCount(3, ((ArrayLiteral)expr.Object).Elements);
+        Assert.AreEqual(2, ((NumberNode)expr.Index).Value);
+    }
+
+    [TestMethod]
+    public void Test_IndexExpression_With_Expression_Index()
+    {
+        // Arrange & Act: x[i + 1]
+        var expr = new IndexExpression
+        {
+            Object = new IdentifierNode { Name = "x" },
+            Index = new BinaryExpression
+            {
+                Left = new IdentifierNode { Name = "i" },
+                Operator = "+",
+                Right = new NumberNode { Value = 1 }
+            }
+        };
+
+        // Assert
+        Assert.IsInstanceOfType<IdentifierNode>(expr.Object);
+        Assert.IsInstanceOfType<BinaryExpression>(expr.Index);
+        Assert.AreEqual("+", ((BinaryExpression)expr.Index).Operator);
+    }
+
+    #endregion
+
     #region Node Span Tests
 
     [TestMethod]

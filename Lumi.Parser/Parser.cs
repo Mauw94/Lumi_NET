@@ -603,6 +603,19 @@ public sealed class Parser
                 continue;
             }
 
+            if (Check(TokenKind.LeftBracket))
+            {
+                Advance();
+                var index = ParseExpression();
+                Expect(TokenKind.RightBracket);
+
+                var span = CreateSpanFromTokens();
+
+                expr = new IndexExpression { Object = expr, Index = index, Span = span };
+
+                continue;
+            }
+
             break;
         }
 
@@ -644,6 +657,9 @@ public sealed class Parser
 
         switch (tok.Kind)
         {
+            case TokenKind.LeftBracket:
+                return ParseArrayLiteral();
+
             case TokenKind.Number:
                 var value = tok.Number ?? 0.0;
                 Advance();
@@ -677,6 +693,31 @@ public sealed class Parser
         }
     }
 
+    private Node ParseArrayLiteral()
+    {
+        Expect(TokenKind.LeftBracket);
+
+        var elements = new List<Node>();
+        while (!Check(TokenKind.RightBracket) && !IsEof())
+        {
+            elements.Add(ParseExpression());
+
+            if (Check(TokenKind.Comma))
+            {
+                Advance();
+                continue;
+            }
+
+            if (!Check(TokenKind.RightBracket))
+                throw ParserError.UnexpectedToken(CurrentToken(), "Expected ',' or ']' in array literal");
+        }
+
+        Expect(TokenKind.RightBracket);
+
+        var span = CreateSpanFromTokens();
+        return new ArrayLiteral { Elements = elements, Span = span };
+    }
+
     private Node? TryParseIdentifierType
     {
         get
@@ -690,6 +731,15 @@ public sealed class Parser
 
                     return new IdentifierNode { Name = kw };
                 }
+
+                if (current != null && IsIdentifier(current, out var id))
+                {
+                    Advance();
+
+                    return new IdentifierNode { Name = id };
+                }
+
+                throw ParserError.UnexpectedToken(CurrentToken(), "Expected a type name after ':'");
             }
 
             return null;

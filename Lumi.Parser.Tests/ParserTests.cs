@@ -87,6 +87,44 @@ public sealed class ParserTests
     }
 
     [TestMethod]
+    public void Test_Parsing_List_Declaration_Without_Explicit_Type()
+    {
+        var source = "let x -> [1, 2, 3];";
+        var program = ParseProgram(source);
+
+        Assert.HasCount(1, program.Body);
+        Assert.IsInstanceOfType<VariableDeclaration>(program.Body[0]);
+
+        var declarator = ((VariableDeclaration)program.Body[0]).Declarations[0];
+        Assert.IsNull(declarator.VarType);
+        Assert.IsInstanceOfType<ArrayLiteral>(declarator.Init);
+
+        var array = (ArrayLiteral)declarator.Init;
+        Assert.HasCount(3, array.Elements);
+        Assert.AreEqual(1, ((NumberNode)array.Elements[0]).Value);
+        Assert.AreEqual(2, ((NumberNode)array.Elements[1]).Value);
+        Assert.AreEqual(3, ((NumberNode)array.Elements[2]).Value);
+    }
+
+    [TestMethod]
+    public void Test_Parsing_List_Declaration_With_Explicit_Type()
+    {
+        var source = "let x: list -> [1,2,3];";
+        var program = ParseProgram(source);
+
+        Assert.HasCount(1, program.Body);
+        Assert.IsInstanceOfType<VariableDeclaration>(program.Body[0]);
+
+        var declarator = ((VariableDeclaration)program.Body[0]).Declarations[0];
+        Assert.IsInstanceOfType<IdentifierNode>(declarator.VarType);
+        Assert.AreEqual("list", ((IdentifierNode)declarator.VarType!).Name);
+
+        Assert.IsInstanceOfType<ArrayLiteral>(declarator.Init);
+        var array = (ArrayLiteral)declarator.Init!;
+        Assert.HasCount(3, array.Elements);
+    }
+
+    [TestMethod]
     public void Test_For_Statement()
     {
         var source = "for i in 0 to 10 { print i; }";
@@ -128,6 +166,62 @@ public sealed class ParserTests
         var ifStatement = (IfStatement)block.Body[0];
 
         Assert.IsInstanceOfType<BinaryExpression>(ifStatement.Expr);
+    }
+
+    [TestMethod]
+    public void Test_Parsing_Array_Index_Simple()
+    {
+        // let x -> [1,2,3]; print x[1];
+        var source = "let x -> [1,2,3]; print x[1];";
+        var program = ParseProgram(source);
+
+        Assert.HasCount(2, program.Body);
+        var printStmt = (PrintStatement)program.Body[1];
+
+        Assert.IsInstanceOfType<IndexExpression>(printStmt.Argument);
+        var indexExpr = (IndexExpression)printStmt.Argument;
+
+        Assert.IsInstanceOfType<IdentifierNode>(indexExpr.Object);
+        Assert.AreEqual("x", ((IdentifierNode)indexExpr.Object).Name);
+        Assert.IsInstanceOfType<NumberNode>(indexExpr.Index);
+        Assert.AreEqual(1, ((NumberNode)indexExpr.Index).Value);
+    }
+
+    [TestMethod]
+    public void Test_Parsing_Array_Index_With_Expression()
+    {
+        // let x -> [1,2,3]; print x[1 + 1];
+        var source = "let x -> [1,2,3]; print x[1 + 1];";
+        var program = ParseProgram(source);
+
+        Assert.HasCount(2, program.Body);
+        var printStmt = (PrintStatement)program.Body[1];
+
+        Assert.IsInstanceOfType<IndexExpression>(printStmt.Argument);
+        var indexExpr = (IndexExpression)printStmt.Argument;
+
+        Assert.IsInstanceOfType<IdentifierNode>(indexExpr.Object);
+        Assert.IsInstanceOfType<BinaryExpression>(indexExpr.Index);
+        Assert.AreEqual("+", ((BinaryExpression)indexExpr.Index).Operator);
+    }
+
+    [TestMethod]
+    public void Test_Parsing_Inline_Array_Literal_Index()
+    {
+        // print [10,20,30][0];
+        var source = "print [10,20,30][0];";
+        var program = ParseProgram(source);
+
+        Assert.HasCount(1, program.Body);
+        var printStmt = (PrintStatement)program.Body[0];
+
+        Assert.IsInstanceOfType<IndexExpression>(printStmt.Argument);
+        var indexExpr = (IndexExpression)printStmt.Argument;
+
+        Assert.IsInstanceOfType<ArrayLiteral>(indexExpr.Object);
+        Assert.HasCount(3, ((ArrayLiteral)indexExpr.Object).Elements);
+        Assert.IsInstanceOfType<NumberNode>(indexExpr.Index);
+        Assert.AreEqual(0, ((NumberNode)indexExpr.Index).Value);
     }
 
     private static Program ParseProgram(string source)

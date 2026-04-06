@@ -11,6 +11,11 @@ public sealed class SemanticAnalyzer
 {
     private readonly ScopeManager _scopes = new();
 
+    public SemanticAnalyzer()
+    {
+        _scopes.EnterScope(); // Global scope
+    }
+
     /// <summary>
     /// Analyzes the given program node and returns a semantic analysis result.
     /// </summary>
@@ -19,8 +24,6 @@ public sealed class SemanticAnalyzer
     public SemanticAnalysisResult Analyze(Program program)
     {
         var errors = new List<SemanticAnalyzerError>();
-
-        _scopes.EnterScope(); // Global scope
 
         try
         {
@@ -31,9 +34,11 @@ public sealed class SemanticAnalyzer
             errors.Add(err);
         }
 
-        _scopes.ExitScope();
-
         return new SemanticAnalysisResult(errors);
+    }
+    public void Dispose()
+    {
+        _scopes.ExitScope();
     }
 
     private void Visit(Node node)
@@ -90,6 +95,15 @@ public sealed class SemanticAnalyzer
 
             case UnaryExpression unaryExpr:
                 VisitUnaryExpression(unaryExpr);
+                break;
+
+            case ArrayLiteral arrayLiteral:
+                VisitArrayLiteral(arrayLiteral);
+                break;
+
+            case IndexExpression indexExpr:
+                Visit(indexExpr.Object);
+                Visit(indexExpr.Index);
                 break;
 
             // Literal nodes require no semantic analysis
@@ -242,6 +256,14 @@ public sealed class SemanticAnalyzer
         Visit(unaryExpr.Argument);
     }
 
+    private void VisitArrayLiteral(ArrayLiteral arrayLiteral)
+    {
+        foreach (var element in arrayLiteral.Elements)
+        {
+            Visit(element);
+        }
+    }
+
     private void VisitFunctionDeclaration(FunctionDeclaration funcDecl)
     {
         if (funcDecl.Id is not IdentifierNode functionName)
@@ -303,6 +325,7 @@ public sealed class SemanticAnalyzer
             NumberNode => TypeKind.Number,
             StringNode => TypeKind.String,
             BooleanNode => TypeKind.Boolean,
+            ArrayLiteral => TypeKind.Array,
             BinaryExpression => TypeKind.Number, // Simplified: assume arithmetic results in numbers
             _ => TypeKind.Unknown
         };
