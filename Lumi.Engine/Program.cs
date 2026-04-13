@@ -1,23 +1,29 @@
-﻿using Lumi.AST;
-using Lumi.Bytecode;
-using Lumi.Parser;
-using Lumi.SemanticAnalyzer;
+﻿using Lumi.Bytecode;
+using Lumi.Engine;
+using SemanticAnalyzerType = Lumi.SemanticAnalyzer.SemanticAnalyzer;
 using Lumi.VM;
 
 // TODO: this needs to be split into two separate projects
+
 while (true)
 {
     Console.WriteLine("Execute S or R? (script/repl)");
     var choice = Console.ReadLine()?.ToLower().Trim();
 
-    switch (choice?.ToLower())
+    switch (choice)
     {
         case "s":
             Console.WriteLine("Enter script name (no extension): ");
             var scriptName = Console.ReadLine()?.ToLower().Trim();
-            if (string.IsNullOrEmpty(scriptName)) break;
+
+            if (string.IsNullOrEmpty(scriptName))
+            {
+                break;
+            }
+
             ExecuteScript(await LoadScript(scriptName));
             break;
+
         case "r":
             Console.WriteLine("Entering REPL mode. Type your code below:");
             Repl();
@@ -30,7 +36,10 @@ static async Task<string> LoadScript(string scriptName)
     var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "Examples"));
     var path = Path.Combine(root, scriptName + ".lumi");
 
-    if (!File.Exists(path)) throw new FileNotFoundException($"Script not found: {path}", path);
+    if (!File.Exists(path))
+    {
+        throw new FileNotFoundException($"Script not found: {path}", path);
+    }
 
     return await File.ReadAllTextAsync(path);
 }
@@ -39,18 +48,14 @@ static void ExecuteScript(string source)
 {
     var vm = new VirtualMachine();
     var bytecodeGenerator = new BytecodeGenerator();
-    var semanticAnalyzer = new SemanticAnalyzer();
+    var semanticAnalyzer = new SemanticAnalyzerType();
 
     Console.Clear();
+
     try
     {
         Console.WriteLine("Result: ");
-        var parser = new Parser(source);
-        var ast = parser.Parse();
-
-        PrintParseErrors(parser);
-        SemanticAnalysis(semanticAnalyzer, ast);
-        ExecuteBytecode(vm, bytecodeGenerator, ast);
+        ExecutionPipeline.TryExecute(source, vm, bytecodeGenerator, semanticAnalyzer, Console.Out);
     }
     catch (Exception ex)
     {
@@ -62,66 +67,25 @@ static void Repl()
 {
     var vm = new VirtualMachine();
     var bytecodeGenerator = new BytecodeGenerator();
-    var semanticAnalyzer = new SemanticAnalyzer();
+    var semanticAnalyzer = new SemanticAnalyzerType();
 
     while (true)
     {
         Console.Write("> ");
         var input = Console.ReadLine();
 
-        if (string.IsNullOrWhiteSpace(input)) continue;
+        if (string.IsNullOrWhiteSpace(input))
+        {
+            continue;
+        }
 
         try
         {
-            var parser = new Parser(input.Trim());
-            var ast = parser.Parse();
-
-            PrintParseErrors(parser);
-            SemanticAnalysis(semanticAnalyzer, ast);
-            ExecuteBytecode(vm, bytecodeGenerator, ast);
+            ExecutionPipeline.TryExecute(input.Trim(), vm, bytecodeGenerator, semanticAnalyzer, Console.Out);
         }
         catch (Exception ex)
         {
             Console.WriteLine(ex.ToString());
         }
     }
-}
-
-static void PrintParseErrors(Parser parser)
-{
-    if (parser.HasErrors)
-    {
-        Console.WriteLine("Errors encountered during parsing: ");
-        foreach (var error in parser.Errors)
-        {
-            Console.WriteLine(error);
-        }
-        return;
-    }
-}
-
-static void SemanticAnalysis(SemanticAnalyzer semanticAnalyzer, Node? ast)
-{
-    if (ast is Lumi.AST.Program program)
-    {
-        var analysisResult = semanticAnalyzer.Analyze(program);
-        if (!analysisResult.IsValid)
-        {
-            foreach (var error in analysisResult.Errors)
-            {
-                Console.WriteLine($"Semantic error: {error.Message}");
-            }
-        }
-    }
-}
-
-static void ExecuteBytecode(VirtualMachine vm, BytecodeGenerator bytecodeGenerator, Node? ast)
-{
-    if (ast == null)
-    {
-        Console.WriteLine("Error: AST is null");
-        return;
-    }
-
-    vm.Execute(bytecodeGenerator.Generate(ast));
 }
