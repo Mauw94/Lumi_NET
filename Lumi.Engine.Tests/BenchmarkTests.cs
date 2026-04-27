@@ -109,6 +109,66 @@ public sealed class BenchmarkTests
     }
 
     [TestMethod]
+    public void Test_List_Manipulation_Workload()
+    {
+        // Arrange
+        var source = ListManipulationWorkloadSource;
+
+        // Act + Benchmark
+        const int iterations = 100;
+
+        Warmup(source);
+        CollectBenchmarkData(iterations, source);
+    }
+
+    [TestMethod]
+    public void Test_List_Manipulation_Workload_Phases()
+    {
+        var source = ListManipulationWorkloadSource;
+        const int iterations = 100;
+
+        // Pre-parse and pre-generate so each phase can be timed in isolation.
+        var parser = new Parser.Parser(source);
+        var ast = parser.Parse();
+        var gen = new BytecodeGenerator();
+        var bytecode = gen.Generate(ast);
+
+        // Warmup all three phases
+        for (int i = 0; i < 10; i++)
+        {
+            new Parser.Parser(source).Parse();
+            new BytecodeGenerator().Generate(ast);
+            new VirtualMachine().Execute(bytecode);
+        }
+
+        GC.Collect(); GC.WaitForPendingFinalizers(); GC.Collect();
+
+        var sw = Stopwatch.StartNew();
+
+        for (int i = 0; i < iterations; i++)
+            new Parser.Parser(source).Parse();
+
+        sw.Stop();
+        TestContext.WriteLine($"List workload parse only:        {sw.Elapsed.TotalMilliseconds / iterations:F4} ms/iter");
+
+        sw.Restart();
+
+        for (int i = 0; i < iterations; i++)
+            new BytecodeGenerator().Generate(ast);
+
+        sw.Stop();
+        TestContext.WriteLine($"List workload bytecode gen only: {sw.Elapsed.TotalMilliseconds / iterations:F4} ms/iter");
+
+        sw.Restart();
+
+        for (int i = 0; i < iterations; i++)
+            new VirtualMachine().Execute(bytecode);
+
+        sw.Stop();
+        TestContext.WriteLine($"List workload VM execution only: {sw.Elapsed.TotalMilliseconds / iterations:F4} ms/iter");
+    }
+
+    [TestMethod]
     public void Test_Store_100_Variables_Phases()
     {
         var source = string.Join(" ", Enumerable.Range(1, 100).Select(i => $"let x{i} -> {i};"));
@@ -202,6 +262,26 @@ public sealed class BenchmarkTests
         var vm = new VirtualMachine();
         vm.Execute(bytecodeResult);
     }
+
+    private const string ListManipulationWorkloadSource = @"
+            let items: list -> [];
+
+            for i in 0 to 499 step 1 {
+                items.add(i);
+            }
+
+            let checksum -> 0;
+            for i in 0 to 499 step 1 {
+                checksum = checksum + items[i];
+            }
+
+            for i in 0 to 249 step 1 {
+                items.remove(i);
+            }
+
+            print items.length();
+            print checksum;
+        ";
 
     private static void Warmup(string source)
     {
