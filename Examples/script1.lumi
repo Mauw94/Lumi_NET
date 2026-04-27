@@ -1,0 +1,15 @@
+struct Car {
+    tyres: int;
+    brand: str;
+    model: str;
+}
+
+let cars: list -> [];
+
+for i in 0 to 9 {
+    let c: Car -> new Car(4, "Merc", "S Class");
+    cars.add(c);
+}
+
+print cars[0];
+print cars.length();

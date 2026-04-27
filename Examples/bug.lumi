@@ -1,0 +1,12 @@
+struct Car {
+    tyres: int;
+    brand: str;
+}
+
+let cars -> [];
+
+cars.add(new Car(4, "BMW"));
+cars.add(new Car(4, "Volkswagen"));
+
+print cars;
+print cars[0].tyres * 2; 
