@@ -7,8 +7,6 @@ public static class SupportedMethods
         public const string Add = "add";
         public const string Remove = "remove";
         public const string Length = "length";
-        public const string Get = "get";
-        public const string Set = "set";
 
         public static bool Contains(string methodName)
         {
@@ -17,8 +15,6 @@ public static class SupportedMethods
                 Add => true,
                 Remove => true,
                 Length => true,
-                Get => true,
-                Set => true,
                 _ => false
             };
         }
