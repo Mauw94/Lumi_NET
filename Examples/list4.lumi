@@ -1,0 +1,7 @@
+let a: list -> ["a", "b", "c"];
+
+if (a.contains("b")) {
+    a.add("d");
+}
+
+print a;
