@@ -25,8 +25,16 @@ public sealed class SemanticAnalyzerError(string message) : Exception(message)
         => new("Invalid function parameter. Expected a parameter name (identifier)");
     public static SemanticAnalyzerError InvalidFunctionCall()
         => new("Invalid function call. Expected a function name (identifier)");
+    public static SemanticAnalyzerError InvalidMethodCall()
+        => new("Invalid method call. Expected a member call like 'object.method(...)'");
     public static SemanticAnalyzerError ArgumentCountMismatch(string functionName, int expected, int actual)
         => new($"Function '{functionName}' expects {expected} argument(s) but was called with {actual}");
+    public static SemanticAnalyzerError UnknownListMethod(string methodName)
+        => new($"Unknown list method: '{methodName}'");
+    public static SemanticAnalyzerError MethodNotSupportedOnType(string methodName, TypeKind type)
+        => new($"Method '{methodName}' is not supported on values of type '{type}'");
+    public static SemanticAnalyzerError MethodArgumentCountMismatch(string methodName, int expected, int actual)
+        => new($"Method '{methodName}' expects {expected} argument(s) but was called with {actual}");
     public static SemanticAnalyzerError FunctionNameIsKeyword(string name)
         => new($"Function name '{name}' is a reserved keyword");
     public static SemanticAnalyzerError VarNameIsKeyword(string name)

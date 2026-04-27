@@ -29,7 +29,14 @@ public readonly struct Instruction
         StringOperand = stringOperand;
     }
 
-    public int SafeGetIntOperand()
+    public Instruction(InstructionKind kind, int intOperand, string stringOperand)
+    {
+        Kind = kind;
+        IntOperand = intOperand;
+        StringOperand = stringOperand;
+    }
+
+    public int GetSafeIntOperand()
     {
         if (!IntOperand.HasValue)
             throw BytecodeError.InstructionKindNoIntegerOperand(Kind);
@@ -37,8 +44,19 @@ public readonly struct Instruction
         return IntOperand.Value;
     }
 
+    public string GetSafeStringOperand()
+    {
+        if (StringOperand is null)
+            throw BytecodeError.InstructionKindNoStringOperand(Kind);
+
+        return StringOperand;
+    }
+
     public override string ToString()
     {
+        if (IntOperand.HasValue && StringOperand is not null)
+            return $"{Kind} {IntOperand.Value} \"{StringOperand}\"";
+
         return IntOperand.HasValue ? $"{Kind} {IntOperand.Value}" : (StringOperand != null ? $"{Kind} \"{StringOperand}\"" : Kind.ToString());
     }
 
@@ -49,6 +67,7 @@ public readonly struct Instruction
     public static Instruction JumpIfFalse(int operand) => new(InstructionKind.JumpIfFalse, operand);
     public static Instruction Jump(int operand) => new(InstructionKind.Jump, operand);
     public static Instruction CallFn(string functionName) => new(InstructionKind.CallFn, functionName);
+    public static Instruction CallListMethod(string methodName, int argumentCount) => new(InstructionKind.CallListMethod, argumentCount, methodName);
     public static Instruction MakeArray(int elementCount) => new(InstructionKind.MakeArray, elementCount);
     public static Instruction IndexArray() => new(InstructionKind.IndexArray);
 }

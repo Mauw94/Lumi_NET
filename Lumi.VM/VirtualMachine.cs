@@ -1,6 +1,7 @@
 ﻿using Lumi.Bytecode;
 using Lumi.Bytecode.Constants;
 using Lumi.Bytecode.Instructions;
+using Lumi.Language;
 
 namespace Lumi.VM;
 
@@ -101,7 +102,7 @@ public sealed class VirtualMachine
 
                 case InstructionKind.MakeArray:
                     {
-                        var count = instruction.SafeGetIntOperand();
+                        var count = instruction.GetSafeIntOperand();
                         if (count < 0)
                             throw VirtualMachineError.InvalidArrayElementCount(count);
 
@@ -111,7 +112,7 @@ public sealed class VirtualMachine
                             values[i] = _stack[--_stackTop];
                         }
 
-                        _stack[_stackTop++] = Value.FromArray(values);
+                        _stack[_stackTop++] = Value.FromArray([.. values]);
                         break;
                     }
 
@@ -132,7 +133,7 @@ public sealed class VirtualMachine
 
                 case InstructionKind.LoadVar:
                     {
-                        var slot = _basePointer + instruction.SafeGetIntOperand();
+                        var slot = _basePointer + instruction.GetSafeIntOperand();
                         _stack[_stackTop++] = _variables[slot];
                         break;
                     }
@@ -178,13 +179,13 @@ public sealed class VirtualMachine
                     break;
 
                 case InstructionKind.Jump:
-                    _ip = instruction.SafeGetIntOperand();
+                    _ip = instruction.GetSafeIntOperand();
                     continue;
 
                 case InstructionKind.JumpIfFalse:
                     if (!_stack[--_stackTop].Bool)
                     {
-                        _ip = instruction.SafeGetIntOperand();
+                        _ip = instruction.GetSafeIntOperand();
                         continue;
                     }
                     break;
@@ -192,7 +193,7 @@ public sealed class VirtualMachine
                 case InstructionKind.JumpIfTrue:
                     if (_stack[--_stackTop].Bool)
                     {
-                        _ip = instruction.SafeGetIntOperand();
+                        _ip = instruction.GetSafeIntOperand();
                         continue;
                     }
                     break;
@@ -207,6 +208,38 @@ public sealed class VirtualMachine
                         _basePointer = _variableCount;
                         _ip = functionAddress;
                         continue;
+                    }
+
+                case InstructionKind.CallListMethod:
+                    {
+                        var methodName = instruction.GetSafeStringOperand();
+                        var argumentCount = instruction.GetSafeIntOperand();
+
+                        var args = new Value[argumentCount];
+                        for (int i = argumentCount - 1; i >= 0; i--)
+                        {
+                            args[i] = _stack[--_stackTop];
+                        }
+
+                        var target = _stack[--_stackTop];
+                        if (target.Kind != ValueKind.Array || target.Array is null)
+                            throw VirtualMachineError.ListMethodTargetNotArray(target.Kind);
+
+                        switch (methodName)
+                        {
+                            case SupportedMethods.ListMethods.Add:
+                                if (argumentCount != 1)
+                                    throw VirtualMachineError.ListMethodArgumentCountMismatch(methodName, 1, argumentCount);
+
+                                target.Array.Add(args[0]);
+                                _stack[_stackTop++] = target;
+                                break;
+
+                            default:
+                                throw VirtualMachineError.UnknownListMethod(methodName);
+                        }
+
+                        break;
                     }
 
                 case InstructionKind.Return:

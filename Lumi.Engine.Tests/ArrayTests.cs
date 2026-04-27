@@ -41,6 +41,16 @@ public sealed class ArrayTests
         Assert.AreEqual("30", output.Trim());
     }
 
+    [TestMethod]
+    public void Test_List_Add_Method_Mutates_List()
+    {
+        var source = "let items: list -> [1, 2, 3]; items.add(4); print items;";
+
+        var output = ExecuteAndCapture(source);
+
+        Assert.AreEqual("[1, 2, 3, 4]", output.Trim());
+    }
+
     private static string ExecuteAndCapture(string source)
     {
         var originalOut = Console.Out;

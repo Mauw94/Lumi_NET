@@ -748,4 +748,93 @@ public sealed class SemanticAnalyzerTests
         Assert.HasCount(1, result.Errors);
         Assert.Contains("Undefined variable", result.Errors[0].Message);
     }
+
+    [TestMethod]
+    public void Analyze_ListMethodCall_Add_IsValid()
+    {
+        var program = new Program
+        {
+            Body =
+            [
+                new VariableDeclaration
+                {
+                    Kind = "let",
+                    Declarations =
+                    [
+                        new VariableDeclarator
+                        {
+                            VarName = new IdentifierNode { Name = "items" },
+                            VarType = new IdentifierNode { Name = "list" },
+                            Init = new ArrayLiteral
+                            {
+                                Elements = [new NumberNode { Value = 1.0 }, new NumberNode { Value = 2.0 }]
+                            }
+                        }
+                    ]
+                },
+                new ExpressionStatement
+                {
+                    Expression = new CallExpression
+                    {
+                        Callee = new MemberExpression
+                        {
+                            Object = new IdentifierNode { Name = "items" },
+                            Property = new IdentifierNode { Name = "add" }
+                        },
+                        Arguments = [new NumberNode { Value = 3.0 }]
+                    }
+                }
+            ]
+        };
+
+        var result = new SemanticAnalyzer().Analyze(program);
+
+        Assert.IsTrue(result.IsValid);
+        Assert.IsEmpty(result.Errors);
+    }
+
+    [TestMethod]
+    public void Analyze_ListMethodCall_InvalidArgCount_ReturnsError()
+    {
+        var program = new Program
+        {
+            Body =
+            [
+                new VariableDeclaration
+                {
+                    Kind = "let",
+                    Declarations =
+                    [
+                        new VariableDeclarator
+                        {
+                            VarName = new IdentifierNode { Name = "items" },
+                            VarType = new IdentifierNode { Name = "list" },
+                            Init = new ArrayLiteral
+                            {
+                                Elements = [new NumberNode { Value = 1.0 }]
+                            }
+                        }
+                    ]
+                },
+                new ExpressionStatement
+                {
+                    Expression = new CallExpression
+                    {
+                        Callee = new MemberExpression
+                        {
+                            Object = new IdentifierNode { Name = "items" },
+                            Property = new IdentifierNode { Name = "add" }
+                        },
+                        Arguments = [new NumberNode { Value = 3.0 }, new NumberNode { Value = 4.0 }]
+                    }
+                }
+            ]
+        };
+
+        var result = new SemanticAnalyzer().Analyze(program);
+
+        Assert.IsFalse(result.IsValid);
+        Assert.HasCount(1, result.Errors);
+        Assert.Contains("expects 1 argument(s) but was called with 2", result.Errors[0].Message);
+    }
 }

@@ -2,6 +2,7 @@
 using Lumi.Bytecode.Constants;
 using Lumi.Bytecode.Instructions;
 using Lumi.Bytecode.Locals;
+using Lumi.Language;
 
 namespace Lumi.Bytecode;
 
@@ -401,17 +402,40 @@ public sealed class BytecodeGenerator
 
     private void VisitCallExpression(CallExpression callExpression)
     {
-        if (callExpression.Callee is not IdentifierNode functionName)
+        if (callExpression.Callee is IdentifierNode functionName)
+        {
+            // Push arguments left-to-right.
+            foreach (var arg in callExpression.Arguments)
+            {
+                Visit(arg);
+            }
+
+            // Emit the call.
+            Emit(new Instruction(InstructionKind.CallFn, functionName.Name));
+            return;
+        }
+
+        if (callExpression.Callee is not MemberExpression memberExpression)
             throw BytecodeError.ExpectedIdentifierInFunctionCall();
 
-        // Push arguments left-to-right.
+        if (memberExpression.Property is not IdentifierNode methodIdentifier)
+            throw BytecodeError.ExpectedIdentifierInMemberAccess();
+
+        if (!SupportedMethods.ListMethods.Contains(methodIdentifier.Name))
+            throw BytecodeError.UnsupportedListMethod(methodIdentifier.Name);
+
+        // First push object
+        // Then push any arguments left to right
+        // Then push the call instruction
+        Visit(memberExpression.Object);
+
         foreach (var arg in callExpression.Arguments)
         {
             Visit(arg);
         }
 
-        // Emit the call.
-        Emit(new Instruction(InstructionKind.CallFn, functionName.Name));
+        // TODO: do we differentiate between list methods, class methods, etc?
+        Emit(Instruction.CallListMethod(methodIdentifier.Name, callExpression.Arguments.Count));
     }
 
     private void VisitReturnStatement(ReturnStatement returnStatement)

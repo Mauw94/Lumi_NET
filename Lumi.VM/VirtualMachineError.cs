@@ -1,4 +1,5 @@
 ﻿using Lumi.Bytecode.Constants;
+using Lumi.Bytecode.Instructions;
 
 namespace Lumi.VM;
 
@@ -39,4 +40,13 @@ internal sealed class VirtualMachineError(string message) : Exception(message)
     internal static VirtualMachineError IndexOutOfRange(int index, int length) => new($"Array index {index} is out of range for array of length {length}.");
 
     internal static VirtualMachineError IndexTargetNotArray(ValueKind kind) => new($"Cannot index into a value of kind {kind}. Expected an array.");
+
+    internal static VirtualMachineError MissingStringOperand(InstructionKind kind) => new($"Instruction {kind} is missing a string operand.");
+
+    internal static VirtualMachineError UnknownListMethod(string methodName) => new($"Unknown list method: {methodName}.");
+
+    internal static VirtualMachineError ListMethodTargetNotArray(ValueKind kind) => new($"List method target must be an array, got {kind}.");
+
+    internal static VirtualMachineError ListMethodArgumentCountMismatch(string methodName, int expected, int actual)
+        => new($"List method '{methodName}' expects {expected} argument(s) but got {actual}.");
 }

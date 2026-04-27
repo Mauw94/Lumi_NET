@@ -10,6 +10,10 @@ namespace Lumi.SemanticAnalyzer;
 public sealed class SemanticAnalyzer
 {
     private readonly ScopeManager _scopes = new();
+    private static readonly Dictionary<string, int> ListMethodParameterCounts = new(StringComparer.Ordinal)
+    {
+        ["add"] = 1,
+    };
 
     public SemanticAnalyzer()
     {
@@ -63,6 +67,10 @@ public sealed class SemanticAnalyzer
 
             case CallExpression callExpr:
                 VisitCallExpression(callExpr);
+                break;
+
+            case MemberExpression memberExpr:
+                VisitMemberExpression(memberExpr);
                 break;
 
             case IdentifierNode identifier:
@@ -153,13 +161,15 @@ public sealed class SemanticAnalyzer
                 throw SemanticAnalyzerError.VarNameIsKeyword(varName.Name);
 
             var isReadOnly = varDecl.Kind == "const";
-            var inferred = TypeKind.Unknown;
+            var inferred = InferDeclaredType(declarator.VarType);
 
             // If an initializer is provided, analyze it and infer type
             if (declarator.Init is not null)
             {
                 Visit(declarator.Init);
-                inferred = InferType(declarator.Init);
+                var initializerType = InferType(declarator.Init);
+                if (inferred == TypeKind.Unknown)
+                    inferred = initializerType;
             }
 
             var symbol = new Symbol(
@@ -294,31 +304,89 @@ public sealed class SemanticAnalyzer
         _scopes.ExitScope();
     }
 
+    private void VisitMemberExpression(MemberExpression memberExpr)
+    {
+        Visit(memberExpr.Object);
+    }
+
     private void VisitCallExpression(CallExpression callExpr)
     {
-        if (callExpr.Callee is not IdentifierNode functionName)
-            throw SemanticAnalyzerError.InvalidFunctionCall();
+        if (callExpr.Callee is IdentifierNode functionName)
+        {
+            // Look up the function
+            var function = _scopes.LookupSymbol(functionName.Name);
+            if (function is null || function.Value.Kind != SymbolKind.Function)
+                throw SemanticAnalyzerError.UndefinedFunction(functionName.Name);
 
-        // Look up the function
-        var function = _scopes.LookupSymbol(functionName.Name);
-        if (function is null || function.Value.Kind != SymbolKind.Function)
-            throw SemanticAnalyzerError.UndefinedFunction(functionName.Name);
+            // Validate argument count matches the declared parameter count
+            if (function.Value.ParameterCount.HasValue && callExpr.Arguments.Count != function.Value.ParameterCount.Value)
+                throw SemanticAnalyzerError.ArgumentCountMismatch(functionName.Name, function.Value.ParameterCount.Value, callExpr.Arguments.Count);
 
-        // Validate argument count matches the declared parameter count
-        if (function.Value.ParameterCount.HasValue && callExpr.Arguments.Count != function.Value.ParameterCount.Value)
-            throw SemanticAnalyzerError.ArgumentCountMismatch(functionName.Name, function.Value.ParameterCount.Value, callExpr.Arguments.Count);
+            // Analyze arguments
+            foreach (var arg in callExpr.Arguments)
+            {
+                Visit(arg);
+            }
 
-        // Analyze arguments
+            return;
+        }
+
+        if (callExpr.Callee is not MemberExpression memberExpr)
+            throw SemanticAnalyzerError.InvalidMethodCall();
+
+        Visit(memberExpr.Object);
+
         foreach (var arg in callExpr.Arguments)
         {
             Visit(arg);
         }
+
+        var objectType = InferType(memberExpr.Object);
+
+        // NOTE: TpyeKind.Object will come later.
+        if (objectType != TypeKind.Array)
+            throw SemanticAnalyzerError.MethodNotSupportedOnType(memberExpr.Property.Name, objectType);
+
+        // NOTE: we can only validate list methods at this stage, since we don't have class definitions or other types yet.
+        if (!ListMethodParameterCounts.TryGetValue(memberExpr.Property.Name, out var expectedArgumentCount))
+            throw SemanticAnalyzerError.UnknownListMethod(memberExpr.Property.Name);
+
+        if (callExpr.Arguments.Count != expectedArgumentCount)
+            throw SemanticAnalyzerError.MethodArgumentCountMismatch(memberExpr.Property.Name, expectedArgumentCount, callExpr.Arguments.Count);
+    }
+
+    private static TypeKind InferDeclaredType(Node? typeNode)
+    {
+        if (typeNode is not IdentifierNode typeIdentifier)
+            return TypeKind.Unknown;
+
+        return typeIdentifier.Name.ToLowerInvariant() switch
+        {
+            "int" or "float" or "number" => TypeKind.Number,
+            "string" => TypeKind.String,
+            "bool" or "boolean" => TypeKind.Boolean,
+            "list" or "array" => TypeKind.Array,
+            _ => TypeKind.Unknown,
+        };
+    }
+
+    private TypeKind InferType(Node node)
+    {
+        if (node is IdentifierNode identifier)
+        {
+            var symbol = _scopes.LookupSymbol(identifier.Name);
+
+            if (symbol.HasValue)
+                return symbol.Value.Type;
+        }
+
+        return InferTypeFromNode(node);
     }
 
     /// <summary>
     /// Infers the type of a node based on its structure and content.
     /// </summary>
-    private static TypeKind InferType(Node node)
+    private static TypeKind InferTypeFromNode(Node node)
     {
         return node switch
         {

@@ -49,6 +49,12 @@ public class CallExpression : Node
     public List<Node> Arguments { get; set; } = [];
 }
 
+public class MemberExpression : Node
+{
+    public required Node Object { get; set; }
+    public required IdentifierNode Property { get; set; }
+}
+
 // Expressions
 public class BinaryExpression : Node
 {

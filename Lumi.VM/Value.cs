@@ -15,9 +15,9 @@ internal readonly struct Value
     public double Number { get; }
     public string? String { get; }
     public bool Bool { get; }
-    public IReadOnlyList<Value>? Array { get; }
+    public List<Value>? Array { get; }
 
-    private Value(ValueKind kind, double number = 0, string? str = null, bool b = false, IReadOnlyList<Value>? array = null)
+    private Value(ValueKind kind, double number = 0, string? str = null, bool b = false, List<Value>? array = null)
     {
         Kind = kind;
         Number = number;
@@ -29,7 +29,7 @@ internal readonly struct Value
     public static Value FromNumber(double n) => new(ValueKind.Number, number: n);
     public static Value FromString(string s) => new(ValueKind.String, str: s);
     public static Value FromBoolean(bool b) => new(ValueKind.Boolean, b: b);
-    public static Value FromArray(IReadOnlyList<Value> values) => new(ValueKind.Array, array: values);
+    public static Value FromArray(List<Value> values) => new(ValueKind.Array, array: values);
 
     public static Value ConstantToValue(Constant constant) => constant.Kind switch
     {

@@ -149,6 +149,51 @@ public sealed class VirtualMachineTests
     }
 
     [TestMethod]
+    public void VM_ListAdd_Method_Mutates_List()
+    {
+        var bytecode = Build(
+            new VariableDeclaration
+            {
+                Kind = "let",
+                Declarations =
+                [
+                    new VariableDeclarator
+                    {
+                        VarName = new IdentifierNode { Name = "items" },
+                        VarType = new IdentifierNode { Name = "list" },
+                        Init = new ArrayLiteral
+                        {
+                            Elements =
+                            [
+                                new NumberNode { Value = 1.0 },
+                                new NumberNode { Value = 2.0 },
+                                new NumberNode { Value = 3.0 }
+                            ]
+                        }
+                    }
+                ]
+            },
+            new ExpressionStatement
+            {
+                Expression = new CallExpression
+                {
+                    Callee = new MemberExpression
+                    {
+                        Object = new IdentifierNode { Name = "items" },
+                        Property = new IdentifierNode { Name = "add" }
+                    },
+                    Arguments = [new NumberNode { Value = 4.0 }]
+                }
+            },
+            new PrintStatement { Argument = new IdentifierNode { Name = "items" } }
+        );
+
+        var output = CaptureOutput(() => new VirtualMachine().Execute(bytecode));
+
+        Assert.AreEqual("[1, 2, 3, 4]", output);
+    }
+
+    [TestMethod]
     public void VM_State_Persists_Across_Execute_Calls()
     {
         // Simulates REPL: declare x on one Execute call, print it on the next.
