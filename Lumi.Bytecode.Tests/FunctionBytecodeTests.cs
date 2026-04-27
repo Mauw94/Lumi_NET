@@ -37,7 +37,7 @@ public sealed class FunctionBytecodeTests
 
         // Skip-jump
         Assert.AreEqual(InstructionKind.Jump, result.Instructions[0].Kind);
-        Assert.AreEqual(5, result.Instructions[0].SafeGetIntOperand());
+        Assert.AreEqual(5, result.Instructions[0].GetSafeIntOperand());
 
         // Body
         Assert.AreEqual(InstructionKind.PushConst, result.Instructions[1].Kind);
@@ -48,7 +48,7 @@ public sealed class FunctionBytecodeTests
         Assert.AreEqual(InstructionKind.Return, result.Instructions[4].Kind);
 
         // The undefined constant must be present
-        var undefIndex = result.Instructions[3].SafeGetIntOperand();
+        var undefIndex = result.Instructions[3].GetSafeIntOperand();
         Assert.AreEqual(ConstantKind.Undefined, result.Constants[undefIndex].Kind);
     }
 
@@ -135,8 +135,8 @@ public sealed class FunctionBytecodeTests
         // Parameter stores (right-to-left: b first, then a)
         Assert.AreEqual(InstructionKind.StoreVar, result.Instructions[1].Kind);
         Assert.AreEqual(InstructionKind.StoreVar, result.Instructions[2].Kind);
-        var slotB = result.Instructions[1].SafeGetIntOperand();
-        var slotA = result.Instructions[2].SafeGetIntOperand();
+        var slotB = result.Instructions[1].GetSafeIntOperand();
+        var slotA = result.Instructions[2].GetSafeIntOperand();
         Assert.AreNotEqual(slotA, slotB);
 
         // Function entry is right after the skip-jump
@@ -239,8 +239,8 @@ public sealed class FunctionBytecodeTests
         Assert.AreEqual(InstructionKind.PushConst, result.Instructions[callIndex - 1].Kind);
 
         // Verify argument constants (10 and 20).
-        var arg1Index = result.Instructions[callIndex - 2].SafeGetIntOperand();
-        var arg2Index = result.Instructions[callIndex - 1].SafeGetIntOperand();
+        var arg1Index = result.Instructions[callIndex - 2].GetSafeIntOperand();
+        var arg2Index = result.Instructions[callIndex - 1].GetSafeIntOperand();
         Assert.AreEqual(10.0, result.Constants[arg1Index].Number);
         Assert.AreEqual(20.0, result.Constants[arg2Index].Number);
     }

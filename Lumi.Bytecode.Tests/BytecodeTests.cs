@@ -70,7 +70,7 @@ public sealed class BytecodeTests
 
         // StoreVar should have an int operand pointing to the local slot (label id 0)
         Assert.IsTrue(result.Instructions[1].IntOperand.HasValue);
-        Assert.AreEqual(0, result.Instructions[1].SafeGetIntOperand());
+        Assert.AreEqual(0, result.Instructions[1].GetSafeIntOperand());
 
         // No type annotation — Type should be unknown
         var local = result.Locals.Single();
@@ -144,7 +144,7 @@ public sealed class BytecodeTests
         Assert.AreEqual(42.0, result.Constants[0].Number);
 
         Assert.IsTrue(result.Instructions[1].IntOperand.HasValue);
-        Assert.AreEqual(0, result.Instructions[1].SafeGetIntOperand());
+        Assert.AreEqual(0, result.Instructions[1].GetSafeIntOperand());
 
         // Type annotation should be stored on the local
         var local = result.Locals.Single();
@@ -182,6 +182,51 @@ public sealed class BytecodeTests
         Assert.AreEqual("items", local.Name);
         Assert.AreEqual(LocalKind.Let, local.Kind);
         Assert.AreEqual(VarType.List, local.Type);
+    }
+
+    [TestMethod]
+    public void Test_ListMethodCall_Emits_CallListMethod()
+    {
+        var program = new Program
+        {
+            Body =
+            [
+                new VariableDeclaration
+                {
+                    Kind = "let",
+                    Declarations =
+                    [
+                        new VariableDeclarator
+                        {
+                            VarName = new IdentifierNode { Name = "items" },
+                            VarType = new IdentifierNode { Name = "list" },
+                            Init = new ArrayLiteral
+                            {
+                                Elements = [new NumberNode { Value = 1.0 }]
+                            }
+                        }
+                    ]
+                },
+                new ExpressionStatement
+                {
+                    Expression = new CallExpression
+                    {
+                        Callee = new MemberExpression
+                        {
+                            Object = new IdentifierNode { Name = "items" },
+                            Property = new IdentifierNode { Name = "add" }
+                        },
+                        Arguments = [new NumberNode { Value = 2.0 }]
+                    }
+                }
+            ]
+        };
+
+        var result = new BytecodeGenerator().Generate(program);
+
+        var call = result.Instructions.First(i => i.Kind == InstructionKind.CallListMethod);
+        Assert.AreEqual("add", call.StringOperand);
+        Assert.AreEqual(1, call.GetSafeIntOperand());
     }
 
     [TestMethod]
@@ -247,7 +292,7 @@ public sealed class BytecodeTests
         Assert.AreEqual(InstructionKind.LoadVar, result.Instructions[4].Kind);
 
         // The LoadVar should point to the inner variable (label id 1)
-        var loadOp = result.Instructions[4].SafeGetIntOperand();
+        var loadOp = result.Instructions[4].GetSafeIntOperand();
         Assert.AreEqual(1, loadOp);
     }
 
@@ -278,7 +323,7 @@ public sealed class BytecodeTests
         Assert.AreEqual(InstructionKind.Print, result.Instructions[3].Kind);
 
         // JumpIfFalse must jump past the then-branch (index 4 = one past last instruction)
-        Assert.AreEqual(4, result.Instructions[1].SafeGetIntOperand());
+        Assert.AreEqual(4, result.Instructions[1].GetSafeIntOperand());
     }
 
     [TestMethod]
@@ -315,9 +360,9 @@ public sealed class BytecodeTests
         Assert.AreEqual(InstructionKind.Print, result.Instructions[6].Kind); // else: print
 
         // JumpIfFalse jumps to else-branch start (index 5)
-        Assert.AreEqual(5, result.Instructions[1].SafeGetIntOperand());
+        Assert.AreEqual(5, result.Instructions[1].GetSafeIntOperand());
         // Unconditional Jump jumps past else-branch (index 7 = one past last)
-        Assert.AreEqual(7, result.Instructions[4].SafeGetIntOperand());
+        Assert.AreEqual(7, result.Instructions[4].GetSafeIntOperand());
     }
 
     [TestMethod]
@@ -371,24 +416,24 @@ public sealed class BytecodeTests
         // Initialization
         Assert.AreEqual(InstructionKind.PushConst, result.Instructions[0].Kind);
         Assert.AreEqual(InstructionKind.StoreVar, result.Instructions[1].Kind);
-        Assert.AreEqual(0, result.Instructions[1].SafeGetIntOperand()); // slot 0 = i
+        Assert.AreEqual(0, result.Instructions[1].GetSafeIntOperand()); // slot 0 = i
 
         // End bound
         Assert.AreEqual(InstructionKind.PushConst, result.Instructions[2].Kind);
         Assert.AreEqual(InstructionKind.StoreVar, result.Instructions[3].Kind);
-        Assert.AreEqual(1, result.Instructions[3].SafeGetIntOperand()); // slot 1 = $end
+        Assert.AreEqual(1, result.Instructions[3].GetSafeIntOperand()); // slot 1 = $end
 
         // Default step
         Assert.AreEqual(InstructionKind.PushConst, result.Instructions[4].Kind);
         Assert.AreEqual(InstructionKind.StoreVar, result.Instructions[5].Kind);
-        Assert.AreEqual(2, result.Instructions[5].SafeGetIntOperand()); // slot 2 = $step
+        Assert.AreEqual(2, result.Instructions[5].GetSafeIntOperand()); // slot 2 = $step
 
         // Loop condition
         Assert.AreEqual(InstructionKind.LoadVar, result.Instructions[6].Kind);  // load i
         Assert.AreEqual(InstructionKind.LoadVar, result.Instructions[7].Kind);  // load $end
         Assert.AreEqual(InstructionKind.Leq, result.Instructions[8].Kind);
         Assert.AreEqual(InstructionKind.JumpIfFalse, result.Instructions[9].Kind);
-        Assert.AreEqual(17, result.Instructions[9].SafeGetIntOperand()); // exit to end
+        Assert.AreEqual(17, result.Instructions[9].GetSafeIntOperand()); // exit to end
 
         // Body: print i
         Assert.AreEqual(InstructionKind.LoadVar, result.Instructions[10].Kind);
@@ -402,7 +447,7 @@ public sealed class BytecodeTests
 
         // Backward jump
         Assert.AreEqual(InstructionKind.Jump, result.Instructions[16].Kind);
-        Assert.AreEqual(6, result.Instructions[16].SafeGetIntOperand()); // back to loop condition
+        Assert.AreEqual(6, result.Instructions[16].GetSafeIntOperand()); // back to loop condition
 
         // Constants
         Assert.AreEqual(0.0, result.Constants[0].Number); // start
@@ -437,11 +482,11 @@ public sealed class BytecodeTests
 
         // Verify the step is stored in slot 2
         Assert.AreEqual(InstructionKind.StoreVar, result.Instructions[5].Kind);
-        Assert.AreEqual(2, result.Instructions[5].SafeGetIntOperand());
+        Assert.AreEqual(2, result.Instructions[5].GetSafeIntOperand());
 
         // Backward jump and forward jump targets should be correct
-        Assert.AreEqual(6, result.Instructions[16].SafeGetIntOperand());  // Jump back to loopStart
-        Assert.AreEqual(17, result.Instructions[9].SafeGetIntOperand()); // JumpIfFalse to end
+        Assert.AreEqual(6, result.Instructions[16].GetSafeIntOperand());  // Jump back to loopStart
+        Assert.AreEqual(17, result.Instructions[9].GetSafeIntOperand()); // JumpIfFalse to end
     }
 
     [TestMethod]
@@ -484,11 +529,11 @@ public sealed class BytecodeTests
         // The backward jump should target index 6 (loop condition start).
         var backwardJump = result.Instructions[^1];
         Assert.AreEqual(InstructionKind.Jump, backwardJump.Kind);
-        Assert.AreEqual(6, backwardJump.SafeGetIntOperand());
+        Assert.AreEqual(6, backwardJump.GetSafeIntOperand());
 
         // The JumpIfFalse should exit past the last instruction.
         Assert.AreEqual(InstructionKind.JumpIfFalse, result.Instructions[9].Kind);
-        Assert.AreEqual(result.Instructions.Count, result.Instructions[9].SafeGetIntOperand());
+        Assert.AreEqual(result.Instructions.Count, result.Instructions[9].GetSafeIntOperand());
     }
 
     [TestMethod]
@@ -523,9 +568,9 @@ public sealed class BytecodeTests
         var result = new BytecodeGenerator().Generate(new Program { Body = [forStmt] });
 
         // Extract the three StoreVar slots from the initialization section (indices 1, 3, 5).
-        var iterSlot = result.Instructions[1].SafeGetIntOperand();
-        var endSlot = result.Instructions[3].SafeGetIntOperand();
-        var stepSlot = result.Instructions[5].SafeGetIntOperand();
+        var iterSlot = result.Instructions[1].GetSafeIntOperand();
+        var endSlot = result.Instructions[3].GetSafeIntOperand();
+        var stepSlot = result.Instructions[5].GetSafeIntOperand();
 
         // All three must be distinct.
         Assert.AreNotEqual(iterSlot, endSlot, "Iterator and $end share the same slot");
@@ -577,12 +622,12 @@ public sealed class BytecodeTests
         // Initialization
         Assert.AreEqual(InstructionKind.PushConst, result.Instructions[0].Kind);
         Assert.AreEqual(InstructionKind.StoreVar, result.Instructions[1].Kind);
-        Assert.AreEqual(0, result.Instructions[1].SafeGetIntOperand()); // slot 0 = x
+        Assert.AreEqual(0, result.Instructions[1].GetSafeIntOperand()); // slot 0 = x
 
         // Assignment
         Assert.AreEqual(InstructionKind.PushConst, result.Instructions[2].Kind);
         Assert.AreEqual(InstructionKind.StoreVar, result.Instructions[3].Kind);
-        Assert.AreEqual(0, result.Instructions[3].SafeGetIntOperand()); // slot 0 = x
+        Assert.AreEqual(0, result.Instructions[3].GetSafeIntOperand()); // slot 0 = x
 
         // Constants: 10 and 42
         Assert.AreEqual(10.0, result.Constants[0].Number);
@@ -646,7 +691,7 @@ public sealed class BytecodeTests
         Assert.AreEqual(InstructionKind.PushConst, result.Instructions[3].Kind);
         Assert.AreEqual(InstructionKind.Add, result.Instructions[4].Kind);
         Assert.AreEqual(InstructionKind.StoreVar, result.Instructions[5].Kind);
-        Assert.AreEqual(0, result.Instructions[5].SafeGetIntOperand()); // slot 0 = x
+        Assert.AreEqual(0, result.Instructions[5].GetSafeIntOperand()); // slot 0 = x
 
         // Constants: 0, 5, 3
         Assert.AreEqual(0.0, result.Constants[0].Number);
@@ -713,7 +758,7 @@ public sealed class BytecodeTests
         });
 
         Assert.AreEqual(InstructionKind.MakeArray, result.Instructions[2].Kind);
-        Assert.AreEqual(2, result.Instructions[2].SafeGetIntOperand());
+        Assert.AreEqual(2, result.Instructions[2].GetSafeIntOperand());
         Assert.AreEqual(InstructionKind.StoreVar, result.Instructions[3].Kind);
         Assert.AreEqual(InstructionKind.LoadVar, result.Instructions[4].Kind);
         Assert.AreEqual(InstructionKind.PushConst, result.Instructions[5].Kind);
@@ -752,7 +797,7 @@ public sealed class BytecodeTests
 
         Assert.HasCount(6, result.Instructions);
         Assert.AreEqual(InstructionKind.MakeArray, result.Instructions[3].Kind);
-        Assert.AreEqual(3, result.Instructions[3].SafeGetIntOperand());
+        Assert.AreEqual(3, result.Instructions[3].GetSafeIntOperand());
         Assert.AreEqual(InstructionKind.PushConst, result.Instructions[4].Kind);
         Assert.AreEqual(InstructionKind.IndexArray, result.Instructions[5].Kind);
     }

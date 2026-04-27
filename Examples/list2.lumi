@@ -1,0 +1,4 @@
+let items: list -> [1, 2, 3, 4, 5];
+print items;
+items.add(1);
+print items;

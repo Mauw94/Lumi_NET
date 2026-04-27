@@ -224,6 +224,29 @@ public sealed class ParserTests
         Assert.AreEqual(0, ((NumberNode)indexExpr.Index).Value);
     }
 
+    [TestMethod]
+    public void Test_Parsing_List_Method_Call()
+    {
+        var source = "let items: list -> [1,2,3]; items.add(1);";
+        var program = ParseProgram(source);
+
+        Assert.HasCount(2, program.Body);
+        Assert.IsInstanceOfType<ExpressionStatement>(program.Body[1]);
+
+        var exprStmt = (ExpressionStatement)program.Body[1];
+        Assert.IsInstanceOfType<CallExpression>(exprStmt.Expression);
+
+        var callExpr = (CallExpression)exprStmt.Expression;
+        Assert.IsInstanceOfType<MemberExpression>(callExpr.Callee);
+
+        var memberExpr = (MemberExpression)callExpr.Callee;
+        Assert.IsInstanceOfType<IdentifierNode>(memberExpr.Object);
+        Assert.AreEqual("items", ((IdentifierNode)memberExpr.Object).Name);
+        Assert.AreEqual("add", memberExpr.Property.Name);
+        Assert.HasCount(1, callExpr.Arguments);
+        Assert.AreEqual(1, ((NumberNode)callExpr.Arguments[0]).Value);
+    }
+
     private static Program ParseProgram(string source)
     {
         var parser = new Parser(source);

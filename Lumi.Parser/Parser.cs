@@ -603,6 +603,22 @@ public sealed class Parser
                 continue;
             }
 
+            if (Check(TokenKind.Dot))
+            {
+                Advance();
+
+                if (current is null || current.Value.Kind != TokenKind.Identifier)
+                    throw ParserError.UnexpectedToken(CurrentToken(), "Expected identifier after '.'");
+
+                var property = new IdentifierNode { Name = current.Value.Value ?? string.Empty };
+                Advance();
+
+                var span = CreateSpanFromTokens();
+                expr = new MemberExpression { Object = expr, Property = property, Span = span };
+
+                continue;
+            }
+
             if (Check(TokenKind.LeftBracket))
             {
                 Advance();
