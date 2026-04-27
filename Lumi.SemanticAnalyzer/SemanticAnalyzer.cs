@@ -15,6 +15,7 @@ public sealed class SemanticAnalyzer
         ["add"] = 1,
         ["remove"] = 1,
         ["length"] = 0,
+        ["contains"] = 1
     };
 
     public SemanticAnalyzer()

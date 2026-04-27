@@ -71,6 +71,26 @@ public sealed class ArrayTests
         Assert.AreEqual("3", output.Trim());
     }
 
+    [TestMethod]
+    public void Test_List_Contains_Method_Returns_True_When_Present()
+    {
+        var source = "let items: list -> [1, 2, 3]; print items.contains(2);";
+
+        var output = ExecuteAndCapture(source);
+
+        Assert.AreEqual("True", output.Trim());
+    }
+
+    [TestMethod]
+    public void Test_List_Contains_Method_Returns_False_When_Absent()
+    {
+        var source = "let items: list -> [1, 2, 3]; print items.contains(99);";
+
+        var output = ExecuteAndCapture(source);
+
+        Assert.AreEqual("False", output.Trim());
+    }
+
     private static string ExecuteAndCapture(string source)
     {
         var originalOut = Console.Out;

@@ -22,13 +22,19 @@ public static class SupportedMethods
         /// </summary>
         public const string Length = "length";
 
-        public static bool Contains(string methodName)
+        /// <summary>     
+        /// /// Checks if the list contains a specific element. Returns true if the element is found, false otherwise.
+        /// </summary>
+        public const string Contains = "contains";
+
+        public static bool IsMethodNameValid(string methodName)
         {
             return methodName switch
             {
                 Add => true,
                 Remove => true,
                 Length => true,
+                Contains => true,
                 _ => false
             };
         }

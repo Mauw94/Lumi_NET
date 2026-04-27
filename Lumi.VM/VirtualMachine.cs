@@ -256,6 +256,14 @@ public sealed class VirtualMachine
                                 _stack[_stackTop++] = Value.FromNumber(target.Array.Count);
                                 break;
 
+                            case SupportedMethods.ListMethods.Contains:
+                                if (argumentCount != 1)
+                                    throw VirtualMachineError.ListMethodArgumentCountMismatch(methodName, 1, argumentCount);
+
+                                var contains = target.Array.Contains(args[0]);
+                                _stack[_stackTop++] = Value.FromBoolean(contains);
+                                break;
+
                             default:
                                 throw VirtualMachineError.UnknownListMethod(methodName);
                         }
