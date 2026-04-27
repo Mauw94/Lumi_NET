@@ -78,17 +78,7 @@ public sealed class BenchmarkTests
     public void Test_Finonacci()
     {
         // Arrange
-        var source = @"
-            fn fib(n) {
-                if (n <= 1) {
-                    return n;
-                } else {
-                    return fib(n - 1) + fib(n - 2);
-                }
-            }
-
-            print fib(25);
-        ";
+        var source = SourceStrings.FibonacciSource;
 
         // Act + Benchmark
         const int iterations = 100;
@@ -112,7 +102,7 @@ public sealed class BenchmarkTests
     public void Test_List_Manipulation_Workload()
     {
         // Arrange
-        var source = ListManipulationWorkloadSource;
+        var source = SourceStrings.ListManipulationWorkloadSource;
 
         // Act + Benchmark
         const int iterations = 100;
@@ -122,9 +112,35 @@ public sealed class BenchmarkTests
     }
 
     [TestMethod]
+    public void Test_Struct_Definition_And_Field_Access()
+    {
+        // Arrange
+        var source = SourceStrings.StructDefinitionAndFieldAccessSource;
+
+        // Act + Benchmark
+        const int iterations = 1000;
+
+        Warmup(source);
+        CollectBenchmarkData(iterations, source);
+    }
+
+    [TestMethod]
+    public void Test_Struct_Definition_And_Field_Access_With_Assignment()
+    {
+        // Arrange
+        var source = SourceStrings.StructDefinitionAndFieldAccessWithAssignmentSource;
+
+        // Act + Benchmark
+        const int iterations = 1000;
+
+        Warmup(source);
+        CollectBenchmarkData(iterations, source);
+    }
+
+    [TestMethod]
     public void Test_List_Manipulation_Workload_Phases()
     {
-        var source = ListManipulationWorkloadSource;
+        var source = SourceStrings.ListManipulationWorkloadSource;
         const int iterations = 100;
 
         // Pre-parse and pre-generate so each phase can be timed in isolation.
@@ -262,26 +278,6 @@ public sealed class BenchmarkTests
         var vm = new VirtualMachine();
         vm.Execute(bytecodeResult);
     }
-
-    private const string ListManipulationWorkloadSource = @"
-            let items: list -> [];
-
-            for i in 0 to 499 step 1 {
-                items.add(i);
-            }
-
-            let checksum -> 0;
-            for i in 0 to 499 step 1 {
-                checksum = checksum + items[i];
-            }
-
-            for i in 0 to 249 step 1 {
-                items.remove(i);
-            }
-
-            print items.length();
-            print checksum;
-        ";
 
     private static void Warmup(string source)
     {

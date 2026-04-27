@@ -1,0 +1,9 @@
+struct Person {
+    name: str;
+    age: int;
+}
+
+let p: Person -> new Person;
+p.age = 5;
+p.name = "test";
+print p;

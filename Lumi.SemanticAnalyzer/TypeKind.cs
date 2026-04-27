@@ -7,11 +7,12 @@
 public enum TypeKind
 {
     Unknown,
-    Number,
+    Int,
     String,
     Boolean,
     Null,
     Undefined,
     Function,
     Array,
+    Struct,
 }

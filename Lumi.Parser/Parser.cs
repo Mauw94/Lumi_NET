@@ -115,6 +115,9 @@ public sealed class Parser
                     case "fn":
                         result = ParseFunctionStatement;
                         break;
+                    case "struct":
+                        result = ParseStructStatement;
+                        break;
                     case "for":
                         result = ParseForStatement;
                         break;
@@ -250,6 +253,63 @@ public sealed class Parser
                 IsAsync = false,
                 Span = span
             };
+        }
+    }
+
+    private Node ParseStructStatement
+    {
+        get
+        {
+            Advance(); // consume 'struct'
+
+            if (!CheckIdentifier())
+                throw ParserError.InvalidSyntax("Expected struct name", CurrentPosition() ?? new Position());
+
+            var name = (IdentifierNode)ParseIdentifier;
+
+            Expect(TokenKind.LeftBrace);
+
+            var fields = new List<StructFieldDeclaration>();
+
+            while (!Check(TokenKind.RightBrace) && !IsEof())
+            {
+                if (!CheckIdentifier())
+                    throw ParserError.InvalidSyntax("Expected struct field name", CurrentPosition() ?? new Position());
+
+                var fieldName = (IdentifierNode)ParseIdentifier;
+
+                Expect(TokenKind.Colon);
+
+                IdentifierNode fieldType;
+                if (current != null && IsKeyword(current, out var keywordType))
+                {
+                    Advance();
+                    fieldType = new IdentifierNode { Name = keywordType };
+                }
+                else if (current != null && IsIdentifier(current, out var identifierType))
+                {
+                    Advance();
+                    fieldType = new IdentifierNode { Name = identifierType };
+                }
+                else
+                {
+                    throw ParserError.InvalidSyntax("Expected struct field type", CurrentPosition() ?? new Position());
+                }
+
+                if (Check(TokenKind.Semicolon))
+                    Advance();
+
+                fields.Add(new StructFieldDeclaration { Name = fieldName, Type = fieldType, Span = CreateSpanFromTokens() });
+            }
+
+            Expect(TokenKind.RightBrace);
+
+            if (Check(TokenKind.Semicolon))
+                Advance();
+
+            var span = CreateSpanFromTokens();
+
+            return new StructDeclaration { Name = name, Fields = fields, Span = span };
         }
     }
 
@@ -670,6 +730,26 @@ public sealed class Parser
     private Node ParsePrimaryExpression()
     {
         var tok = current ?? throw ParserError.UnexpectedEndOfFile();
+
+        if (tok.Kind == TokenKind.Keyword && string.Equals(tok.Value, "new", StringComparison.Ordinal))
+        {
+            Advance(); // consume 'new'
+
+            if (current == null || !IsIdentifier(current, out var typeName))
+                throw ParserError.InvalidSyntax("Expected type name after 'new'", CurrentPosition() ?? new Position());
+
+            Advance();
+
+            var arguments = new List<Node>();
+            if (Check(TokenKind.LeftParen))
+            {
+                Advance();
+                arguments = ParseArguments();
+                Expect(TokenKind.RightParen);
+            }
+
+            return new NewExpression { TypeName = new IdentifierNode { Name = typeName }, Arguments = arguments };
+        }
 
         switch (tok.Kind)
         {

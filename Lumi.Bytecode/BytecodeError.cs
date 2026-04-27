@@ -23,6 +23,8 @@ public sealed class BytecodeError(string message) : Exception(message)
     public static BytecodeError ExpectedIdentifierInFunctionCall() => new($"Expected identifier in function call.");
     public static BytecodeError ExpectedIdentifierInMemberAccess() => new("Expected identifier property in member access.");
     public static BytecodeError UnsupportedListMethod(string methodName) => new($"Unsupported list method: {methodName}");
+    public static BytecodeError StructAlreadyDefined(string structName) => new($"Struct '{structName}' is already defined.");
+    public static BytecodeError UndefinedStruct(string structName) => new($"Undefined struct: {structName}");
     public static BytecodeError UndefinedVariable(string name) => new($"Undefined variable: {name}");
     public static BytecodeError NoActiveScope() => new("No active scope.");
     public static BytecodeError ForStatementMissingIterator() => new("For statement is missing an iterator expression.");

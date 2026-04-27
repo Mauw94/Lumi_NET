@@ -315,6 +315,98 @@ public sealed class ParserTests
         Assert.AreEqual(2, ((NumberNode)callExpr.Arguments[0]).Value);
     }
 
+    [TestMethod]
+    public void Test_Parsing_Struct_Declaration()
+    {
+        var source = "struct Person { name: str; age: int; }";
+        var program = ParseProgram(source);
+
+        Assert.HasCount(1, program.Body);
+        Assert.IsInstanceOfType<StructDeclaration>(program.Body[0]);
+
+        var structDecl = (StructDeclaration)program.Body[0];
+        Assert.AreEqual("Person", structDecl.Name.Name);
+        Assert.HasCount(2, structDecl.Fields);
+        Assert.AreEqual("name", structDecl.Fields[0].Name.Name);
+        Assert.AreEqual("str", structDecl.Fields[0].Type.Name);
+        Assert.AreEqual("age", structDecl.Fields[1].Name.Name);
+        Assert.AreEqual("int", structDecl.Fields[1].Type.Name);
+    }
+
+    [TestMethod]
+    public void Test_Parsing_New_Expression()
+    {
+        var source = "let person: Person -> new Person;";
+        var program = ParseProgram(source);
+
+        Assert.HasCount(1, program.Body);
+        Assert.IsInstanceOfType<VariableDeclaration>(program.Body[0]);
+
+        var declarator = ((VariableDeclaration)program.Body[0]).Declarations[0];
+        Assert.IsInstanceOfType<IdentifierNode>(declarator.VarType);
+        Assert.AreEqual("Person", ((IdentifierNode)declarator.VarType!).Name);
+        Assert.IsInstanceOfType<NewExpression>(declarator.Init);
+        Assert.AreEqual("Person", ((NewExpression)declarator.Init!).TypeName.Name);
+    }
+
+    [TestMethod]
+    public void Test_Parsing_Struct_Field_Access()
+    {
+        var source = "print person.name;";
+        var program = ParseProgram(source);
+
+        Assert.HasCount(1, program.Body);
+        Assert.IsInstanceOfType<PrintStatement>(program.Body[0]);
+
+        var printStmt = (PrintStatement)program.Body[0];
+        Assert.IsInstanceOfType<MemberExpression>(printStmt.Argument);
+
+        var memberExpr = (MemberExpression)printStmt.Argument;
+        Assert.IsInstanceOfType<IdentifierNode>(memberExpr.Object);
+        Assert.AreEqual("person", ((IdentifierNode)memberExpr.Object).Name);
+        Assert.AreEqual("name", memberExpr.Property.Name);
+    }
+
+    [TestMethod]
+    public void Test_Parsing_New_Expression_With_Arguments()
+    {
+        var source = "let person: Person -> new Person(\"Alice\", 30);";
+        var program = ParseProgram(source);
+
+        Assert.HasCount(1, program.Body);
+        var declarator = ((VariableDeclaration)program.Body[0]).Declarations[0];
+        Assert.IsInstanceOfType<NewExpression>(declarator.Init);
+
+        var newExpr = (NewExpression)declarator.Init!;
+        Assert.AreEqual("Person", newExpr.TypeName.Name);
+        Assert.HasCount(2, newExpr.Arguments);
+        Assert.IsInstanceOfType<StringNode>(newExpr.Arguments[0]);
+        Assert.IsInstanceOfType<NumberNode>(newExpr.Arguments[1]);
+    }
+
+    [TestMethod]
+    public void Test_Parsing_Struct_Field_Assignment()
+    {
+        var source = "person.age = 5;";
+        var program = ParseProgram(source);
+
+        Assert.HasCount(1, program.Body);
+        Assert.IsInstanceOfType<ExpressionStatement>(program.Body[0]);
+
+        var exprStmt = (ExpressionStatement)program.Body[0];
+        Assert.IsInstanceOfType<AssignmentExpression>(exprStmt.Expression);
+
+        var assignment = (AssignmentExpression)exprStmt.Expression;
+        Assert.IsInstanceOfType<MemberExpression>(assignment.Left);
+
+        var left = (MemberExpression)assignment.Left;
+        Assert.AreEqual("age", left.Property.Name);
+        Assert.IsInstanceOfType<IdentifierNode>(left.Object);
+        Assert.AreEqual("person", ((IdentifierNode)left.Object).Name);
+        Assert.IsInstanceOfType<NumberNode>(assignment.Right);
+        Assert.AreEqual(5, ((NumberNode)assignment.Right).Value);
+    }
+
     private static Program ParseProgram(string source)
     {
         var parser = new Parser(source);

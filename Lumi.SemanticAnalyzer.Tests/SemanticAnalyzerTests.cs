@@ -695,6 +695,61 @@ public sealed class SemanticAnalyzerTests
     }
 
     [TestMethod]
+    public void Analyze_ListOfStructs_IndexExpression_MemberAccess_IsValid()
+    {
+        var program = new Program
+        {
+            Body =
+            [
+                new StructDeclaration
+                {
+                    Name = new IdentifierNode { Name = "Person" },
+                    Fields =
+                    [
+                        new StructFieldDeclaration { Name = new IdentifierNode { Name = "name" }, Type = new IdentifierNode { Name = "str" } }
+                    ]
+                },
+                new VariableDeclaration
+                {
+                    Kind = "let",
+                    Declarations =
+                    [
+                        new VariableDeclarator
+                        {
+                            VarName = new IdentifierNode { Name = "people" },
+                            VarType = new IdentifierNode { Name = "list" },
+                            Init = new ArrayLiteral
+                            {
+                                Elements =
+                                [
+                                    new NewExpression { TypeName = new IdentifierNode { Name = "Person" } }
+                                ]
+                            }
+                        }
+                    ]
+                },
+                new PrintStatement
+                {
+                    Argument = new MemberExpression
+                    {
+                        Object = new IndexExpression
+                        {
+                            Object = new IdentifierNode { Name = "people" },
+                            Index = new NumberNode { Value = 0.0 }
+                        },
+                        Property = new IdentifierNode { Name = "name" }
+                    }
+                }
+            ]
+        };
+
+        var result = new SemanticAnalyzer().Analyze(program);
+
+        Assert.IsTrue(result.IsValid);
+        Assert.IsEmpty(result.Errors);
+    }
+
+    [TestMethod]
     public void Analyze_ArrayIndexExpression_UndefinedObject_ReturnsError()
     {
         // print y[0]; (y is undefined)
@@ -1058,5 +1113,191 @@ public sealed class SemanticAnalyzerTests
         Assert.IsFalse(result.IsValid);
         Assert.HasCount(1, result.Errors);
         Assert.Contains("expects 1 argument(s) but was called with 0", result.Errors[0].Message);
+    }
+
+    [TestMethod]
+    public void Analyze_Struct_Instantiation_And_FieldAccess_IsValid()
+    {
+        var program = new Program
+        {
+            Body =
+            [
+                new StructDeclaration
+                {
+                    Name = new IdentifierNode { Name = "Person" },
+                    Fields =
+                    [
+                        new StructFieldDeclaration { Name = new IdentifierNode { Name = "name" }, Type = new IdentifierNode { Name = "str" } },
+                        new StructFieldDeclaration { Name = new IdentifierNode { Name = "age" }, Type = new IdentifierNode { Name = "int" } }
+                    ]
+                },
+                new VariableDeclaration
+                {
+                    Kind = "let",
+                    Declarations =
+                    [
+                        new VariableDeclarator
+                        {
+                            VarName = new IdentifierNode { Name = "person" },
+                            VarType = new IdentifierNode { Name = "Person" },
+                            Init = new NewExpression { TypeName = new IdentifierNode { Name = "Person" } }
+                        }
+                    ]
+                },
+                new PrintStatement
+                {
+                    Argument = new MemberExpression
+                    {
+                        Object = new IdentifierNode { Name = "person" },
+                        Property = new IdentifierNode { Name = "name" }
+                    }
+                }
+            ]
+        };
+
+        var result = new SemanticAnalyzer().Analyze(program);
+
+        Assert.IsTrue(result.IsValid);
+        Assert.IsEmpty(result.Errors);
+    }
+
+    [TestMethod]
+    public void Analyze_Struct_Unknown_Field_ReturnsError()
+    {
+        var program = new Program
+        {
+            Body =
+            [
+                new StructDeclaration
+                {
+                    Name = new IdentifierNode { Name = "Person" },
+                    Fields =
+                    [
+                        new StructFieldDeclaration { Name = new IdentifierNode { Name = "name" }, Type = new IdentifierNode { Name = "str" } }
+                    ]
+                },
+                new VariableDeclaration
+                {
+                    Kind = "let",
+                    Declarations =
+                    [
+                        new VariableDeclarator
+                        {
+                            VarName = new IdentifierNode { Name = "person" },
+                            VarType = new IdentifierNode { Name = "Person" },
+                            Init = new NewExpression { TypeName = new IdentifierNode { Name = "Person" } }
+                        }
+                    ]
+                },
+                new PrintStatement
+                {
+                    Argument = new MemberExpression
+                    {
+                        Object = new IdentifierNode { Name = "person" },
+                        Property = new IdentifierNode { Name = "age" }
+                    }
+                }
+            ]
+        };
+
+        var result = new SemanticAnalyzer().Analyze(program);
+
+        Assert.IsFalse(result.IsValid);
+        Assert.HasCount(1, result.Errors);
+        Assert.Contains("does not contain field", result.Errors[0].Message);
+    }
+
+    [TestMethod]
+    public void Analyze_Struct_Field_Assignment_IsValid()
+    {
+        var program = new Program
+        {
+            Body =
+            [
+                new StructDeclaration
+                {
+                    Name = new IdentifierNode { Name = "Person" },
+                    Fields =
+                    [
+                        new StructFieldDeclaration { Name = new IdentifierNode { Name = "name" }, Type = new IdentifierNode { Name = "str" } },
+                        new StructFieldDeclaration { Name = new IdentifierNode { Name = "age" }, Type = new IdentifierNode { Name = "int" } }
+                    ]
+                },
+                new VariableDeclaration
+                {
+                    Kind = "let",
+                    Declarations =
+                    [
+                        new VariableDeclarator
+                        {
+                            VarName = new IdentifierNode { Name = "p" },
+                            VarType = new IdentifierNode { Name = "Person" },
+                            Init = new NewExpression { TypeName = new IdentifierNode { Name = "Person" } }
+                        }
+                    ]
+                },
+                new ExpressionStatement
+                {
+                    Expression = new AssignmentExpression
+                    {
+                        Left = new MemberExpression
+                        {
+                            Object = new IdentifierNode { Name = "p" },
+                            Property = new IdentifierNode { Name = "age" }
+                        },
+                        Operator = "=",
+                        Right = new NumberNode { Value = 5.0 }
+                    }
+                }
+            ]
+        };
+
+        var result = new SemanticAnalyzer().Analyze(program);
+
+        Assert.IsTrue(result.IsValid);
+        Assert.IsEmpty(result.Errors);
+    }
+
+    [TestMethod]
+    public void Analyze_NewStruct_With_TooMany_Arguments_ReturnsError()
+    {
+        var program = new Program
+        {
+            Body =
+            [
+                new StructDeclaration
+                {
+                    Name = new IdentifierNode { Name = "Person" },
+                    Fields =
+                    [
+                        new StructFieldDeclaration { Name = new IdentifierNode { Name = "name" }, Type = new IdentifierNode { Name = "str" } },
+                        new StructFieldDeclaration { Name = new IdentifierNode { Name = "age" }, Type = new IdentifierNode { Name = "int" } }
+                    ]
+                },
+                new VariableDeclaration
+                {
+                    Kind = "let",
+                    Declarations =
+                    [
+                        new VariableDeclarator
+                        {
+                            VarName = new IdentifierNode { Name = "p" },
+                            VarType = new IdentifierNode { Name = "Person" },
+                            Init = new NewExpression
+                            {
+                                TypeName = new IdentifierNode { Name = "Person" },
+                                Arguments = [new StringNode { Value = "Alice" }, new NumberNode { Value = 30.0 }, new NumberNode { Value = 99.0 }]
+                            }
+                        }
+                    ]
+                }
+            ]
+        };
+
+        var result = new SemanticAnalyzer().Analyze(program);
+
+        Assert.IsFalse(result.IsValid);
+        Assert.HasCount(1, result.Errors);
+        Assert.Contains("constructor accepts up to 2 argument", result.Errors[0].Message);
     }
 }

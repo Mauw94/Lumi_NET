@@ -49,4 +49,9 @@ internal sealed class VirtualMachineError(string message) : Exception(message)
 
     internal static VirtualMachineError ListMethodArgumentCountMismatch(string methodName, int expected, int actual)
         => new($"List method '{methodName}' expects {expected} argument(s) but got {actual}.");
+    internal static VirtualMachineError UndefinedStruct(string structName) => new($"Undefined struct: {structName}.");
+    internal static VirtualMachineError FieldAccessTargetNotStruct(ValueKind kind) => new($"Field access target must be a struct, got {kind}.");
+    internal static VirtualMachineError UnknownStructField(string fieldName) => new($"Unknown struct field: {fieldName}.");
+    internal static VirtualMachineError StructConstructorArgumentCountMismatch(string structName, int maxExpected, int actual)
+        => new($"Struct '{structName}' constructor accepts up to {maxExpected} argument(s) but got {actual}.");
 }

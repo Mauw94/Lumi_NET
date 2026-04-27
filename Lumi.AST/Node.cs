@@ -43,9 +43,27 @@ public class FunctionDeclaration : Node
     public bool IsAsync { get; set; }
 }
 
+public class StructDeclaration : Node
+{
+    public required IdentifierNode Name { get; set; }
+    public List<StructFieldDeclaration> Fields { get; set; } = [];
+}
+
+public class StructFieldDeclaration : Node
+{
+    public required IdentifierNode Name { get; set; }
+    public required IdentifierNode Type { get; set; }
+}
+
 public class CallExpression : Node
 {
     public required Node Callee { get; set; }
+    public List<Node> Arguments { get; set; } = [];
+}
+
+public class NewExpression : Node
+{
+    public required IdentifierNode TypeName { get; set; }
     public List<Node> Arguments { get; set; } = [];
 }
 
