@@ -12,6 +12,7 @@ public sealed class SemanticAnalyzer
     private readonly ScopeManager _scopes = new();
     private readonly Dictionary<string, List<string>> _structFieldOrder = new(StringComparer.Ordinal);
     private readonly Dictionary<string, Dictionary<string, (TypeKind Type, string? StructName)>> _structFieldTypes = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, (TypeKind Type, string? StructName)> _listElementTypes = new(StringComparer.Ordinal);
     private static readonly Dictionary<string, int> ListMethodParameterCounts = new(StringComparer.Ordinal)
     {
         ["add"] = 1,
@@ -227,11 +228,19 @@ public sealed class SemanticAnalyzer
                 }
             }
 
+            if (inferred == TypeKind.Array && declarator.Init is ArrayLiteral arrayLiteral)
+            {
+                var elementTypeInfo = InferArrayElementTypeInfo(arrayLiteral);
+
+                if (elementTypeInfo.Type != TypeKind.Unknown)
+                    _listElementTypes[varName.Name] = elementTypeInfo;
+            }
+
             var symbol = new Symbol(
-                varName.Name,
-                varDecl.Kind == "const" ? SymbolKind.Constant : SymbolKind.Variable,
-                inferred,
-                isReadOnly,
+                Name: varName.Name,
+                Kind: varDecl.Kind == "const" ? SymbolKind.Constant : SymbolKind.Variable,
+                Type: inferred,
+                IsReadOnly: isReadOnly,
                 StructName: structName
             );
 
@@ -542,7 +551,50 @@ public sealed class SemanticAnalyzer
                 return (symbol.Value.Type, symbol.Value.StructName);
         }
 
+        if (node is IndexExpression indexExpr)
+        {
+            var objectTypeInfo = InferTypeInfo(indexExpr.Object);
+            if (objectTypeInfo.Type == TypeKind.Array)
+            {
+                if (indexExpr.Object is IdentifierNode objectIdentifier
+                    && _listElementTypes.TryGetValue(objectIdentifier.Name, out var inferredElementType))
+                {
+                    return inferredElementType;
+                }
+
+                if (indexExpr.Object is ArrayLiteral arrayLiteral)
+                    return InferArrayElementTypeInfo(arrayLiteral);
+
+                return (TypeKind.Unknown, null);
+            }
+        }
+
         return InferTypeFromNode(node);
+    }
+
+    private (TypeKind Type, string? StructName) InferArrayElementTypeInfo(ArrayLiteral arrayLiteral)
+    {
+        // TODO: need a way to declare an empty list with specific type info
+        // e.g. let cars: list<Car> -> [];
+        if (arrayLiteral.Elements.Count == 0)
+            return (TypeKind.Unknown, null);
+
+        var inferred = InferTypeInfo(arrayLiteral.Elements[0]);
+        if (inferred.Type == TypeKind.Unknown)
+            return (TypeKind.Unknown, null);
+
+        for (int i = 1; i < arrayLiteral.Elements.Count; i++)
+        {
+            var current = InferTypeInfo(arrayLiteral.Elements[i]);
+            var isDifferentStruct = inferred.Type == TypeKind.Struct
+                && current.Type == TypeKind.Struct
+                && !string.Equals(inferred.StructName, current.StructName, StringComparison.Ordinal);
+
+            if (current.Type != inferred.Type || isDifferentStruct)
+                return (TypeKind.Unknown, null);
+        }
+
+        return inferred;
     }
 
     /// <summary>

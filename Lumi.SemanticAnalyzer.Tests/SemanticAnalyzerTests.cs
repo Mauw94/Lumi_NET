@@ -695,6 +695,61 @@ public sealed class SemanticAnalyzerTests
     }
 
     [TestMethod]
+    public void Analyze_ListOfStructs_IndexExpression_MemberAccess_IsValid()
+    {
+        var program = new Program
+        {
+            Body =
+            [
+                new StructDeclaration
+                {
+                    Name = new IdentifierNode { Name = "Person" },
+                    Fields =
+                    [
+                        new StructFieldDeclaration { Name = new IdentifierNode { Name = "name" }, Type = new IdentifierNode { Name = "str" } }
+                    ]
+                },
+                new VariableDeclaration
+                {
+                    Kind = "let",
+                    Declarations =
+                    [
+                        new VariableDeclarator
+                        {
+                            VarName = new IdentifierNode { Name = "people" },
+                            VarType = new IdentifierNode { Name = "list" },
+                            Init = new ArrayLiteral
+                            {
+                                Elements =
+                                [
+                                    new NewExpression { TypeName = new IdentifierNode { Name = "Person" } }
+                                ]
+                            }
+                        }
+                    ]
+                },
+                new PrintStatement
+                {
+                    Argument = new MemberExpression
+                    {
+                        Object = new IndexExpression
+                        {
+                            Object = new IdentifierNode { Name = "people" },
+                            Index = new NumberNode { Value = 0.0 }
+                        },
+                        Property = new IdentifierNode { Name = "name" }
+                    }
+                }
+            ]
+        };
+
+        var result = new SemanticAnalyzer().Analyze(program);
+
+        Assert.IsTrue(result.IsValid);
+        Assert.IsEmpty(result.Errors);
+    }
+
+    [TestMethod]
     public void Analyze_ArrayIndexExpression_UndefinedObject_ReturnsError()
     {
         // print y[0]; (y is undefined)
