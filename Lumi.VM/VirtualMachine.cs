@@ -235,6 +235,27 @@ public sealed class VirtualMachine
                                 _stack[_stackTop++] = target;
                                 break;
 
+                            case SupportedMethods.ListMethods.Remove:
+                                if (argumentCount != 1)
+                                    throw VirtualMachineError.ListMethodArgumentCountMismatch(methodName, 1, argumentCount);
+
+                                var removed = target.Array.Remove(args[0]);
+                                if (removed is false)
+                                {
+                                    // If the value to remove was not found, we still need to push the original array back onto the stack
+                                    // to maintain correct stack state for the caller.
+                                    _stack[_stackTop++] = target;
+                                }
+                                _stack[_stackTop++] = Value.FromBoolean(removed);
+                                break;
+
+                            case SupportedMethods.ListMethods.Length:
+                                if (argumentCount != 0)
+                                    throw VirtualMachineError.ListMethodArgumentCountMismatch(methodName, 0, argumentCount);
+
+                                _stack[_stackTop++] = Value.FromNumber(target.Array.Count);
+                                break;
+
                             default:
                                 throw VirtualMachineError.UnknownListMethod(methodName);
                         }

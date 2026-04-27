@@ -247,6 +247,51 @@ public sealed class ParserTests
         Assert.AreEqual(1, ((NumberNode)callExpr.Arguments[0]).Value);
     }
 
+    [TestMethod]
+    public void Test_Parsing_List_Remove_Method_Call()
+    {
+        var source = "let items: list -> [1,2,3]; items.remove(2);";
+        var program = ParseProgram(source);
+
+        Assert.HasCount(2, program.Body);
+        Assert.IsInstanceOfType<ExpressionStatement>(program.Body[1]);
+
+        var exprStmt = (ExpressionStatement)program.Body[1];
+        Assert.IsInstanceOfType<CallExpression>(exprStmt.Expression);
+
+        var callExpr = (CallExpression)exprStmt.Expression;
+        Assert.IsInstanceOfType<MemberExpression>(callExpr.Callee);
+
+        var memberExpr = (MemberExpression)callExpr.Callee;
+        Assert.IsInstanceOfType<IdentifierNode>(memberExpr.Object);
+        Assert.AreEqual("items", ((IdentifierNode)memberExpr.Object).Name);
+        Assert.AreEqual("remove", memberExpr.Property.Name);
+        Assert.HasCount(1, callExpr.Arguments);
+        Assert.AreEqual(2, ((NumberNode)callExpr.Arguments[0]).Value);
+    }
+
+    [TestMethod]
+    public void Test_Parsing_List_Length_Method_Call()
+    {
+        var source = "let items: list -> [1,2,3]; items.length();";
+        var program = ParseProgram(source);
+
+        Assert.HasCount(2, program.Body);
+        Assert.IsInstanceOfType<ExpressionStatement>(program.Body[1]);
+
+        var exprStmt = (ExpressionStatement)program.Body[1];
+        Assert.IsInstanceOfType<CallExpression>(exprStmt.Expression);
+
+        var callExpr = (CallExpression)exprStmt.Expression;
+        Assert.IsInstanceOfType<MemberExpression>(callExpr.Callee);
+
+        var memberExpr = (MemberExpression)callExpr.Callee;
+        Assert.IsInstanceOfType<IdentifierNode>(memberExpr.Object);
+        Assert.AreEqual("items", ((IdentifierNode)memberExpr.Object).Name);
+        Assert.AreEqual("length", memberExpr.Property.Name);
+        Assert.IsEmpty(callExpr.Arguments);
+    }
+
     private static Program ParseProgram(string source)
     {
         var parser = new Parser(source);

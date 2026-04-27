@@ -51,6 +51,26 @@ public sealed class ArrayTests
         Assert.AreEqual("[1, 2, 3, 4]", output.Trim());
     }
 
+    [TestMethod]
+    public void Test_List_Remove_Method_Mutates_List()
+    {
+        var source = "let items: list -> [1, 2, 3]; items.remove(2); print items;";
+
+        var output = ExecuteAndCapture(source);
+
+        Assert.AreEqual("[1, 3]", output.Trim());
+    }
+
+    [TestMethod]
+    public void Test_List_Length_Method_Returns_Count()
+    {
+        var source = "let items: list -> [1, 2, 3]; print items.length();";
+
+        var output = ExecuteAndCapture(source);
+
+        Assert.AreEqual("3", output.Trim());
+    }
+
     private static string ExecuteAndCapture(string source)
     {
         var originalOut = Console.Out;
