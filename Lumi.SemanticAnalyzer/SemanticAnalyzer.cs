@@ -228,12 +228,22 @@ public sealed class SemanticAnalyzer
                 }
             }
 
-            if (inferred == TypeKind.Array && declarator.Init is ArrayLiteral arrayLiteral)
+            if (inferred == TypeKind.Array)
             {
-                var elementTypeInfo = InferArrayElementTypeInfo(arrayLiteral);
-
-                if (elementTypeInfo.Type != TypeKind.Unknown)
-                    _listElementTypes[varName.Name] = elementTypeInfo;
+                // Extract element type from explicit parameterized type annotation (e.g., list<Car>)
+                if (declarator.VarType is ParameterizedTypeNode paramType)
+                {
+                    var elementTypeInfo = InferDeclaredTypeInfo(paramType.TypeArgument);
+                    if (elementTypeInfo.Type != TypeKind.Unknown)
+                        _listElementTypes[varName.Name] = elementTypeInfo;
+                }
+                // Or infer element type from initializer array literal
+                else if (declarator.Init is ArrayLiteral arrayLiteral)
+                {
+                    var elementTypeInfo = InferArrayElementTypeInfo(arrayLiteral);
+                    if (elementTypeInfo.Type != TypeKind.Unknown)
+                        _listElementTypes[varName.Name] = elementTypeInfo;
+                }
             }
 
             var symbol = new Symbol(
@@ -513,6 +523,19 @@ public sealed class SemanticAnalyzer
 
     private (TypeKind Type, string? StructName) InferDeclaredTypeInfo(Node? typeNode)
     {
+        if (typeNode is ParameterizedTypeNode paramType)
+        {
+            var baseTypeName = paramType.BaseTypeName.ToLowerInvariant();
+            if (baseTypeName != "list")
+                throw SemanticAnalyzerError.InvalidTypeAnnotation(paramType.BaseTypeName);
+
+            var paramTypeInfo = InferDeclaredTypeInfo(paramType.TypeArgument);
+            if (paramTypeInfo.Type == TypeKind.Unknown)
+                return (TypeKind.Array, null);
+
+            return (TypeKind.Array, null);
+        }
+
         if (typeNode is not IdentifierNode typeIdentifier)
             return (TypeKind.Unknown, null);
 

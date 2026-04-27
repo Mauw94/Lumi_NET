@@ -125,6 +125,48 @@ public sealed class ParserTests
     }
 
     [TestMethod]
+    public void Test_Parsing_List_With_Parameterized_Type()
+    {
+        var source = "let items: list<int> -> [1,2,3];";
+        var program = ParseProgram(source);
+
+        Assert.HasCount(1, program.Body);
+        Assert.IsInstanceOfType<VariableDeclaration>(program.Body[0]);
+
+        var declarator = ((VariableDeclaration)program.Body[0]).Declarations[0];
+        Assert.IsInstanceOfType<ParameterizedTypeNode>(declarator.VarType);
+
+        var paramType = (ParameterizedTypeNode)declarator.VarType!;
+        Assert.AreEqual("list", paramType.BaseTypeName);
+        Assert.IsInstanceOfType<IdentifierNode>(paramType.TypeArgument);
+        Assert.AreEqual("int", ((IdentifierNode)paramType.TypeArgument).Name);
+
+        Assert.IsInstanceOfType<ArrayLiteral>(declarator.Init);
+        var array = (ArrayLiteral)declarator.Init!;
+        Assert.HasCount(3, array.Elements);
+    }
+
+    [TestMethod]
+    public void Test_Parsing_List_Of_Struct_With_Parameterized_Type()
+    {
+        var source = "let cars: list<Car> -> [];";
+        var program = ParseProgram(source);
+
+        Assert.HasCount(1, program.Body);
+        Assert.IsInstanceOfType<VariableDeclaration>(program.Body[0]);
+
+        var declarator = ((VariableDeclaration)program.Body[0]).Declarations[0];
+        Assert.IsInstanceOfType<ParameterizedTypeNode>(declarator.VarType);
+
+        var paramType = (ParameterizedTypeNode)declarator.VarType!;
+        Assert.AreEqual("list", paramType.BaseTypeName);
+        Assert.IsInstanceOfType<IdentifierNode>(paramType.TypeArgument);
+        Assert.AreEqual("Car", ((IdentifierNode)paramType.TypeArgument).Name);
+
+        Assert.IsInstanceOfType<ArrayLiteral>(declarator.Init);
+    }
+
+    [TestMethod]
     public void Test_For_Statement()
     {
         var source = "for i in 0 to 10 { print i; }";
@@ -405,6 +447,51 @@ public sealed class ParserTests
         Assert.AreEqual("person", ((IdentifierNode)left.Object).Name);
         Assert.IsInstanceOfType<NumberNode>(assignment.Right);
         Assert.AreEqual(5, ((NumberNode)assignment.Right).Value);
+    }
+
+    [TestMethod]
+    public void Test_Parsing_List_With_Parameterized_Type_Is_Valid()
+    {
+        var source = "let items: list<Car> -> [];";
+        var program = ParseProgram(source);
+
+        Assert.HasCount(1, program.Body);
+        Assert.IsInstanceOfType<VariableDeclaration>(program.Body[0]);
+
+        var declarator = ((VariableDeclaration)program.Body[0]).Declarations[0];
+        Assert.IsInstanceOfType<ParameterizedTypeNode>(declarator.VarType);
+
+        var paramType = (ParameterizedTypeNode)declarator.VarType!;
+        Assert.AreEqual("list", paramType.BaseTypeName);
+    }
+
+    [TestMethod]
+    public void Test_Parsing_Array_With_Parameterized_Type_Is_Valid()
+    {
+        var source = "let items: array<int> -> [];";
+        var program = ParseProgram(source);
+
+        Assert.HasCount(1, program.Body);
+        var declarator = ((VariableDeclaration)program.Body[0]).Declarations[0];
+
+        // Since "array" is an identifier (not a keyword), it should be treated as IdentifierNode
+        // and the <int> should be skipped by the parser
+        Assert.IsInstanceOfType<IdentifierNode>(declarator.VarType);
+        Assert.AreEqual("array", ((IdentifierNode)declarator.VarType!).Name);
+    }
+
+    [TestMethod]
+    public void Test_Parsing_Non_List_Type_With_Parameter_Ignores_Parameter()
+    {
+        var source = "let car: Car<int> -> new Car();";
+        var program = ParseProgram(source);
+
+        Assert.HasCount(1, program.Body);
+        var declarator = ((VariableDeclaration)program.Body[0]).Declarations[0];
+
+        // Parser should ignore the type parameter for non-list types
+        Assert.IsInstanceOfType<IdentifierNode>(declarator.VarType);
+        Assert.AreEqual("Car", ((IdentifierNode)declarator.VarType!).Name);
     }
 
     private static Program ParseProgram(string source)

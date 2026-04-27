@@ -156,6 +156,12 @@ public class IdentifierNode : Node
     public string Name { get; set; } = string.Empty;
 }
 
+public class ParameterizedTypeNode : Node
+{
+    public required string BaseTypeName { get; set; }
+    public required Node TypeArgument { get; set; }
+}
+
 public class NumberNode : Node
 {
     public double Value { get; set; }
