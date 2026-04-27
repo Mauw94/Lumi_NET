@@ -44,7 +44,7 @@ internal readonly struct Value
     public string PrintValue() => Kind switch
     {
         ValueKind.Number => Number.ToString(),
-        ValueKind.String => String ?? string.Empty,
+        ValueKind.String => "\"" + String + "\"" ?? string.Empty,
         ValueKind.Boolean => Bool.ToString(),
         ValueKind.Array => $"[{string.Join(", ", (Array ?? []).Select(static v => v.PrintValue()))}]",
         ValueKind.Null => "null",

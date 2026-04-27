@@ -13,6 +13,9 @@ public sealed class SemanticAnalyzer
     private static readonly Dictionary<string, int> ListMethodParameterCounts = new(StringComparer.Ordinal)
     {
         ["add"] = 1,
+        ["remove"] = 1,
+        ["length"] = 0,
+        ["contains"] = 1
     };
 
     public SemanticAnalyzer()
@@ -40,6 +43,7 @@ public sealed class SemanticAnalyzer
 
         return new SemanticAnalysisResult(errors);
     }
+
     public void Dispose()
     {
         _scopes.ExitScope();

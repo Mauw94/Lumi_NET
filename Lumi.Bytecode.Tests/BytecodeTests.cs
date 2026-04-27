@@ -230,6 +230,141 @@ public sealed class BytecodeTests
     }
 
     [TestMethod]
+    public void Test_ListRemoveMethodCall_Emits_CallListMethod()
+    {
+        var program = new Program
+        {
+            Body =
+            [
+                new VariableDeclaration
+                {
+                    Kind = "let",
+                    Declarations =
+                    [
+                        new VariableDeclarator
+                        {
+                            VarName = new IdentifierNode { Name = "items" },
+                            VarType = new IdentifierNode { Name = "list" },
+                            Init = new ArrayLiteral
+                            {
+                                Elements = [new NumberNode { Value = 1.0 }]
+                            }
+                        }
+                    ]
+                },
+                new ExpressionStatement
+                {
+                    Expression = new CallExpression
+                    {
+                        Callee = new MemberExpression
+                        {
+                            Object = new IdentifierNode { Name = "items" },
+                            Property = new IdentifierNode { Name = "remove" }
+                        },
+                        Arguments = [new NumberNode { Value = 1.0 }]
+                    }
+                }
+            ]
+        };
+
+        var result = new BytecodeGenerator().Generate(program);
+
+        var call = result.Instructions.First(i => i.Kind == InstructionKind.CallListMethod);
+        Assert.AreEqual("remove", call.StringOperand);
+        Assert.AreEqual(1, call.GetSafeIntOperand());
+    }
+
+    [TestMethod]
+    public void Test_ListLengthMethodCall_Emits_CallListMethod()
+    {
+        var program = new Program
+        {
+            Body =
+            [
+                new VariableDeclaration
+                {
+                    Kind = "let",
+                    Declarations =
+                    [
+                        new VariableDeclarator
+                        {
+                            VarName = new IdentifierNode { Name = "items" },
+                            VarType = new IdentifierNode { Name = "list" },
+                            Init = new ArrayLiteral
+                            {
+                                Elements = [new NumberNode { Value = 1.0 }]
+                            }
+                        }
+                    ]
+                },
+                new ExpressionStatement
+                {
+                    Expression = new CallExpression
+                    {
+                        Callee = new MemberExpression
+                        {
+                            Object = new IdentifierNode { Name = "items" },
+                            Property = new IdentifierNode { Name = "length" }
+                        },
+                        Arguments = []
+                    }
+                }
+            ]
+        };
+
+        var result = new BytecodeGenerator().Generate(program);
+
+        var call = result.Instructions.First(i => i.Kind == InstructionKind.CallListMethod);
+        Assert.AreEqual("length", call.StringOperand);
+        Assert.AreEqual(0, call.GetSafeIntOperand());
+    }
+
+    [TestMethod]
+    public void Test_ListContainsMethodCall_Emits_CallListMethod()
+    {
+        var program = new Program
+        {
+            Body =
+            [
+                new VariableDeclaration
+                {
+                    Kind = "let",
+                    Declarations =
+                    [
+                        new VariableDeclarator
+                        {
+                            VarName = new IdentifierNode { Name = "items" },
+                            VarType = new IdentifierNode { Name = "list" },
+                            Init = new ArrayLiteral
+                            {
+                                Elements = [new NumberNode { Value = 1.0 }]
+                            }
+                        }
+                    ]
+                },
+                new ExpressionStatement
+                {
+                    Expression = new CallExpression
+                    {
+                        Callee = new MemberExpression
+                        {
+                            Object = new IdentifierNode { Name = "items" },
+                            Property = new IdentifierNode { Name = "contains" }
+                        },
+                        Arguments = [new NumberNode { Value = 1.0 }]
+                    }
+                }
+            ]
+        };
+
+        var result = new BytecodeGenerator().Generate(program);
+
+        var call = result.Instructions.First(i => i.Kind == InstructionKind.CallListMethod);
+        Assert.AreEqual("contains", call.StringOperand);
+        Assert.AreEqual(1, call.GetSafeIntOperand());
+    }
+
+    [TestMethod]
     public void Test_String_Constant()
     {
         // Build AST: "hello"

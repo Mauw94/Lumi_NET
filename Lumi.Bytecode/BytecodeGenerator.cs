@@ -421,7 +421,7 @@ public sealed class BytecodeGenerator
         if (memberExpression.Property is not IdentifierNode methodIdentifier)
             throw BytecodeError.ExpectedIdentifierInMemberAccess();
 
-        if (!SupportedMethods.ListMethods.Contains(methodIdentifier.Name))
+        if (!SupportedMethods.ListMethods.IsMethodNameValid(methodIdentifier.Name))
             throw BytecodeError.UnsupportedListMethod(methodIdentifier.Name);
 
         // First push object
