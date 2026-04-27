@@ -990,4 +990,155 @@ public sealed class BytecodeTests
         Assert.AreEqual(InstructionKind.Add, result.Instructions[loadVarIdx + 3].Kind);
         Assert.AreEqual(InstructionKind.IndexArray, result.Instructions[loadVarIdx + 4].Kind);
     }
+
+    [TestMethod]
+    public void Test_Struct_New_And_FieldAccess_Emit_Correct_Instructions()
+    {
+        var program = new Program
+        {
+            Body =
+            [
+                new StructDeclaration
+                {
+                    Name = new IdentifierNode { Name = "Person" },
+                    Fields =
+                    [
+                        new StructFieldDeclaration { Name = new IdentifierNode { Name = "name" }, Type = new IdentifierNode { Name = "str" } },
+                        new StructFieldDeclaration { Name = new IdentifierNode { Name = "age" }, Type = new IdentifierNode { Name = "int" } }
+                    ]
+                },
+                new VariableDeclaration
+                {
+                    Kind = "let",
+                    Declarations =
+                    [
+                        new VariableDeclarator
+                        {
+                            VarName = new IdentifierNode { Name = "person" },
+                            VarType = new IdentifierNode { Name = "Person" },
+                            Init = new NewExpression { TypeName = new IdentifierNode { Name = "Person" } }
+                        }
+                    ]
+                },
+                new PrintStatement
+                {
+                    Argument = new MemberExpression
+                    {
+                        Object = new IdentifierNode { Name = "person" },
+                        Property = new IdentifierNode { Name = "name" }
+                    }
+                }
+            ]
+        };
+
+        var result = new BytecodeGenerator().Generate(program);
+
+        Assert.IsTrue(result.StructDefinitions.ContainsKey("Person"));
+        Assert.HasCount(2, result.StructDefinitions["Person"]);
+        Assert.AreEqual("name", result.StructDefinitions["Person"][0]);
+        Assert.AreEqual("age", result.StructDefinitions["Person"][1]);
+
+        Assert.AreEqual(InstructionKind.NewStruct, result.Instructions[0].Kind);
+        Assert.AreEqual("Person", result.Instructions[0].GetSafeStringOperand());
+        Assert.AreEqual(0, result.Instructions[0].GetSafeIntOperand());
+        Assert.AreEqual(InstructionKind.StoreVar, result.Instructions[1].Kind);
+        Assert.AreEqual(InstructionKind.LoadVar, result.Instructions[2].Kind);
+        Assert.AreEqual(InstructionKind.LoadField, result.Instructions[3].Kind);
+        Assert.AreEqual("name", result.Instructions[3].GetSafeStringOperand());
+        Assert.AreEqual(InstructionKind.Print, result.Instructions[4].Kind);
+    }
+
+    [TestMethod]
+    public void Test_Struct_Field_Assignment_Emits_StoreField()
+    {
+        var program = new Program
+        {
+            Body =
+            [
+                new StructDeclaration
+                {
+                    Name = new IdentifierNode { Name = "Person" },
+                    Fields =
+                    [
+                        new StructFieldDeclaration { Name = new IdentifierNode { Name = "name" }, Type = new IdentifierNode { Name = "str" } },
+                        new StructFieldDeclaration { Name = new IdentifierNode { Name = "age" }, Type = new IdentifierNode { Name = "int" } }
+                    ]
+                },
+                new VariableDeclaration
+                {
+                    Kind = "let",
+                    Declarations =
+                    [
+                        new VariableDeclarator
+                        {
+                            VarName = new IdentifierNode { Name = "p" },
+                            VarType = new IdentifierNode { Name = "Person" },
+                            Init = new NewExpression { TypeName = new IdentifierNode { Name = "Person" } }
+                        }
+                    ]
+                },
+                new ExpressionStatement
+                {
+                    Expression = new AssignmentExpression
+                    {
+                        Left = new MemberExpression
+                        {
+                            Object = new IdentifierNode { Name = "p" },
+                            Property = new IdentifierNode { Name = "age" }
+                        },
+                        Operator = "=",
+                        Right = new NumberNode { Value = 5.0 }
+                    }
+                }
+            ]
+        };
+
+        var result = new BytecodeGenerator().Generate(program);
+        var storeField = result.Instructions.First(i => i.Kind == InstructionKind.StoreField);
+
+        Assert.AreEqual("age", storeField.GetSafeStringOperand());
+    }
+
+    [TestMethod]
+    public void Test_NewStruct_With_Arguments_Stores_ArgCount()
+    {
+        var program = new Program
+        {
+            Body =
+            [
+                new StructDeclaration
+                {
+                    Name = new IdentifierNode { Name = "Person" },
+                    Fields =
+                    [
+                        new StructFieldDeclaration { Name = new IdentifierNode { Name = "name" }, Type = new IdentifierNode { Name = "str" } },
+                        new StructFieldDeclaration { Name = new IdentifierNode { Name = "age" }, Type = new IdentifierNode { Name = "int" } }
+                    ]
+                },
+                new VariableDeclaration
+                {
+                    Kind = "let",
+                    Declarations =
+                    [
+                        new VariableDeclarator
+                        {
+                            VarName = new IdentifierNode { Name = "p" },
+                            VarType = new IdentifierNode { Name = "Person" },
+                            Init = new NewExpression
+                            {
+                                TypeName = new IdentifierNode { Name = "Person" },
+                                Arguments = [new StringNode { Value = "Alice" }, new NumberNode { Value = 42.0 }]
+                            }
+                        }
+                    ]
+                }
+            ]
+        };
+
+        var result = new BytecodeGenerator().Generate(program);
+        var ctor = result.Instructions.First(i => i.Kind == InstructionKind.NewStruct);
+
+        Assert.AreEqual("Person", ctor.GetSafeStringOperand());
+        Assert.AreEqual(2, ctor.GetSafeIntOperand());
+    }
 }

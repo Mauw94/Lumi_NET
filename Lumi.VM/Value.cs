@@ -16,20 +16,24 @@ internal readonly struct Value
     public string? String { get; }
     public bool Bool { get; }
     public List<Value>? Array { get; }
+    public Dictionary<string, Value>? Struct { get; }
 
-    private Value(ValueKind kind, double number = 0, string? str = null, bool b = false, List<Value>? array = null)
+    private Value(ValueKind kind, double number = 0, string? str = null, bool b = false, List<Value>? array = null, Dictionary<string, Value>? structValue = null)
     {
         Kind = kind;
         Number = number;
         String = str;
         Bool = b;
         Array = array;
+        Struct = structValue;
     }
 
     public static Value FromNumber(double n) => new(ValueKind.Number, number: n);
     public static Value FromString(string s) => new(ValueKind.String, str: s);
     public static Value FromBoolean(bool b) => new(ValueKind.Boolean, b: b);
     public static Value FromArray(List<Value> values) => new(ValueKind.Array, array: values);
+    public static Value FromStruct(Dictionary<string, Value> fields) => new(ValueKind.Struct, structValue: fields);
+    public static Value Undefined() => new(ValueKind.Undefined);
 
     public static Value ConstantToValue(Constant constant) => constant.Kind switch
     {
@@ -47,6 +51,7 @@ internal readonly struct Value
         ValueKind.String => "\"" + String + "\"" ?? string.Empty,
         ValueKind.Boolean => Bool.ToString(),
         ValueKind.Array => $"[{string.Join(", ", (Array ?? []).Select(static v => v.PrintValue()))}]",
+        ValueKind.Struct => "{" + string.Join(", ", (Struct ?? []).Select(static kv => $"{kv.Key}: {kv.Value.PrintValue()}")) + "}",
         ValueKind.Null => "null",
         ValueKind.Undefined => "undefined",
         _ => throw VirtualMachineError.UnkownValueKind(Kind),

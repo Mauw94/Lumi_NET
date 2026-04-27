@@ -9,6 +9,7 @@ internal enum ValueKind
     String,
     Boolean,
     Array,
+    Struct,
     Function,
     Null,
     Undefined

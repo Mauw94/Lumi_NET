@@ -9,4 +9,5 @@ public enum SymbolKind
     Variable,
     Constant,
     Function,
+    Struct,
 }

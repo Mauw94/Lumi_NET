@@ -760,4 +760,152 @@ public sealed class VirtualMachineTests
         Assert.IsTrue(threw, "Expected an exception when indexing a non-array value");
     }
 
+    [TestMethod]
+    public void VM_Struct_Field_Access_Prints_Undefined_By_Default()
+    {
+        var bytecode = Build(
+            new StructDeclaration
+            {
+                Name = new IdentifierNode { Name = "Person" },
+                Fields =
+                [
+                    new StructFieldDeclaration { Name = new IdentifierNode { Name = "name" }, Type = new IdentifierNode { Name = "str" } },
+                    new StructFieldDeclaration { Name = new IdentifierNode { Name = "age" }, Type = new IdentifierNode { Name = "int" } }
+                ]
+            },
+            new VariableDeclaration
+            {
+                Kind = "let",
+                Declarations =
+                [
+                    new VariableDeclarator
+                    {
+                        VarName = new IdentifierNode { Name = "person" },
+                        VarType = new IdentifierNode { Name = "Person" },
+                        Init = new NewExpression { TypeName = new IdentifierNode { Name = "Person" } }
+                    }
+                ]
+            },
+            new PrintStatement
+            {
+                Argument = new MemberExpression
+                {
+                    Object = new IdentifierNode { Name = "person" },
+                    Property = new IdentifierNode { Name = "name" }
+                }
+            }
+        );
+
+        var output = CaptureOutput(() => new VirtualMachine().Execute(bytecode));
+        Assert.AreEqual("undefined", output);
+    }
+
+    [TestMethod]
+    public void VM_Struct_Field_Assignment_Prints_Assigned_Value()
+    {
+        var bytecode = Build(
+            new StructDeclaration
+            {
+                Name = new IdentifierNode { Name = "Person" },
+                Fields =
+                [
+                    new StructFieldDeclaration { Name = new IdentifierNode { Name = "name" }, Type = new IdentifierNode { Name = "str" } },
+                    new StructFieldDeclaration { Name = new IdentifierNode { Name = "age" }, Type = new IdentifierNode { Name = "int" } }
+                ]
+            },
+            new VariableDeclaration
+            {
+                Kind = "let",
+                Declarations =
+                [
+                    new VariableDeclarator
+                    {
+                        VarName = new IdentifierNode { Name = "p" },
+                        VarType = new IdentifierNode { Name = "Person" },
+                        Init = new NewExpression { TypeName = new IdentifierNode { Name = "Person" } }
+                    }
+                ]
+            },
+            new ExpressionStatement
+            {
+                Expression = new AssignmentExpression
+                {
+                    Left = new MemberExpression
+                    {
+                        Object = new IdentifierNode { Name = "p" },
+                        Property = new IdentifierNode { Name = "age" }
+                    },
+                    Operator = "=",
+                    Right = new NumberNode { Value = 5.0 }
+                }
+            },
+            new PrintStatement
+            {
+                Argument = new MemberExpression
+                {
+                    Object = new IdentifierNode { Name = "p" },
+                    Property = new IdentifierNode { Name = "age" }
+                }
+            }
+        );
+
+        var output = CaptureOutput(() => new VirtualMachine().Execute(bytecode));
+        Assert.AreEqual("5", output);
+    }
+
+    [TestMethod]
+    public void VM_NewStruct_With_Arguments_Initializes_Fields_By_Order()
+    {
+        var bytecode = Build(
+            new StructDeclaration
+            {
+                Name = new IdentifierNode { Name = "Person" },
+                Fields =
+                [
+                    new StructFieldDeclaration { Name = new IdentifierNode { Name = "name" }, Type = new IdentifierNode { Name = "str" } },
+                    new StructFieldDeclaration { Name = new IdentifierNode { Name = "age" }, Type = new IdentifierNode { Name = "int" } }
+                ]
+            },
+            new VariableDeclaration
+            {
+                Kind = "let",
+                Declarations =
+                [
+                    new VariableDeclarator
+                    {
+                        VarName = new IdentifierNode { Name = "p" },
+                        VarType = new IdentifierNode { Name = "Person" },
+                        Init = new NewExpression
+                        {
+                            TypeName = new IdentifierNode { Name = "Person" },
+                            Arguments = [new StringNode { Value = "Alice" }, new NumberNode { Value = 30.0 }]
+                        }
+                    }
+                ]
+            },
+            new PrintStatement
+            {
+                Argument = new MemberExpression
+                {
+                    Object = new IdentifierNode { Name = "p" },
+                    Property = new IdentifierNode { Name = "name" }
+                }
+            },
+            new PrintStatement
+            {
+                Argument = new MemberExpression
+                {
+                    Object = new IdentifierNode { Name = "p" },
+                    Property = new IdentifierNode { Name = "age" }
+                }
+            }
+        );
+
+        var output = CaptureOutput(() => new VirtualMachine().Execute(bytecode));
+        var lines = output.Split(Environment.NewLine);
+        Assert.HasCount(2, lines);
+        Assert.AreEqual("\"Alice\"", lines[0]);
+        Assert.AreEqual("30", lines[1]);
+    }
+
 }

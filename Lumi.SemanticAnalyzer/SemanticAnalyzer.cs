@@ -10,6 +10,8 @@ namespace Lumi.SemanticAnalyzer;
 public sealed class SemanticAnalyzer
 {
     private readonly ScopeManager _scopes = new();
+    private readonly Dictionary<string, List<string>> _structFieldOrder = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, Dictionary<string, (TypeKind Type, string? StructName)>> _structFieldTypes = new(StringComparer.Ordinal);
     private static readonly Dictionary<string, int> ListMethodParameterCounts = new(StringComparer.Ordinal)
     {
         ["add"] = 1,
@@ -69,6 +71,10 @@ public sealed class SemanticAnalyzer
                 VisitFunctionDeclaration(funcDecl);
                 break;
 
+            case StructDeclaration structDecl:
+                VisitStructDeclaration(structDecl);
+                break;
+
             case CallExpression callExpr:
                 VisitCallExpression(callExpr);
                 break;
@@ -118,6 +124,10 @@ public sealed class SemanticAnalyzer
                 Visit(indexExpr.Index);
                 break;
 
+            case NewExpression newExpression:
+                VisitNewExpression(newExpression);
+                break;
+
             // Literal nodes require no semantic analysis
             case NumberNode:
             case StringNode:
@@ -138,6 +148,29 @@ public sealed class SemanticAnalyzer
 
                 var symbol = new Symbol(functionName.Name, SymbolKind.Function, TypeKind.Unknown, ParameterCount: funcDecl.Params.Count);
                 _scopes.RegisterSymbol(symbol);
+            }
+
+            if (statement is StructDeclaration structDecl)
+            {
+                if (KeywordCatalog.Contains(structDecl.Name.Name))
+                    throw SemanticAnalyzerError.StructNameIsKeyword(structDecl.Name.Name);
+
+                var fields = new HashSet<string>(StringComparer.Ordinal);
+                var fieldOrder = new List<string>(structDecl.Fields.Count);
+                var fieldTypes = new Dictionary<string, (TypeKind Type, string? StructName)>(StringComparer.Ordinal);
+
+                foreach (var field in structDecl.Fields)
+                {
+                    if (!fields.Add(field.Name.Name))
+                        throw SemanticAnalyzerError.DuplicateStructField(structDecl.Name.Name, field.Name.Name);
+
+                    fieldOrder.Add(field.Name.Name);
+                    fieldTypes[field.Name.Name] = InferDeclaredTypeInfo(field.Type);
+                }
+
+                _structFieldOrder[structDecl.Name.Name] = fieldOrder;
+                _structFieldTypes[structDecl.Name.Name] = fieldTypes;
+                _scopes.RegisterSymbol(new Symbol(structDecl.Name.Name, SymbolKind.Struct, TypeKind.Struct, IsReadOnly: true, StructName: structDecl.Name.Name));
             }
         }
 
@@ -165,22 +198,41 @@ public sealed class SemanticAnalyzer
                 throw SemanticAnalyzerError.VarNameIsKeyword(varName.Name);
 
             var isReadOnly = varDecl.Kind == "const";
-            var inferred = InferDeclaredType(declarator.VarType);
+            var (inferred, structName) = InferDeclaredTypeInfo(declarator.VarType);
 
             // If an initializer is provided, analyze it and infer type
             if (declarator.Init is not null)
             {
                 Visit(declarator.Init);
-                var initializerType = InferType(declarator.Init);
+                var (initializerType, initializerStructName) = InferTypeInfo(declarator.Init);
+
+                if (inferred != TypeKind.Unknown && initializerType != TypeKind.Unknown)
+                {
+                    var isDifferentStruct = inferred == TypeKind.Struct
+                        && initializerType == TypeKind.Struct
+                        && !string.Equals(structName, initializerStructName, StringComparison.Ordinal);
+
+                    if (inferred != initializerType || isDifferentStruct)
+                    {
+                        var expected = inferred == TypeKind.Struct ? structName ?? "struct" : inferred.ToString();
+                        var actual = initializerType == TypeKind.Struct ? initializerStructName ?? "struct" : initializerType.ToString();
+                        throw SemanticAnalyzerError.TypeMismatch(varName.Name, expected, actual);
+                    }
+                }
+
                 if (inferred == TypeKind.Unknown)
+                {
                     inferred = initializerType;
+                    structName = initializerStructName;
+                }
             }
 
             var symbol = new Symbol(
                 varName.Name,
                 varDecl.Kind == "const" ? SymbolKind.Constant : SymbolKind.Variable,
                 inferred,
-                isReadOnly
+                isReadOnly,
+                StructName: structName
             );
 
             _scopes.RegisterSymbol(symbol);
@@ -224,7 +276,7 @@ public sealed class SemanticAnalyzer
             throw SemanticAnalyzerError.InvalidAssignmentTarget();
 
         // Register the iterator variable
-        var symbol = new Symbol(iteratorName.Name, SymbolKind.Variable, TypeKind.Number);
+        var symbol = new Symbol(iteratorName.Name, SymbolKind.Variable, TypeKind.Int);
         _scopes.RegisterSymbol(symbol);
 
         // Analyze bounds and step
@@ -252,17 +304,50 @@ public sealed class SemanticAnalyzer
 
     private void VisitAssignmentExpression(AssignmentExpression assignExpr)
     {
-        if (assignExpr.Left is not IdentifierNode targetIdentifier)
-            throw SemanticAnalyzerError.InvalidAssignmentTarget();
+        if (assignExpr.Left is IdentifierNode targetIdentifier)
+        {
+            var target = _scopes.LookupSymbol(targetIdentifier.Name);
+            if (target is null)
+                throw SemanticAnalyzerError.UndefinedVariable(targetIdentifier.Name);
 
-        var target = _scopes.LookupSymbol(targetIdentifier.Name);
-        if (target is null)
-            throw SemanticAnalyzerError.UndefinedVariable(targetIdentifier.Name);
+            if (target.Value.IsReadOnly)
+                throw SemanticAnalyzerError.AssignmentToReadOnlyVariable(targetIdentifier.Name);
 
-        if (target.Value.IsReadOnly)
-            throw SemanticAnalyzerError.AssignmentToReadOnlyVariable(targetIdentifier.Name);
+            Visit(assignExpr.Right);
+            return;
+        }
 
-        Visit(assignExpr.Right);
+        if (assignExpr.Left is MemberExpression memberAssignment)
+        {
+            VisitMemberExpression(memberAssignment);
+            Visit(assignExpr.Right);
+
+            var (objectType, structName) = InferTypeInfo(memberAssignment.Object);
+            if (objectType != TypeKind.Struct || string.IsNullOrWhiteSpace(structName))
+                throw SemanticAnalyzerError.InvalidAssignmentTarget();
+
+            var expectedTypeInfo = GetStructFieldType(structName, memberAssignment.Property.Name);
+            var actualTypeInfo = InferTypeInfo(assignExpr.Right);
+
+            if (expectedTypeInfo.Type != TypeKind.Unknown && actualTypeInfo.Type != TypeKind.Unknown)
+            {
+                var isDifferentStruct = expectedTypeInfo.Type == TypeKind.Struct
+                    && actualTypeInfo.Type == TypeKind.Struct
+                    && !string.Equals(expectedTypeInfo.StructName, actualTypeInfo.StructName, StringComparison.Ordinal);
+
+                if (expectedTypeInfo.Type != actualTypeInfo.Type || isDifferentStruct)
+                {
+                    var expected = expectedTypeInfo.Type == TypeKind.Struct ? expectedTypeInfo.StructName ?? "struct" : expectedTypeInfo.Type.ToString();
+                    var actual = actualTypeInfo.Type == TypeKind.Struct ? actualTypeInfo.StructName ?? "struct" : actualTypeInfo.Type.ToString();
+
+                    throw SemanticAnalyzerError.TypeMismatch($"{structName}.{memberAssignment.Property.Name}", expected, actual);
+                }
+            }
+
+            return;
+        }
+
+        throw SemanticAnalyzerError.InvalidAssignmentTarget();
     }
 
     private void VisitUnaryExpression(UnaryExpression unaryExpr)
@@ -308,9 +393,33 @@ public sealed class SemanticAnalyzer
         _scopes.ExitScope();
     }
 
+    private static void VisitStructDeclaration(StructDeclaration structDecl)
+    {
+        if (KeywordCatalog.Contains(structDecl.Name.Name))
+            throw SemanticAnalyzerError.StructNameIsKeyword(structDecl.Name.Name);
+    }
+
     private void VisitMemberExpression(MemberExpression memberExpr)
     {
         Visit(memberExpr.Object);
+
+        var (objectType, structName) = InferTypeInfo(memberExpr.Object);
+
+        if (objectType == TypeKind.Struct)
+        {
+            if (string.IsNullOrWhiteSpace(structName) || !_structFieldTypes.TryGetValue(structName, out var fields))
+                throw SemanticAnalyzerError.UndefinedStruct(structName ?? "");
+
+            if (!fields.ContainsKey(memberExpr.Property.Name))
+                throw SemanticAnalyzerError.UnknownStructField(structName, memberExpr.Property.Name);
+
+            return;
+        }
+
+        if (objectType == TypeKind.Array)
+            return;
+
+        throw SemanticAnalyzerError.MemberAccessNotSupportedOnType(objectType);
     }
 
     private void VisitCallExpression(CallExpression callExpr)
@@ -359,29 +468,78 @@ public sealed class SemanticAnalyzer
             throw SemanticAnalyzerError.MethodArgumentCountMismatch(memberExpr.Property.Name, expectedArgumentCount, callExpr.Arguments.Count);
     }
 
-    private static TypeKind InferDeclaredType(Node? typeNode)
+    private void VisitNewExpression(NewExpression newExpression)
+    {
+        var structName = newExpression.TypeName.Name;
+        if (!_structFieldOrder.TryGetValue(structName, out var fieldOrder))
+            throw SemanticAnalyzerError.UndefinedStruct(structName);
+
+        foreach (var argument in newExpression.Arguments)
+            Visit(argument);
+
+        if (newExpression.Arguments.Count > fieldOrder.Count)
+            throw SemanticAnalyzerError.StructConstructorArgumentCountMismatch(structName, fieldOrder.Count, newExpression.Arguments.Count);
+
+        for (int i = 0; i < newExpression.Arguments.Count; i++)
+        {
+            var fieldName = fieldOrder[i];
+            var expectedTypeInfo = GetStructFieldType(structName, fieldName);
+            var actualTypeInfo = InferTypeInfo(newExpression.Arguments[i]);
+
+            if (expectedTypeInfo.Type == TypeKind.Unknown || actualTypeInfo.Type == TypeKind.Unknown)
+                continue;
+
+            var isDifferentStruct = expectedTypeInfo.Type == TypeKind.Struct
+                && actualTypeInfo.Type == TypeKind.Struct
+                && !string.Equals(expectedTypeInfo.StructName, actualTypeInfo.StructName, StringComparison.Ordinal);
+
+            if (expectedTypeInfo.Type != actualTypeInfo.Type || isDifferentStruct)
+            {
+                var expected = expectedTypeInfo.Type == TypeKind.Struct ? expectedTypeInfo.StructName ?? "struct" : expectedTypeInfo.Type.ToString();
+                var actual = actualTypeInfo.Type == TypeKind.Struct ? actualTypeInfo.StructName ?? "struct" : actualTypeInfo.Type.ToString();
+                throw SemanticAnalyzerError.TypeMismatch($"{structName}.{fieldName}", expected, actual);
+            }
+        }
+    }
+
+    private (TypeKind Type, string? StructName) InferDeclaredTypeInfo(Node? typeNode)
     {
         if (typeNode is not IdentifierNode typeIdentifier)
-            return TypeKind.Unknown;
+            return (TypeKind.Unknown, null);
 
-        return typeIdentifier.Name.ToLowerInvariant() switch
+        var primitiveType = typeIdentifier.Name.ToLowerInvariant() switch
         {
-            "int" or "float" or "number" => TypeKind.Number,
-            "string" => TypeKind.String,
+            "int" or "float" or "number" => TypeKind.Int,
+            "string" or "str" => TypeKind.String,
             "bool" or "boolean" => TypeKind.Boolean,
             "list" or "array" => TypeKind.Array,
             _ => TypeKind.Unknown,
         };
+
+        if (primitiveType != TypeKind.Unknown)
+            return (primitiveType, null);
+
+        if (_structFieldOrder.ContainsKey(typeIdentifier.Name))
+            return (TypeKind.Struct, typeIdentifier.Name);
+
+        return (TypeKind.Unknown, null);
     }
 
     private TypeKind InferType(Node node)
+    {
+        var (type, _) = InferTypeInfo(node);
+
+        return type;
+    }
+
+    private (TypeKind Type, string? StructName) InferTypeInfo(Node node)
     {
         if (node is IdentifierNode identifier)
         {
             var symbol = _scopes.LookupSymbol(identifier.Name);
 
             if (symbol.HasValue)
-                return symbol.Value.Type;
+                return (symbol.Value.Type, symbol.Value.StructName);
         }
 
         return InferTypeFromNode(node);
@@ -390,16 +548,38 @@ public sealed class SemanticAnalyzer
     /// <summary>
     /// Infers the type of a node based on its structure and content.
     /// </summary>
-    private static TypeKind InferTypeFromNode(Node node)
+    private (TypeKind Type, string? StructName) InferTypeFromNode(Node node)
     {
         return node switch
         {
-            NumberNode => TypeKind.Number,
-            StringNode => TypeKind.String,
-            BooleanNode => TypeKind.Boolean,
-            ArrayLiteral => TypeKind.Array,
-            BinaryExpression => TypeKind.Number, // Simplified: assume arithmetic results in numbers
-            _ => TypeKind.Unknown
+            NumberNode => (TypeKind.Int, null),
+            StringNode => (TypeKind.String, null),
+            BooleanNode => (TypeKind.Boolean, null),
+            ArrayLiteral => (TypeKind.Array, null),
+            BinaryExpression => (TypeKind.Int, null), // Simplified: assume arithmetic results in numbers
+            NewExpression newExpression when _structFieldOrder.ContainsKey(newExpression.TypeName.Name) => (TypeKind.Struct, newExpression.TypeName.Name),
+            MemberExpression memberExpression => InferMemberExpressionType(memberExpression),
+            _ => (TypeKind.Unknown, null)
         };
+    }
+
+    private (TypeKind Type, string? StructName) InferMemberExpressionType(MemberExpression memberExpression)
+    {
+        var (objectType, structName) = InferTypeInfo(memberExpression.Object);
+        if (objectType != TypeKind.Struct || string.IsNullOrWhiteSpace(structName))
+            return (TypeKind.Unknown, null);
+
+        return GetStructFieldType(structName, memberExpression.Property.Name);
+    }
+
+    private (TypeKind Type, string? StructName) GetStructFieldType(string structName, string fieldName)
+    {
+        if (_structFieldTypes.TryGetValue(structName, out var fields)
+            && fields.TryGetValue(fieldName, out var fieldType))
+        {
+            return fieldType;
+        }
+
+        return (TypeKind.Unknown, null);
     }
 }

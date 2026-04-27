@@ -39,4 +39,20 @@ public sealed class SemanticAnalyzerError(string message) : Exception(message)
         => new($"Function name '{name}' is a reserved keyword");
     public static SemanticAnalyzerError VarNameIsKeyword(string name)
         => new($"Variable name '{name}' is a reserved keyword");
+    public static SemanticAnalyzerError UndefinedStruct(string name)
+        => new($"Undefined struct: '{name}'");
+    public static SemanticAnalyzerError InvalidStructDeclaration()
+        => new("Invalid struct declaration. Expected a struct name (identifier)");
+    public static SemanticAnalyzerError StructNameIsKeyword(string name)
+        => new($"Struct name '{name}' is a reserved keyword");
+    public static SemanticAnalyzerError DuplicateStructField(string structName, string fieldName)
+        => new($"Struct '{structName}' has duplicate field '{fieldName}'");
+    public static SemanticAnalyzerError UnknownStructField(string structName, string fieldName)
+        => new($"Struct '{structName}' does not contain field '{fieldName}'");
+    public static SemanticAnalyzerError MemberAccessNotSupportedOnType(TypeKind type)
+        => new($"Member access is not supported on values of type '{type}'");
+    public static SemanticAnalyzerError TypeMismatch(string variableName, string expected, string actual)
+        => new($"Variable '{variableName}' expects type '{expected}' but got '{actual}'");
+    public static SemanticAnalyzerError StructConstructorArgumentCountMismatch(string structName, int maxExpected, int actual)
+        => new($"Struct '{structName}' constructor accepts up to {maxExpected} argument(s) but was called with {actual}");
 }

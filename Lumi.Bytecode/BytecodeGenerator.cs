@@ -15,6 +15,7 @@ public sealed class BytecodeGenerator
     private readonly ConstantPool _constantPool = new();
     private readonly Dictionary<Label, List<int>> _unpatchedJumps = [];
     private readonly Dictionary<string, int> _functionAddresses = [];
+    private readonly Dictionary<string, IReadOnlyList<string>> _structDefinitions = new(StringComparer.Ordinal);
     private readonly LocalManager _locals = new();
     private int _nextLabelId = 0;
 
@@ -22,6 +23,7 @@ public sealed class BytecodeGenerator
     public IReadOnlyList<Constant> Constants => _constantPool.Values;
     public IReadOnlyList<Local> Locals => _locals.AllLocals;
     public IReadOnlyDictionary<string, int> FunctionAddresses => _functionAddresses;
+    public IReadOnlyDictionary<string, IReadOnlyList<string>> StructDefinitions => _structDefinitions;
 
     public BytecodeGenerator()
     {
@@ -45,6 +47,8 @@ public sealed class BytecodeGenerator
         switch (node)
         {
             case Program program:
+                PreRegisterStructDeclarations(program);
+
                 for (int i = 0; i < program.Body.Count; i++)
                     Visit(program.Body[i]);
                 break;
@@ -64,6 +68,10 @@ public sealed class BytecodeGenerator
                 VisitFunctionDeclaration(functionDeclaration);
                 break;
 
+            case StructDeclaration structDeclaration:
+                VisitStructDeclaration(structDeclaration);
+                break;
+
             case CallExpression callExpression:
                 VisitCallExpression(callExpression);
                 break;
@@ -71,6 +79,14 @@ public sealed class BytecodeGenerator
             case IdentifierNode identifier:
                 var local = _locals.LookupLocal(identifier.Name) ?? throw BytecodeError.UndefinedVariable(identifier.Name);
                 Emit(Instruction.LoadVar(local.Label));
+                break;
+
+            case NewExpression newExpression:
+                VisitNewExpression(newExpression);
+                break;
+
+            case MemberExpression memberExpression:
+                VisitMemberExpression(memberExpression);
                 break;
 
             case PrintStatement printStatement:
@@ -124,13 +140,44 @@ public sealed class BytecodeGenerator
                 VisitBinaryExpression(binaryExpression);
                 break;
             case AssignmentExpression assignmentExpression:
-                if (assignmentExpression.Left is not IdentifierNode targetIdentifier)
-                    throw BytecodeError.InvalidAssignmentTarget();
+                // Target is a variable (e.g. x = value)
+                if (assignmentExpression.Left is IdentifierNode targetIdentifier)
+                {
+                    Visit(assignmentExpression.Right);
+                    var targetLocal = _locals.LookupLocal(targetIdentifier.Name) ?? throw BytecodeError.UndefinedVariable(targetIdentifier.Name);
+                    Emit(Instruction.StoreVar(targetLocal.Label));
+                    break;
+                }
 
-                Visit(assignmentExpression.Right);
-                var targetLocal = _locals.LookupLocal(targetIdentifier.Name) ?? throw BytecodeError.UndefinedVariable(targetIdentifier.Name);
-                Emit(Instruction.StoreVar(targetLocal.Label));
+                // Target is a struct field (e.g. myStruct.field = value)
+                if (assignmentExpression.Left is MemberExpression memberAssignment)
+                {
+                    Visit(memberAssignment.Object);
+                    Visit(assignmentExpression.Right);
+                    Emit(Instruction.StoreField(memberAssignment.Property.Name));
+                    break;
+                }
+
+                throw BytecodeError.InvalidAssignmentTarget();
+
+            default:
                 break;
+        }
+    }
+
+    private void PreRegisterStructDeclarations(Program program)
+    {
+        foreach (var statement in program.Body)
+        {
+            if (statement is not StructDeclaration structDeclaration)
+                continue;
+
+            var structName = structDeclaration.Name.Name;
+            if (_structDefinitions.ContainsKey(structName))
+                throw BytecodeError.StructAlreadyDefined(structName);
+
+            var fields = structDeclaration.Fields.Select(static f => f.Name.Name).ToArray();
+            _structDefinitions[structName] = fields;
         }
     }
 
@@ -436,6 +483,31 @@ public sealed class BytecodeGenerator
 
         // TODO: do we differentiate between list methods, class methods, etc?
         Emit(Instruction.CallListMethod(methodIdentifier.Name, callExpression.Arguments.Count));
+    }
+
+    private void VisitStructDeclaration(StructDeclaration structDeclaration)
+    {
+        var structName = structDeclaration.Name.Name;
+        if (!_structDefinitions.ContainsKey(structName))
+            _structDefinitions[structName] = [.. structDeclaration.Fields.Select(static f => f.Name.Name)];
+    }
+
+    private void VisitNewExpression(NewExpression newExpression)
+    {
+        var structName = newExpression.TypeName.Name;
+        if (!_structDefinitions.ContainsKey(structName))
+            throw BytecodeError.UndefinedStruct(structName);
+
+        foreach (var argument in newExpression.Arguments)
+            Visit(argument);
+
+        Emit(Instruction.NewStruct(structName, newExpression.Arguments.Count));
+    }
+
+    private void VisitMemberExpression(MemberExpression memberExpression)
+    {
+        Visit(memberExpression.Object);
+        Emit(Instruction.LoadField(memberExpression.Property.Name));
     }
 
     private void VisitReturnStatement(ReturnStatement returnStatement)

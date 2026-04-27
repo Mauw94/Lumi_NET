@@ -24,6 +24,7 @@ public sealed class VirtualMachine
 
     private readonly Stack<CallFrame> _callStack = [];
     private IReadOnlyDictionary<string, int> _functionAddresses = new Dictionary<string, int>();
+    private IReadOnlyDictionary<string, IReadOnlyList<string>> _structDefinitions = new Dictionary<string, IReadOnlyList<string>>();
     private int _ip;
     private int _basePointer;
     private int _executedInstructionCount;
@@ -37,6 +38,7 @@ public sealed class VirtualMachine
         var instructions = (List<Instruction>)bytecode.Instructions;
         var constants = (List<Constant>)bytecode.Constants;
         _functionAddresses = bytecode.FunctionAddresses;
+        _structDefinitions = bytecode.StructDefinitions;
         _ip = _executedInstructionCount;
         var instructionCount = instructions.Count;
 
@@ -97,6 +99,64 @@ public sealed class VirtualMachine
                         _variables[slot] = _stack[--_stackTop];
                         if (slot >= _variableCount)
                             _variableCount = slot + 1;
+                        break;
+                    }
+
+                case InstructionKind.NewStruct:
+                    {
+                        var structName = instruction.GetSafeStringOperand();
+                        var argumentCount = instruction.GetSafeIntOperand();
+
+                        if (!_structDefinitions.TryGetValue(structName, out var fields))
+                            throw VirtualMachineError.UndefinedStruct(structName);
+
+                        if (argumentCount > fields.Count)
+                            throw VirtualMachineError.StructConstructorArgumentCountMismatch(structName, fields.Count, argumentCount);
+
+                        var args = new Value[argumentCount];
+                        for (int i = argumentCount - 1; i >= 0; i--)
+                        {
+                            args[i] = _stack[--_stackTop];
+                        }
+
+                        var values = new Dictionary<string, Value>(StringComparer.Ordinal);
+                        for (int i = 0; i < fields.Count; i++)
+                        {
+                            values[fields[i]] = i < args.Length ? args[i] : Value.Undefined();
+                        }
+
+                        _stack[_stackTop++] = Value.FromStruct(values);
+                        break;
+                    }
+
+                case InstructionKind.LoadField:
+                    {
+                        var fieldName = instruction.GetSafeStringOperand();
+                        var target = _stack[--_stackTop];
+
+                        if (target.Kind != ValueKind.Struct || target.Struct is null)
+                            throw VirtualMachineError.FieldAccessTargetNotStruct(target.Kind);
+
+                        if (!target.Struct.TryGetValue(fieldName, out var fieldValue))
+                            throw VirtualMachineError.UnknownStructField(fieldName);
+
+                        _stack[_stackTop++] = fieldValue;
+                        break;
+                    }
+
+                case InstructionKind.StoreField:
+                    {
+                        var fieldName = instruction.GetSafeStringOperand();
+                        var fieldValue = _stack[--_stackTop];
+                        var target = _stack[--_stackTop];
+
+                        if (target.Kind != ValueKind.Struct || target.Struct is null)
+                            throw VirtualMachineError.FieldAccessTargetNotStruct(target.Kind);
+
+                        if (!target.Struct.ContainsKey(fieldName))
+                            throw VirtualMachineError.UnknownStructField(fieldName);
+
+                        target.Struct[fieldName] = fieldValue;
                         break;
                     }
 
