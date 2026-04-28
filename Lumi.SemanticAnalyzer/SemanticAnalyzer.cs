@@ -529,10 +529,7 @@ public sealed class SemanticAnalyzer
             if (baseTypeName != "list")
                 throw SemanticAnalyzerError.InvalidTypeAnnotation(paramType.BaseTypeName);
 
-            var paramTypeInfo = InferDeclaredTypeInfo(paramType.TypeArgument);
-            if (paramTypeInfo.Type == TypeKind.Unknown)
-                return (TypeKind.Array, null);
-
+            _ = InferDeclaredTypeInfo(paramType.TypeArgument);
             return (TypeKind.Array, null);
         }
 
