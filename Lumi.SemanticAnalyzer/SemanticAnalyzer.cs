@@ -234,6 +234,27 @@ public sealed class SemanticAnalyzer
                 if (declarator.VarType is ParameterizedTypeNode paramType)
                 {
                     var elementTypeInfo = InferDeclaredTypeInfo(paramType.TypeArgument);
+
+                    if (declarator.Init is ArrayLiteral arrayLiteral && arrayLiteral.Elements.Count > 0)
+                    {
+                        var initializerElementTypeInfo = InferArrayElementTypeInfo(arrayLiteral);
+                        var isDifferentElementStruct = elementTypeInfo.Type == TypeKind.Struct
+                            && initializerElementTypeInfo.Type == TypeKind.Struct
+                            && !string.Equals(elementTypeInfo.StructName, initializerElementTypeInfo.StructName, StringComparison.Ordinal);
+
+                        if (elementTypeInfo.Type != TypeKind.Unknown
+                            && initializerElementTypeInfo.Type != TypeKind.Unknown
+                            && (elementTypeInfo.Type != initializerElementTypeInfo.Type || isDifferentElementStruct))
+                        {
+                            var expected = elementTypeInfo.Type == TypeKind.Struct
+                                ? elementTypeInfo.StructName ?? "struct"
+                                : elementTypeInfo.Type.ToString();
+                            var actual = initializerElementTypeInfo.Type == TypeKind.Struct
+                                ? initializerElementTypeInfo.StructName ?? "struct"
+                                : initializerElementTypeInfo.Type.ToString();
+                            throw SemanticAnalyzerError.TypeMismatch(varName.Name, expected, actual);
+                        }
+                    }
                     if (elementTypeInfo.Type != TypeKind.Unknown)
                         _listElementTypes[varName.Name] = elementTypeInfo;
                 }
