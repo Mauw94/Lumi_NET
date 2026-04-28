@@ -866,7 +866,7 @@ public sealed class Parser
                     var baseTypeName = id;
                     Advance();
 
-                    // Check for parameterized type syntax: only list and array support type parameters
+                    // Check for parameterized type syntax: only list supports type parameters
                     if (Check(TokenKind.LessThan))
                     {
                         if (!string.Equals(baseTypeName, "list", StringComparison.OrdinalIgnoreCase))
