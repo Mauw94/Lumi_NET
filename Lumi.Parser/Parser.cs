@@ -823,16 +823,81 @@ public sealed class Parser
                 Advance();
                 if (current != null && IsKeyword(current, out var kw))
                 {
+                    var baseTypeName = kw;
                     Advance();
 
-                    return new IdentifierNode { Name = kw };
+                    // Check for parameterized type syntax: only list supports type parameters
+                    if (Check(TokenKind.LessThan))
+                    {
+                        // Only allow parameterized types for list
+                        if (!string.Equals(baseTypeName, "list", StringComparison.OrdinalIgnoreCase))
+                        {
+                            throw ParserError.InvalidSyntax("Only 'list' types can have type parameters", CurrentPosition() ?? new Position());
+                        }
+
+                        Advance(); // consume '<'
+
+                        // Parse the type argument
+                        Node? typeArg = null;
+                        if (current != null && IsKeyword(current, out var paramKw))
+                        {
+                            typeArg = new IdentifierNode { Name = paramKw };
+                            Advance();
+                        }
+                        else if (current != null && IsIdentifier(current, out var paramId))
+                        {
+                            typeArg = new IdentifierNode { Name = paramId };
+                            Advance();
+                        }
+
+                        if (typeArg == null)
+                            throw ParserError.InvalidSyntax("Expected type parameter in generic type", CurrentPosition() ?? new Position());
+
+                        Expect(TokenKind.GreaterThan);
+
+                        return new ParameterizedTypeNode { BaseTypeName = baseTypeName, TypeArgument = typeArg };
+                    }
+
+                    return new IdentifierNode { Name = baseTypeName };
                 }
 
                 if (current != null && IsIdentifier(current, out var id))
                 {
+                    var baseTypeName = id;
                     Advance();
 
-                    return new IdentifierNode { Name = id };
+                    // Check for parameterized type syntax: only list supports type parameters
+                    if (Check(TokenKind.LessThan))
+                    {
+                        if (!string.Equals(baseTypeName, "list", StringComparison.OrdinalIgnoreCase))
+                        {
+                            throw ParserError.InvalidSyntax("Only 'list' types can have type parameters", CurrentPosition() ?? new Position());
+                        }
+
+                        Advance(); // consume '<'
+
+                        // Parse the type argument
+                        Node? typeArg = null;
+                        if (current != null && IsKeyword(current, out var paramKw))
+                        {
+                            typeArg = new IdentifierNode { Name = paramKw };
+                            Advance();
+                        }
+                        else if (current != null && IsIdentifier(current, out var paramId))
+                        {
+                            typeArg = new IdentifierNode { Name = paramId };
+                            Advance();
+                        }
+
+                        if (typeArg == null)
+                            throw ParserError.InvalidSyntax("Expected type parameter in generic type", CurrentPosition() ?? new Position());
+
+                        Expect(TokenKind.GreaterThan);
+
+                        return new ParameterizedTypeNode { BaseTypeName = baseTypeName, TypeArgument = typeArg };
+                    }
+
+                    return new IdentifierNode { Name = baseTypeName };
                 }
 
                 throw ParserError.UnexpectedToken(CurrentToken(), "Expected a type name after ':'");

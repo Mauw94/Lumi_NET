@@ -1300,4 +1300,133 @@ public sealed class SemanticAnalyzerTests
         Assert.HasCount(1, result.Errors);
         Assert.Contains("constructor accepts up to 2 argument", result.Errors[0].Message);
     }
+
+    [TestMethod]
+    public void Analyze_ListOfStructs_With_Parameterized_Type_IndexExpression_MemberAccess_IsValid()
+    {
+        var program = new Program
+        {
+            Body =
+            [
+                new StructDeclaration
+                {
+                    Name = new IdentifierNode { Name = "Car" },
+                    Fields =
+                    [
+                        new StructFieldDeclaration { Name = new IdentifierNode { Name = "brand" }, Type = new IdentifierNode { Name = "str" } }
+                    ]
+                },
+                new VariableDeclaration
+                {
+                    Kind = "let",
+                    Declarations =
+                    [
+                        new VariableDeclarator
+                        {
+                            VarName = new IdentifierNode { Name = "cars" },
+                            VarType = new ParameterizedTypeNode { BaseTypeName = "list", TypeArgument = new IdentifierNode { Name = "Car" } },
+                            Init = new ArrayLiteral
+                            {
+                                Elements =
+                                [
+                                    new NewExpression { TypeName = new IdentifierNode { Name = "Car" } }
+                                ]
+                            }
+                        }
+                    ]
+                },
+                new PrintStatement
+                {
+                    Argument = new MemberExpression
+                    {
+                        Object = new IndexExpression
+                        {
+                            Object = new IdentifierNode { Name = "cars" },
+                            Index = new NumberNode { Value = 0.0 }
+                        },
+                        Property = new IdentifierNode { Name = "brand" }
+                    }
+                }
+            ]
+        };
+
+        var result = new SemanticAnalyzer().Analyze(program);
+
+        Assert.IsTrue(result.IsValid);
+        Assert.IsEmpty(result.Errors);
+    }
+
+    [TestMethod]
+    public void Analyze_ListOfStructs_With_Parameterized_Type_Only_IsValid()
+    {
+        var program = new Program
+        {
+            Body =
+            [
+                new StructDeclaration
+                {
+                    Name = new IdentifierNode { Name = "Person" },
+                    Fields =
+                    [
+                        new StructFieldDeclaration { Name = new IdentifierNode { Name = "name" }, Type = new IdentifierNode { Name = "str" } }
+                    ]
+                },
+                new VariableDeclaration
+                {
+                    Kind = "let",
+                    Declarations =
+                    [
+                        new VariableDeclarator
+                        {
+                            VarName = new IdentifierNode { Name = "people" },
+                            VarType = new ParameterizedTypeNode { BaseTypeName = "list", TypeArgument = new IdentifierNode { Name = "Person" } },
+                            Init = new ArrayLiteral { Elements = [] }
+                        }
+                    ]
+                }
+            ]
+        };
+
+        var result = new SemanticAnalyzer().Analyze(program);
+
+        Assert.IsTrue(result.IsValid);
+        Assert.IsEmpty(result.Errors);
+    }
+
+    [TestMethod]
+    public void Analyze_NonListTypeWithParameterized_IsInvalid()
+    {
+        // Build AST: let a: int<str> -> 2
+        // This should fail semantic analysis because only 'list' can be parameterized
+        var program = new Program
+        {
+            Body =
+            [
+                new VariableDeclaration
+                {
+                    Kind = "let",
+                    Declarations =
+                    [
+                        new VariableDeclarator
+                        {
+                            VarName = new IdentifierNode { Name = "a" },
+                            VarType = new ParameterizedTypeNode
+                            {
+                                BaseTypeName = "int",
+                                TypeArgument = new IdentifierNode { Name = "str" }
+                            },
+                            Init = new NumberNode { Value = 2.0 }
+                        }
+                    ]
+                }
+            ]
+        };
+
+        var result = new SemanticAnalyzer().Analyze(program);
+
+        Assert.IsFalse(result.IsValid, "Program should have errors");
+        Assert.IsNotEmpty(result.Errors);
+        Assert.IsTrue(result.Errors.Any(e => e.Message.Contains("Only 'list' type can have type parameters")),
+            $"Expected error about parameterized type restriction, got: {string.Join(", ", result.Errors.Select(e => e.Message))}");
+    }
 }

@@ -55,4 +55,6 @@ public sealed class SemanticAnalyzerError(string message) : Exception(message)
         => new($"Variable '{variableName}' expects type '{expected}' but got '{actual}'");
     public static SemanticAnalyzerError StructConstructorArgumentCountMismatch(string structName, int maxExpected, int actual)
         => new($"Struct '{structName}' constructor accepts up to {maxExpected} argument(s) but was called with {actual}");
+    public static SemanticAnalyzerError InvalidTypeAnnotation(string baseTypeName)
+        => new($"Only 'list' type can have type parameters, not '{baseTypeName}'");
 }
