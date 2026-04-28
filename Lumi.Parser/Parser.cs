@@ -826,12 +826,11 @@ public sealed class Parser
                     var baseTypeName = kw;
                     Advance();
 
-                    // Check for parameterized type syntax: only list and array support type parameters
+                    // Check for parameterized type syntax: only list supports type parameters
                     if (Check(TokenKind.LessThan))
                     {
-                        // Only allow parameterized types for list and array
-                        if (!string.Equals(baseTypeName, "list", StringComparison.OrdinalIgnoreCase) &&
-                            !string.Equals(baseTypeName, "array", StringComparison.OrdinalIgnoreCase))
+                        // Only allow parameterized types for list
+                        if (!string.Equals(baseTypeName, "list", StringComparison.OrdinalIgnoreCase))
                         {
                             throw ParserError.InvalidSyntax("Only 'list' types can have type parameters", CurrentPosition() ?? new Position());
                         }
