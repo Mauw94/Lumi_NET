@@ -830,8 +830,7 @@ public sealed class Parser
                     if (Check(TokenKind.LessThan))
                     {
                         // Only allow parameterized types for list and array
-                        if (!string.Equals(baseTypeName, "list", StringComparison.OrdinalIgnoreCase) &&
-                            !string.Equals(baseTypeName, "array", StringComparison.OrdinalIgnoreCase))
+                        if (!string.Equals(baseTypeName, "list", StringComparison.OrdinalIgnoreCase))
                         {
                             throw ParserError.InvalidSyntax("Only 'list' types can have type parameters", CurrentPosition() ?? new Position());
                         }
@@ -870,13 +869,21 @@ public sealed class Parser
                     // Check for parameterized type syntax: only list and array support type parameters
                     if (Check(TokenKind.LessThan))
                     {
-                        // Skip the type parameter if it's not a list or array
-                        // This will be caught by semantic analysis or runtime
+                        if (!string.Equals(baseTypeName, "list", StringComparison.OrdinalIgnoreCase))
+                        {
+                            throw ParserError.InvalidSyntax("Only 'list' types can have type parameters", CurrentPosition() ?? new Position());
+                        }
+
                         Advance(); // consume '<'
-                        while (current != null && !Check(TokenKind.GreaterThan) && !IsEof())
+
+                        while (current != null && !Check(TokenKind.GreaterThan) && !IsEof()) {
                             Advance();
+                        }
+
                         if (Check(TokenKind.GreaterThan))
+                        {
                             Advance();
+                        }
 
                         return new IdentifierNode { Name = baseTypeName };
                     }
