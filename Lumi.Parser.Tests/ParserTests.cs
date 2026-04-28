@@ -167,6 +167,26 @@ public sealed class ParserTests
     }
 
     [TestMethod]
+    public void Test_Parsing_List_Of_Struct_With_Parameterized_Type_Case_Insensitive()
+    {
+        var source = "let cars: List<Car> -> [];";
+        var program = ParseProgram(source);
+
+        Assert.HasCount(1, program.Body);
+        Assert.IsInstanceOfType<VariableDeclaration>(program.Body[0]);
+
+        var declarator = ((VariableDeclaration)program.Body[0]).Declarations[0];
+        Assert.IsInstanceOfType<ParameterizedTypeNode>(declarator.VarType);
+
+        var paramType = (ParameterizedTypeNode)declarator.VarType!;
+        Assert.AreEqual("List", paramType.BaseTypeName);
+        Assert.IsInstanceOfType<IdentifierNode>(paramType.TypeArgument);
+        Assert.AreEqual("Car", ((IdentifierNode)paramType.TypeArgument).Name);
+
+        Assert.IsInstanceOfType<ArrayLiteral>(declarator.Init);
+    }
+
+    [TestMethod]
     public void Test_For_Statement()
     {
         var source = "for i in 0 to 10 { print i; }";

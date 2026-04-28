@@ -876,17 +876,25 @@ public sealed class Parser
 
                         Advance(); // consume '<'
 
-                        while (current != null && !Check(TokenKind.GreaterThan) && !IsEof())
+                        // Parse the type argument
+                        Node? typeArg = null;
+                        if (current != null && IsKeyword(current, out var paramKw))
                         {
+                            typeArg = new IdentifierNode { Name = paramKw };
+                            Advance();
+                        }
+                        else if (current != null && IsIdentifier(current, out var paramId))
+                        {
+                            typeArg = new IdentifierNode { Name = paramId };
                             Advance();
                         }
 
-                        if (Check(TokenKind.GreaterThan))
-                        {
-                            Advance();
-                        }
+                        if (typeArg == null)
+                            throw ParserError.InvalidSyntax("Expected type parameter in generic type", CurrentPosition() ?? new Position());
 
-                        return new IdentifierNode { Name = baseTypeName };
+                        Expect(TokenKind.GreaterThan);
+
+                        return new ParameterizedTypeNode { BaseTypeName = baseTypeName, TypeArgument = typeArg };
                     }
 
                     return new IdentifierNode { Name = baseTypeName };
