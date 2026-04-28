@@ -167,7 +167,7 @@ public sealed class ParserTests
     }
 
     [TestMethod]
-    public void Test_Parsing_List_Of_Struct_With_Parameterized_Type_Case_Insensitive()
+    public void Test_Parsing_Capitalized_List_Of_Struct_With_Parameterized_Type()
     {
         var source = "let cars: List<Car> -> [];";
         var program = ParseProgram(source);
