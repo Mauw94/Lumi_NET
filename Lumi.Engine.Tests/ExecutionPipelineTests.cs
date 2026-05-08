@@ -116,10 +116,11 @@ public sealed class ExecutionPipelineTests
 
         var steps = services.BuildServiceProvider().GetServices<IPipelineExecutionStep>().ToArray();
 
-        Assert.HasCount(3, steps);
+        Assert.HasCount(4, steps);
         Assert.IsInstanceOfType<ParsingStep>(steps[0]);
         Assert.IsInstanceOfType<SemanticAnalysisStep>(steps[1]);
         Assert.IsInstanceOfType<BytecodeExecutionStep>(steps[2]);
+        Assert.IsInstanceOfType<VirtualMachineExecutionStep>(steps[3]);
     }
 
     private static ExecutionPipeline CreatePipeline()

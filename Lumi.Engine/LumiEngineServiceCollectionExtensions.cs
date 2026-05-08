@@ -13,6 +13,7 @@ public static class LumiEngineServiceCollectionExtensions
         services.AddTransient<IPipelineExecutionStep, ParsingStep>();
         services.AddTransient<IPipelineExecutionStep, SemanticAnalysisStep>();
         services.AddTransient<IPipelineExecutionStep, BytecodeExecutionStep>();
+        services.AddTransient<IPipelineExecutionStep, VirtualMachineExecutionStep>();
 
         return services;
     }

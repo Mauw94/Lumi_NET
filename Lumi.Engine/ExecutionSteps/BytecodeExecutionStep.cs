@@ -12,7 +12,7 @@ public sealed class BytecodeExecutionStep : IPipelineExecutionStep
             return false;
         }
 
-        context.VirtualMachine.Execute(context.BytecodeGenerator.Generate(context.Ast));
+        context.SetBytecodeResult(context.BytecodeGenerator.Generate(context.Ast));
         return true;
     }
 }

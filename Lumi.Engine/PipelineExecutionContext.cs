@@ -12,6 +12,7 @@ public sealed class PipelineExecutionContext
     public required SemanticAnalyzer.SemanticAnalyzer SemanticAnalyzer { get; init; }
     public required TextWriter Output { get; init; }
     public Node? Ast { get; private set; }
+    public BytecodeResult? BytecodeResult { get; private set; }
 
     public Parser.Parser CreateParser()
     {
@@ -23,5 +24,11 @@ public sealed class PipelineExecutionContext
     {
         ArgumentNullException.ThrowIfNull(ast);
         Ast = ast;
+    }
+
+    public void SetBytecodeResult(BytecodeResult result)
+    {
+        ArgumentNullException.ThrowIfNull(result);
+        BytecodeResult = result;
     }
 }
