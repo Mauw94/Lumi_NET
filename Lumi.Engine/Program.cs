@@ -1,9 +1,12 @@
 ﻿using Lumi.Bytecode;
 using Lumi.Engine;
-using SemanticAnalyzerType = Lumi.SemanticAnalyzer.SemanticAnalyzer;
 using Lumi.VM;
+using Microsoft.Extensions.DependencyInjection;
+using SemanticAnalyzerType = Lumi.SemanticAnalyzer.SemanticAnalyzer;
 
-// TODO: this needs to be split into two separate projects
+var serviceProvider = new ServiceCollection()
+    .AddLumiEngine()
+    .BuildServiceProvider();
 
 while (true)
 {
@@ -21,12 +24,12 @@ while (true)
                 break;
             }
 
-            ExecuteScript(await LoadScript(scriptName));
+            ExecuteScript(await LoadScript(scriptName), serviceProvider);
             break;
 
         case "r":
             Console.WriteLine("Entering REPL mode. Type your code below:");
-            Repl();
+            Repl(serviceProvider);
             break;
     }
 }
@@ -44,7 +47,7 @@ static async Task<string> LoadScript(string scriptName)
     return await File.ReadAllTextAsync(path);
 }
 
-static void ExecuteScript(string source)
+static void ExecuteScript(string source, IServiceProvider serviceProvider)
 {
     var vm = new VirtualMachine();
     var bytecodeGenerator = new BytecodeGenerator();
@@ -55,7 +58,9 @@ static void ExecuteScript(string source)
     try
     {
         Console.WriteLine("Result: ");
-        ExecutionPipeline.TryExecute(source, vm, bytecodeGenerator, semanticAnalyzer, Console.Out);
+
+        var pipeline = serviceProvider.GetRequiredService<ExecutionPipeline>();
+        pipeline.TryExecute(source, vm, bytecodeGenerator, semanticAnalyzer, Console.Out);
     }
     catch (Exception ex)
     {
@@ -63,7 +68,7 @@ static void ExecuteScript(string source)
     }
 }
 
-static void Repl()
+static void Repl(IServiceProvider serviceProvider)
 {
     var vm = new VirtualMachine();
     var bytecodeGenerator = new BytecodeGenerator();
@@ -72,16 +77,17 @@ static void Repl()
     while (true)
     {
         Console.Write("> ");
-        var input = Console.ReadLine();
+        var source = Console.ReadLine();
 
-        if (string.IsNullOrWhiteSpace(input))
+        if (string.IsNullOrWhiteSpace(source))
         {
             continue;
         }
 
         try
         {
-            ExecutionPipeline.TryExecute(input.Trim(), vm, bytecodeGenerator, semanticAnalyzer, Console.Out);
+            var pipeline = serviceProvider.GetRequiredService<ExecutionPipeline>();
+            pipeline.TryExecute(source, vm, bytecodeGenerator, semanticAnalyzer, Console.Out);
         }
         catch (Exception ex)
         {
