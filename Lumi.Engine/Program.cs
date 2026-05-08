@@ -1,10 +1,12 @@
 ﻿using Lumi.Bytecode;
 using Lumi.Engine;
-using Lumi.Engine.ExecutionSteps;
 using Lumi.VM;
+using Microsoft.Extensions.DependencyInjection;
 using SemanticAnalyzerType = Lumi.SemanticAnalyzer.SemanticAnalyzer;
 
-// TODO: this needs to be split into two separate projects
+var serviceProvider = new ServiceCollection()
+    .AddLumiEngine()
+    .BuildServiceProvider();
 
 while (true)
 {
@@ -22,12 +24,12 @@ while (true)
                 break;
             }
 
-            ExecuteScript(await LoadScript(scriptName));
+            ExecuteScript(await LoadScript(scriptName), serviceProvider);
             break;
 
         case "r":
             Console.WriteLine("Entering REPL mode. Type your code below:");
-            Repl();
+            Repl(serviceProvider);
             break;
     }
 }
@@ -45,7 +47,7 @@ static async Task<string> LoadScript(string scriptName)
     return await File.ReadAllTextAsync(path);
 }
 
-static void ExecuteScript(string source)
+static void ExecuteScript(string source, IServiceProvider serviceProvider)
 {
     var vm = new VirtualMachine();
     var bytecodeGenerator = new BytecodeGenerator();
@@ -57,13 +59,7 @@ static void ExecuteScript(string source)
     {
         Console.WriteLine("Result: ");
 
-        var pipeline = new ExecutionPipeline(
-        [
-            new ParsingStep(),
-            new SemanticAnalysisStep(),
-            new BytecodeExecutionStep()
-        ]);
-
+        var pipeline = serviceProvider.GetRequiredService<ExecutionPipeline>();
         pipeline.TryExecute(source, vm, bytecodeGenerator, semanticAnalyzer, Console.Out);
     }
     catch (Exception ex)
@@ -72,7 +68,7 @@ static void ExecuteScript(string source)
     }
 }
 
-static void Repl()
+static void Repl(IServiceProvider serviceProvider)
 {
     var vm = new VirtualMachine();
     var bytecodeGenerator = new BytecodeGenerator();
@@ -90,13 +86,7 @@ static void Repl()
 
         try
         {
-            var pipeline = new ExecutionPipeline(
-            [
-                new ParsingStep(),
-                new SemanticAnalysisStep(),
-                new BytecodeExecutionStep()
-            ]);
-
+            var pipeline = serviceProvider.GetRequiredService<ExecutionPipeline>();
             pipeline.TryExecute(source, vm, bytecodeGenerator, semanticAnalyzer, Console.Out);
         }
         catch (Exception ex)

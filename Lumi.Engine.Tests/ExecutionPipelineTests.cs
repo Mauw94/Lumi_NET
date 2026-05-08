@@ -1,6 +1,7 @@
 ﻿using Lumi.Bytecode;
 using Lumi.Engine.ExecutionSteps;
 using Lumi.VM;
+using Microsoft.Extensions.DependencyInjection;
 using SemanticAnalyzerType = Lumi.SemanticAnalyzer.SemanticAnalyzer;
 
 namespace Lumi.Engine.Tests;
@@ -15,12 +16,7 @@ public sealed class ExecutionPipelineTests
         var source = "print ; print 999999;";
         using var writer = new StringWriter();
 
-        var pipeline = new ExecutionPipeline(
-        [
-            new ParsingStep(),
-            new SemanticAnalysisStep(),
-            new BytecodeExecutionStep()
-        ]);
+        var pipeline = CreatePipeline();
 
         var succeeded = pipeline.TryExecute(source, new VirtualMachine(), new BytecodeGenerator(), new SemanticAnalyzerType(), writer);
 
@@ -43,12 +39,7 @@ public sealed class ExecutionPipelineTests
 
         using var writer = new StringWriter();
 
-        var pipeline = new ExecutionPipeline(
-        [
-                new ParsingStep(),
-                new SemanticAnalysisStep(),
-                new BytecodeExecutionStep()
-        ]);
+        var pipeline = CreatePipeline();
 
         var succeeded = pipeline.TryExecute(source, new VirtualMachine(), new BytecodeGenerator(), new SemanticAnalyzerType(), writer);
 
@@ -75,12 +66,7 @@ public sealed class ExecutionPipelineTests
 
         using var writer = new StringWriter();
 
-        var pipeline = new ExecutionPipeline(
-        [
-                new ParsingStep(),
-                new SemanticAnalysisStep(),
-                new BytecodeExecutionStep()
-        ]);
+        var pipeline = CreatePipeline();
 
         var succeeded = pipeline.TryExecute(source, new VirtualMachine(), new BytecodeGenerator(), new SemanticAnalyzerType(), writer);
 
@@ -108,12 +94,7 @@ public sealed class ExecutionPipelineTests
 
         using var writer = new StringWriter();
 
-        var pipeline = new ExecutionPipeline(
-        [
-                new ParsingStep(),
-                new SemanticAnalysisStep(),
-                new BytecodeExecutionStep()
-        ]);
+        var pipeline = CreatePipeline();
 
         var succeeded = pipeline.TryExecute(source, new VirtualMachine(), new BytecodeGenerator(), new SemanticAnalyzerType(), writer);
 
@@ -124,6 +105,28 @@ public sealed class ExecutionPipelineTests
         Assert.HasCount(2, lines);
         Assert.AreEqual("\"Alice\"", lines[0]);
         Assert.AreEqual("5", lines[1]);
+    }
+
+    [TestMethod]
+    public void AddLumiEngine_RegistersExecutionPipelineSteps()
+    {
+        var services = new ServiceCollection();
+
+        services.AddLumiEngine();
+
+        var steps = services.BuildServiceProvider().GetServices<IPipelineExecutionStep>().ToArray();
+
+        Assert.HasCount(3, steps);
+        Assert.IsInstanceOfType<ParsingStep>(steps[0]);
+        Assert.IsInstanceOfType<SemanticAnalysisStep>(steps[1]);
+        Assert.IsInstanceOfType<BytecodeExecutionStep>(steps[2]);
+    }
+
+    private static ExecutionPipeline CreatePipeline()
+    {
+        var services = new ServiceCollection();
+        services.AddLumiEngine();
+        return services.BuildServiceProvider().GetRequiredService<ExecutionPipeline>();
     }
 
     private static string[] SplitLines(string value) =>
