@@ -1,7 +1,8 @@
 ﻿using Lumi.Bytecode;
 using Lumi.Engine;
-using SemanticAnalyzerType = Lumi.SemanticAnalyzer.SemanticAnalyzer;
+using Lumi.Engine.ExecutionSteps;
 using Lumi.VM;
+using SemanticAnalyzerType = Lumi.SemanticAnalyzer.SemanticAnalyzer;
 
 // TODO: this needs to be split into two separate projects
 
@@ -55,7 +56,15 @@ static void ExecuteScript(string source)
     try
     {
         Console.WriteLine("Result: ");
-        ExecutionPipeline.TryExecute(source, vm, bytecodeGenerator, semanticAnalyzer, Console.Out);
+
+        var pipeline = new ExecutionPipeline(
+        [
+            new ParsingStep(),
+            new SemanticAnalysisStep(),
+            new BytecodeExecutionStep()
+        ]);
+
+        pipeline.TryExecute(source, vm, bytecodeGenerator, semanticAnalyzer, Console.Out);
     }
     catch (Exception ex)
     {
@@ -72,16 +81,23 @@ static void Repl()
     while (true)
     {
         Console.Write("> ");
-        var input = Console.ReadLine();
+        var source = Console.ReadLine();
 
-        if (string.IsNullOrWhiteSpace(input))
+        if (string.IsNullOrWhiteSpace(source))
         {
             continue;
         }
 
         try
         {
-            ExecutionPipeline.TryExecute(input.Trim(), vm, bytecodeGenerator, semanticAnalyzer, Console.Out);
+            var pipeline = new ExecutionPipeline(
+            [
+                new ParsingStep(),
+                new SemanticAnalysisStep(),
+                new BytecodeExecutionStep()
+            ]);
+
+            pipeline.TryExecute(source, vm, bytecodeGenerator, semanticAnalyzer, Console.Out);
         }
         catch (Exception ex)
         {

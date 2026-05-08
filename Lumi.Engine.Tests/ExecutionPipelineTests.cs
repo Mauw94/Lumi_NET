@@ -1,7 +1,7 @@
 ﻿using Lumi.Bytecode;
-using Lumi.Engine;
-using SemanticAnalyzerType = Lumi.SemanticAnalyzer.SemanticAnalyzer;
+using Lumi.Engine.ExecutionSteps;
 using Lumi.VM;
+using SemanticAnalyzerType = Lumi.SemanticAnalyzer.SemanticAnalyzer;
 
 namespace Lumi.Engine.Tests;
 
@@ -15,7 +15,14 @@ public sealed class ExecutionPipelineTests
         var source = "print ; print 999999;";
         using var writer = new StringWriter();
 
-        var succeeded = ExecutionPipeline.TryExecute(source, new VirtualMachine(), new BytecodeGenerator(), new SemanticAnalyzerType(), writer);
+        var pipeline = new ExecutionPipeline(
+        [
+            new ParsingStep(),
+            new SemanticAnalysisStep(),
+            new BytecodeExecutionStep()
+        ]);
+
+        var succeeded = pipeline.TryExecute(source, new VirtualMachine(), new BytecodeGenerator(), new SemanticAnalyzerType(), writer);
 
         var output = writer.ToString();
         var lines = SplitLines(output);
@@ -36,7 +43,14 @@ public sealed class ExecutionPipelineTests
 
         using var writer = new StringWriter();
 
-        var succeeded = ExecutionPipeline.TryExecute(source, new VirtualMachine(), new BytecodeGenerator(), new SemanticAnalyzerType(), writer);
+        var pipeline = new ExecutionPipeline(
+        [
+                new ParsingStep(),
+                new SemanticAnalysisStep(),
+                new BytecodeExecutionStep()
+        ]);
+
+        var succeeded = pipeline.TryExecute(source, new VirtualMachine(), new BytecodeGenerator(), new SemanticAnalyzerType(), writer);
 
         var output = writer.ToString();
         var lines = SplitLines(output);
@@ -61,7 +75,14 @@ public sealed class ExecutionPipelineTests
 
         using var writer = new StringWriter();
 
-        var succeeded = ExecutionPipeline.TryExecute(source, new VirtualMachine(), new BytecodeGenerator(), new SemanticAnalyzerType(), writer);
+        var pipeline = new ExecutionPipeline(
+        [
+                new ParsingStep(),
+                new SemanticAnalysisStep(),
+                new BytecodeExecutionStep()
+        ]);
+
+        var succeeded = pipeline.TryExecute(source, new VirtualMachine(), new BytecodeGenerator(), new SemanticAnalyzerType(), writer);
 
         var output = writer.ToString();
         var lines = SplitLines(output);
@@ -87,7 +108,14 @@ public sealed class ExecutionPipelineTests
 
         using var writer = new StringWriter();
 
-        var succeeded = ExecutionPipeline.TryExecute(source, new VirtualMachine(), new BytecodeGenerator(), new SemanticAnalyzerType(), writer);
+        var pipeline = new ExecutionPipeline(
+        [
+                new ParsingStep(),
+                new SemanticAnalysisStep(),
+                new BytecodeExecutionStep()
+        ]);
+
+        var succeeded = pipeline.TryExecute(source, new VirtualMachine(), new BytecodeGenerator(), new SemanticAnalyzerType(), writer);
 
         var output = writer.ToString();
         var lines = SplitLines(output);
