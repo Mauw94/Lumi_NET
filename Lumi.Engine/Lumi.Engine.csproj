@@ -18,4 +18,8 @@
     <ProjectReference Include="..\Lumi.VM\Lumi.VM.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="..\Examples\**\*.*" LinkBase="Examples" />
+  </ItemGroup>
+
 </Project>

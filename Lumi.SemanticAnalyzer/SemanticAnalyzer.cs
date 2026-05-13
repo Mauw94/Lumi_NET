@@ -496,11 +496,9 @@ public sealed class SemanticAnalyzer
 
         var objectType = InferType(memberExpr.Object);
 
-        // NOTE: TpyeKind.Object will come later.
         if (objectType != TypeKind.Array)
             throw SemanticAnalyzerError.MethodNotSupportedOnType(memberExpr.Property.Name, objectType);
 
-        // NOTE: we can only validate list methods at this stage, since we don't have class definitions or other types yet.
         if (!ListMethodParameterCounts.TryGetValue(memberExpr.Property.Name, out var expectedArgumentCount))
             throw SemanticAnalyzerError.UnknownListMethod(memberExpr.Property.Name);
 
@@ -615,8 +613,6 @@ public sealed class SemanticAnalyzer
 
     private (TypeKind Type, string? StructName) InferArrayElementTypeInfo(ArrayLiteral arrayLiteral)
     {
-        // TODO: need a way to declare an empty list with specific type info
-        // e.g. let cars: list<Car> -> [];
         if (arrayLiteral.Elements.Count == 0)
             return (TypeKind.Unknown, null);
 
