@@ -908,4 +908,95 @@ public sealed class VirtualMachineTests
         Assert.AreEqual("30", lines[1]);
     }
 
+    [TestMethod]
+    public void VM_Struct_Method_Call_Can_Mutate_Fields_Through_This()
+    {
+        var bytecode = Build(
+            new StructDeclaration
+            {
+                Name = new IdentifierNode { Name = "Counter" },
+                Fields =
+                [
+                    new StructFieldDeclaration { Name = new IdentifierNode { Name = "value" }, Type = new IdentifierNode { Name = "int" } }
+                ],
+                Methods =
+                [
+                    new FunctionDeclaration
+                    {
+                        Id = new IdentifierNode { Name = "increment" },
+                        Params = [new IdentifierNode { Name = "delta" }],
+                        Body = new BlockStatement
+                        {
+                            Body =
+                            [
+                                new ExpressionStatement
+                                {
+                                    Expression = new AssignmentExpression
+                                    {
+                                        Left = new MemberExpression
+                                        {
+                                            Object = new IdentifierNode { Name = "this" },
+                                            Property = new IdentifierNode { Name = "value" }
+                                        },
+                                        Operator = "=",
+                                        Right = new BinaryExpression
+                                        {
+                                            Left = new MemberExpression
+                                            {
+                                                Object = new IdentifierNode { Name = "this" },
+                                                Property = new IdentifierNode { Name = "value" }
+                                            },
+                                            Operator = "+",
+                                            Right = new IdentifierNode { Name = "delta" }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ]
+            },
+            new VariableDeclaration
+            {
+                Kind = "let",
+                Declarations =
+                [
+                    new VariableDeclarator
+                    {
+                        VarName = new IdentifierNode { Name = "counter" },
+                        VarType = new IdentifierNode { Name = "Counter" },
+                        Init = new NewExpression
+                        {
+                            TypeName = new IdentifierNode { Name = "Counter" },
+                            Arguments = [new NumberNode { Value = 2.0 }]
+                        }
+                    }
+                ]
+            },
+            new ExpressionStatement
+            {
+                Expression = new CallExpression
+                {
+                    Callee = new MemberExpression
+                    {
+                        Object = new IdentifierNode { Name = "counter" },
+                        Property = new IdentifierNode { Name = "increment" }
+                    },
+                    Arguments = [new NumberNode { Value = 3.0 }]
+                }
+            },
+            new PrintStatement
+            {
+                Argument = new MemberExpression
+                {
+                    Object = new IdentifierNode { Name = "counter" },
+                    Property = new IdentifierNode { Name = "value" }
+                }
+            }
+        );
+
+        var output = CaptureOutput(() => new VirtualMachine().Execute(bytecode));
+        Assert.AreEqual("5", output);
+    }
+
 }

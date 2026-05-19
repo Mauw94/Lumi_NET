@@ -396,6 +396,70 @@ public sealed class ParserTests
     }
 
     [TestMethod]
+    public void Test_Parsing_Struct_Declaration_With_Method()
+    {
+        var source = """
+            struct Person {
+                name: str;
+                fn greet() {
+                    print this.name;
+                }
+            }
+            """;
+        var program = ParseProgram(source);
+
+        Assert.HasCount(1, program.Body);
+        Assert.IsInstanceOfType<StructDeclaration>(program.Body[0]);
+
+        var structDecl = (StructDeclaration)program.Body[0];
+        Assert.AreEqual("Person", structDecl.Name.Name);
+        Assert.HasCount(1, structDecl.Fields);
+        Assert.HasCount(1, structDecl.Methods);
+
+        var method = structDecl.Methods[0];
+        Assert.AreEqual("greet", ((IdentifierNode)method.Id).Name);
+        Assert.IsInstanceOfType<BlockStatement>(method.Body);
+
+        var body = (BlockStatement)method.Body;
+        Assert.HasCount(1, body.Body);
+        Assert.IsInstanceOfType<PrintStatement>(body.Body[0]);
+
+        var printStatement = (PrintStatement)body.Body[0];
+        Assert.IsInstanceOfType<MemberExpression>(printStatement.Argument);
+
+        var memberExpression = (MemberExpression)printStatement.Argument;
+        Assert.AreEqual("this", ((IdentifierNode)memberExpression.Object).Name);
+        Assert.AreEqual("name", memberExpression.Property.Name);
+    }
+
+    [TestMethod]
+    public void Test_Parsing_Struct_Method_Source_Program()
+    {
+        var source = """
+            struct Counter {
+                value: int;
+
+                fn increment(delta) {
+                    this.value = this.value + delta;
+                }
+            }
+
+            let counter: Counter -> new Counter(2);
+            counter.increment(3);
+            print counter.value;
+            """;
+        var parser = new Parser(source);
+        var program = (Program)parser.Parse();
+
+        Assert.IsFalse(parser.HasErrors, string.Join(" | ", parser.Errors.Select(static e => e.Message)));
+        Assert.HasCount(4, program.Body);
+        Assert.IsInstanceOfType<StructDeclaration>(program.Body[0]);
+        Assert.IsInstanceOfType<VariableDeclaration>(program.Body[1]);
+        Assert.IsInstanceOfType<ExpressionStatement>(program.Body[2]);
+        Assert.IsInstanceOfType<PrintStatement>(program.Body[3]);
+    }
+
+    [TestMethod]
     public void Test_Parsing_New_Expression()
     {
         var source = "let person: Person -> new Person;";

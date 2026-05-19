@@ -47,8 +47,14 @@ public sealed class SemanticAnalyzerError(string message) : Exception(message)
         => new($"Struct name '{name}' is a reserved keyword");
     public static SemanticAnalyzerError DuplicateStructField(string structName, string fieldName)
         => new($"Struct '{structName}' has duplicate field '{fieldName}'");
+    public static SemanticAnalyzerError DuplicateStructMethod(string structName, string methodName)
+        => new($"Struct '{structName}' has duplicate method '{methodName}'");
+    public static SemanticAnalyzerError DuplicateStructMember(string structName, string memberName)
+        => new($"Struct '{structName}' already contains a member named '{memberName}'");
     public static SemanticAnalyzerError UnknownStructField(string structName, string fieldName)
         => new($"Struct '{structName}' does not contain field '{fieldName}'");
+    public static SemanticAnalyzerError UnknownStructMethod(string structName, string methodName)
+        => new($"Struct '{structName}' does not contain method '{methodName}'");
     public static SemanticAnalyzerError MemberAccessNotSupportedOnType(TypeKind type)
         => new($"Member access is not supported on values of type '{type}'");
     public static SemanticAnalyzerError TypeMismatch(string variableName, string expected, string actual)

@@ -185,7 +185,7 @@ public sealed class BytecodeTests
     }
 
     [TestMethod]
-    public void Test_ListMethodCall_Emits_CallListMethod()
+    public void Test_ListMethodCall_Emits_CallMemberMethod()
     {
         var program = new Program
         {
@@ -224,13 +224,13 @@ public sealed class BytecodeTests
 
         var result = new BytecodeGenerator().Generate(program);
 
-        var call = result.Instructions.First(i => i.Kind == InstructionKind.CallListMethod);
+        var call = result.Instructions.First(i => i.Kind == InstructionKind.CallMemberMethod);
         Assert.AreEqual("add", call.StringOperand);
         Assert.AreEqual(1, call.GetSafeIntOperand());
     }
 
     [TestMethod]
-    public void Test_ListRemoveMethodCall_Emits_CallListMethod()
+    public void Test_ListRemoveMethodCall_Emits_CallMemberMethod()
     {
         var program = new Program
         {
@@ -269,13 +269,13 @@ public sealed class BytecodeTests
 
         var result = new BytecodeGenerator().Generate(program);
 
-        var call = result.Instructions.First(i => i.Kind == InstructionKind.CallListMethod);
+        var call = result.Instructions.First(i => i.Kind == InstructionKind.CallMemberMethod);
         Assert.AreEqual("remove", call.StringOperand);
         Assert.AreEqual(1, call.GetSafeIntOperand());
     }
 
     [TestMethod]
-    public void Test_ListLengthMethodCall_Emits_CallListMethod()
+    public void Test_ListLengthMethodCall_Emits_CallMemberMethod()
     {
         var program = new Program
         {
@@ -314,13 +314,13 @@ public sealed class BytecodeTests
 
         var result = new BytecodeGenerator().Generate(program);
 
-        var call = result.Instructions.First(i => i.Kind == InstructionKind.CallListMethod);
+        var call = result.Instructions.First(i => i.Kind == InstructionKind.CallMemberMethod);
         Assert.AreEqual("length", call.StringOperand);
         Assert.AreEqual(0, call.GetSafeIntOperand());
     }
 
     [TestMethod]
-    public void Test_ListContainsMethodCall_Emits_CallListMethod()
+    public void Test_ListContainsMethodCall_Emits_CallMemberMethod()
     {
         var program = new Program
         {
@@ -359,9 +359,81 @@ public sealed class BytecodeTests
 
         var result = new BytecodeGenerator().Generate(program);
 
-        var call = result.Instructions.First(i => i.Kind == InstructionKind.CallListMethod);
+        var call = result.Instructions.First(i => i.Kind == InstructionKind.CallMemberMethod);
         Assert.AreEqual("contains", call.StringOperand);
         Assert.AreEqual(1, call.GetSafeIntOperand());
+    }
+
+    [TestMethod]
+    public void Test_StructMethodCall_Emits_CallMemberMethod_And_Registers_Method_Address()
+    {
+        var program = new Program
+        {
+            Body =
+            [
+                new StructDeclaration
+                {
+                    Name = new IdentifierNode { Name = "Person" },
+                    Fields =
+                    [
+                        new StructFieldDeclaration { Name = new IdentifierNode { Name = "name" }, Type = new IdentifierNode { Name = "str" } }
+                    ],
+                    Methods =
+                    [
+                        new FunctionDeclaration
+                        {
+                            Id = new IdentifierNode { Name = "greet" },
+                            Body = new BlockStatement
+                            {
+                                Body =
+                                [
+                                    new PrintStatement
+                                    {
+                                        Argument = new MemberExpression
+                                        {
+                                            Object = new IdentifierNode { Name = "this" },
+                                            Property = new IdentifierNode { Name = "name" }
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    ]
+                },
+                new VariableDeclaration
+                {
+                    Kind = "let",
+                    Declarations =
+                    [
+                        new VariableDeclarator
+                        {
+                            VarName = new IdentifierNode { Name = "person" },
+                            VarType = new IdentifierNode { Name = "Person" },
+                            Init = new NewExpression { TypeName = new IdentifierNode { Name = "Person" } }
+                        }
+                    ]
+                },
+                new ExpressionStatement
+                {
+                    Expression = new CallExpression
+                    {
+                        Callee = new MemberExpression
+                        {
+                            Object = new IdentifierNode { Name = "person" },
+                            Property = new IdentifierNode { Name = "greet" }
+                        }
+                    }
+                }
+            ]
+        };
+
+        var result = new BytecodeGenerator().Generate(program);
+
+        var call = result.Instructions.First(i => i.Kind == InstructionKind.CallMemberMethod);
+        Assert.AreEqual("greet", call.StringOperand);
+        Assert.AreEqual(0, call.GetSafeIntOperand());
+        Assert.IsTrue(result.StructMethodAddresses.ContainsKey("Person"));
+        Assert.IsTrue(result.StructMethodAddresses["Person"].ContainsKey("greet"));
     }
 
     [TestMethod]

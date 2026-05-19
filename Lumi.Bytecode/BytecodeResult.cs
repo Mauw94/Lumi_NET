@@ -9,8 +9,9 @@ public sealed record BytecodeResult(
     IReadOnlyList<Constant> Constants,
     IReadOnlyList<Local> Locals,
     IReadOnlyDictionary<string, int> FunctionAddresses,
-    IReadOnlyDictionary<string, IReadOnlyList<string>> StructDefinitions)
+    IReadOnlyDictionary<string, IReadOnlyList<string>> StructDefinitions,
+    IReadOnlyDictionary<string, IReadOnlyDictionary<string, int>> StructMethodAddresses)
 {
     public static BytecodeResult FromGenerator(BytecodeGenerator generator) =>
-        new(generator.Instructions, generator.Constants, generator.Locals, generator.FunctionAddresses, generator.StructDefinitions);
+        new(generator.Instructions, generator.Constants, generator.Locals, generator.FunctionAddresses, generator.StructDefinitions, generator.StructMethodAddresses);
 }

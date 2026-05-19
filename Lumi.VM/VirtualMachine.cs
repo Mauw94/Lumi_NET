@@ -25,6 +25,7 @@ public sealed class VirtualMachine
     private readonly Stack<CallFrame> _callStack = [];
     private IReadOnlyDictionary<string, int> _functionAddresses = new Dictionary<string, int>();
     private IReadOnlyDictionary<string, IReadOnlyList<string>> _structDefinitions = new Dictionary<string, IReadOnlyList<string>>();
+    private IReadOnlyDictionary<string, IReadOnlyDictionary<string, int>> _structMethodAddresses = new Dictionary<string, IReadOnlyDictionary<string, int>>();
     private int _ip;
     private int _basePointer;
     private int _executedInstructionCount;
@@ -39,6 +40,7 @@ public sealed class VirtualMachine
         var constants = (List<Constant>)bytecode.Constants;
         _functionAddresses = bytecode.FunctionAddresses;
         _structDefinitions = bytecode.StructDefinitions;
+        _structMethodAddresses = bytecode.StructMethodAddresses;
         _ip = _executedInstructionCount;
         var instructionCount = instructions.Count;
 
@@ -125,7 +127,7 @@ public sealed class VirtualMachine
                             values[fields[i]] = i < args.Length ? args[i] : Value.Undefined();
                         }
 
-                        _stack[_stackTop++] = Value.FromStruct(values);
+                        _stack[_stackTop++] = Value.FromStruct(structName, values);
                         break;
                     }
 
@@ -270,65 +272,89 @@ public sealed class VirtualMachine
                         continue;
                     }
 
-                case InstructionKind.CallListMethod:
+                case InstructionKind.CallMemberMethod:
                     {
                         var methodName = instruction.GetSafeStringOperand();
                         var argumentCount = instruction.GetSafeIntOperand();
+                        var receiverIndex = _stackTop - argumentCount - 1;
+                        var target = _stack[receiverIndex];
 
-                        var args = new Value[argumentCount];
-                        for (int i = argumentCount - 1; i >= 0; i--)
+                        // NOTE: move this to switch statement and cleaner approach for the ListMethods section
+                        if (target.Kind == ValueKind.Struct)
                         {
-                            args[i] = _stack[--_stackTop];
+                            if (target.StructName is null
+                                || !_structMethodAddresses.TryGetValue(target.StructName, out var methods)
+                                || !methods.TryGetValue(methodName, out var methodAddress))
+                            {
+                                throw VirtualMachineError.UnknownStructMethod(target.StructName ?? "struct", methodName);
+                            }
+
+                            _callStack.Push(new CallFrame(ReturnAddress: _ip + 1, PreviousBasePointer: _basePointer));
+                            _basePointer = _variableCount;
+                            _ip = methodAddress;
+
+                            continue;
                         }
 
-                        var target = _stack[--_stackTop];
-                        if (target.Kind != ValueKind.Array || target.Array is null)
-                            throw VirtualMachineError.ListMethodTargetNotArray(target.Kind);
-
-                        switch (methodName)
+                        if (target.Kind == ValueKind.Array)
                         {
-                            case SupportedMethods.ListMethods.Add:
-                                if (argumentCount != 1)
-                                    throw VirtualMachineError.ListMethodArgumentCountMismatch(methodName, 1, argumentCount);
+                            var args = new Value[argumentCount];
+                            for (int i = argumentCount - 1; i >= 0; i--)
+                            {
+                                args[i] = _stack[--_stackTop];
+                            }
 
-                                target.Array.Add(args[0]);
-                                _stack[_stackTop++] = target;
-                                break;
+                            target = _stack[--_stackTop];
+                            if (target.Kind != ValueKind.Array || target.Array is null)
+                                throw VirtualMachineError.ListMethodTargetNotArray(target.Kind);
 
-                            case SupportedMethods.ListMethods.Remove:
-                                if (argumentCount != 1)
-                                    throw VirtualMachineError.ListMethodArgumentCountMismatch(methodName, 1, argumentCount);
+                            switch (methodName)
+                            {
+                                case SupportedMethods.ListMethods.Add:
+                                    if (argumentCount != 1)
+                                        throw VirtualMachineError.ListMethodArgumentCountMismatch(methodName, 1, argumentCount);
 
-                                var removed = target.Array.Remove(args[0]);
-                                if (removed is false)
-                                {
-                                    // If the value to remove was not found, we still need to push the original array back onto the stack
-                                    // to maintain correct stack state for the caller.
+                                    target.Array.Add(args[0]);
                                     _stack[_stackTop++] = target;
-                                }
-                                _stack[_stackTop++] = Value.FromBoolean(removed);
-                                break;
+                                    break;
 
-                            case SupportedMethods.ListMethods.Length:
-                                if (argumentCount != 0)
-                                    throw VirtualMachineError.ListMethodArgumentCountMismatch(methodName, 0, argumentCount);
+                                case SupportedMethods.ListMethods.Remove:
+                                    if (argumentCount != 1)
+                                        throw VirtualMachineError.ListMethodArgumentCountMismatch(methodName, 1, argumentCount);
 
-                                _stack[_stackTop++] = Value.FromNumber(target.Array.Count);
-                                break;
+                                    var removed = target.Array.Remove(args[0]);
+                                    if (removed is false)
+                                    {
+                                        // If the value to remove was not found, we still need to push the original array back onto the stack
+                                        // to maintain correct stack state for the caller.
+                                        _stack[_stackTop++] = target;
+                                    }
+                                    _stack[_stackTop++] = Value.FromBoolean(removed);
+                                    break;
 
-                            case SupportedMethods.ListMethods.Contains:
-                                if (argumentCount != 1)
-                                    throw VirtualMachineError.ListMethodArgumentCountMismatch(methodName, 1, argumentCount);
+                                case SupportedMethods.ListMethods.Length:
+                                    if (argumentCount != 0)
+                                        throw VirtualMachineError.ListMethodArgumentCountMismatch(methodName, 0, argumentCount);
 
-                                var contains = target.Array.Contains(args[0]);
-                                _stack[_stackTop++] = Value.FromBoolean(contains);
-                                break;
+                                    _stack[_stackTop++] = Value.FromNumber(target.Array.Count);
+                                    break;
 
-                            default:
-                                throw VirtualMachineError.UnknownListMethod(methodName);
+                                case SupportedMethods.ListMethods.Contains:
+                                    if (argumentCount != 1)
+                                        throw VirtualMachineError.ListMethodArgumentCountMismatch(methodName, 1, argumentCount);
+
+                                    var contains = target.Array.Contains(args[0]);
+                                    _stack[_stackTop++] = Value.FromBoolean(contains);
+                                    break;
+
+                                default:
+                                    throw VirtualMachineError.UnknownListMethod(methodName);
+                            }
+
+                            break;
                         }
 
-                        break;
+                        throw VirtualMachineError.MethodTargetNotSupported(methodName, target.Kind);
                     }
 
                 case InstructionKind.Return:

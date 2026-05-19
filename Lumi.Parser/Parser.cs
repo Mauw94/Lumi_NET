@@ -125,9 +125,7 @@ public sealed class Parser
                         result = ParseReturnStatement;
                         break;
                     default:
-                        // temporary placeholder to avoid infinite loop
-                        Advance();
-                        result = Node.Null;
+                        result = ParseExpressionStatement;
                         break;
                 }
             }
@@ -270,11 +268,21 @@ public sealed class Parser
             Expect(TokenKind.LeftBrace);
 
             var fields = new List<StructFieldDeclaration>();
+            var methods = new List<FunctionDeclaration>();
 
             while (!Check(TokenKind.RightBrace) && !IsEof())
             {
+                if (CheckKeyword("fn"))
+                {
+                    var method = (FunctionDeclaration)ParseFunctionStatement;
+                    method.OwningStructName = name.Name;
+                    methods.Add(method);
+
+                    continue;
+                }
+
                 if (!CheckIdentifier())
-                    throw ParserError.InvalidSyntax("Expected struct field name", CurrentPosition() ?? new Position());
+                    throw ParserError.InvalidSyntax("Expected struct field name or method declaration", CurrentPosition() ?? new Position());
 
                 var fieldName = (IdentifierNode)ParseIdentifier;
 
@@ -309,7 +317,7 @@ public sealed class Parser
 
             var span = CreateSpanFromTokens();
 
-            return new StructDeclaration { Name = name, Fields = fields, Span = span };
+            return new StructDeclaration { Name = name, Fields = fields, Methods = methods, Span = span };
         }
     }
 
@@ -749,6 +757,12 @@ public sealed class Parser
             }
 
             return new NewExpression { TypeName = new IdentifierNode { Name = typeName }, Arguments = arguments };
+        }
+
+        if (tok.Kind == TokenKind.Keyword && string.Equals(tok.Value, "this", StringComparison.Ordinal))
+        {
+            Advance();
+            return new IdentifierNode { Name = "this" };
         }
 
         switch (tok.Kind)

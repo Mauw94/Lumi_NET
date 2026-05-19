@@ -1162,6 +1162,112 @@ public sealed class SemanticAnalyzerTests
     }
 
     [TestMethod]
+    public void Analyze_Struct_Method_Call_With_This_Field_Access_IsValid()
+    {
+        var program = new Program
+        {
+            Body =
+            [
+                new StructDeclaration
+                {
+                    Name = new IdentifierNode { Name = "Person" },
+                    Fields =
+                    [
+                        new StructFieldDeclaration { Name = new IdentifierNode { Name = "name" }, Type = new IdentifierNode { Name = "str" } }
+                    ],
+                    Methods =
+                    [
+                        new FunctionDeclaration
+                        {
+                            Id = new IdentifierNode { Name = "greet" },
+                            Body = new BlockStatement
+                            {
+                                Body =
+                                [
+                                    new PrintStatement
+                                    {
+                                        Argument = new MemberExpression
+                                        {
+                                            Object = new IdentifierNode { Name = "this" },
+                                            Property = new IdentifierNode { Name = "name" }
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    ]
+                },
+                new VariableDeclaration
+                {
+                    Kind = "let",
+                    Declarations =
+                    [
+                        new VariableDeclarator
+                        {
+                            VarName = new IdentifierNode { Name = "person" },
+                            VarType = new IdentifierNode { Name = "Person" },
+                            Init = new NewExpression
+                            {
+                                TypeName = new IdentifierNode { Name = "Person" },
+                                Arguments = [new StringNode { Value = "Alice" }]
+                            }
+                        }
+                    ]
+                },
+                new ExpressionStatement
+                {
+                    Expression = new CallExpression
+                    {
+                        Callee = new MemberExpression
+                        {
+                            Object = new IdentifierNode { Name = "person" },
+                            Property = new IdentifierNode { Name = "greet" }
+                        }
+                    }
+                }
+            ]
+        };
+
+        var result = new SemanticAnalyzer().Analyze(program);
+
+        Assert.IsTrue(result.IsValid);
+        Assert.IsEmpty(result.Errors);
+    }
+
+    [TestMethod]
+    public void Analyze_Struct_Field_And_Method_Name_Collision_ReturnsError()
+    {
+        var program = new Program
+        {
+            Body =
+            [
+                new StructDeclaration
+                {
+                    Name = new IdentifierNode { Name = "Person" },
+                    Fields =
+                    [
+                        new StructFieldDeclaration { Name = new IdentifierNode { Name = "name" }, Type = new IdentifierNode { Name = "str" } }
+                    ],
+                    Methods =
+                    [
+                        new FunctionDeclaration
+                        {
+                            Id = new IdentifierNode { Name = "name" },
+                            Body = new BlockStatement()
+                        }
+                    ]
+                }
+            ]
+        };
+
+        var result = new SemanticAnalyzer().Analyze(program);
+
+        Assert.IsFalse(result.IsValid);
+        Assert.HasCount(1, result.Errors);
+        Assert.Contains("already contains a member named 'name'", result.Errors[0].Message);
+    }
+
+    [TestMethod]
     public void Analyze_Struct_Unknown_Field_ReturnsError()
     {
         var program = new Program
