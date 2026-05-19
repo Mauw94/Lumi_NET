@@ -41,12 +41,14 @@ public class FunctionDeclaration : Node
     public List<Node> Params { get; set; } = [];
     public required Node Body { get; set; }
     public bool IsAsync { get; set; }
+    public string? OwningStructName { get; set; }
 }
 
 public class StructDeclaration : Node
 {
     public required IdentifierNode Name { get; set; }
     public List<StructFieldDeclaration> Fields { get; set; } = [];
+    public List<FunctionDeclaration> Methods { get; set; } = [];
 }
 
 public class StructFieldDeclaration : Node

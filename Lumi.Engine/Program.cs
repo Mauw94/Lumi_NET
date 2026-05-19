@@ -37,7 +37,8 @@ while (true)
 static async Task<string> LoadScript(string scriptName)
 {
     var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "Examples"));
-    var path = Path.Combine(root, scriptName + ".lumi");
+    var files = Directory.GetFiles(root, "*.lumi*", SearchOption.AllDirectories);
+    var path = files.FirstOrDefault(f => f.Contains(scriptName, StringComparison.OrdinalIgnoreCase)) ?? string.Empty;
 
     if (!File.Exists(path))
     {

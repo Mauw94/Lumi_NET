@@ -9,9 +9,12 @@ namespace Lumi.SemanticAnalyzer;
 /// </summary>
 public sealed class SemanticAnalyzer
 {
+    private readonly record struct StructMethodSignature(int ParameterCount);
+
     private readonly ScopeManager _scopes = new();
     private readonly Dictionary<string, List<string>> _structFieldOrder = new(StringComparer.Ordinal);
     private readonly Dictionary<string, Dictionary<string, (TypeKind Type, string? StructName)>> _structFieldTypes = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, Dictionary<string, StructMethodSignature>> _structMethods = new(StringComparer.Ordinal);
     private readonly Dictionary<string, (TypeKind Type, string? StructName)> _listElementTypes = new(StringComparer.Ordinal);
     private static readonly Dictionary<string, int> ListMethodParameterCounts = new(StringComparer.Ordinal)
     {
@@ -157,8 +160,10 @@ public sealed class SemanticAnalyzer
                     throw SemanticAnalyzerError.StructNameIsKeyword(structDecl.Name.Name);
 
                 var fields = new HashSet<string>(StringComparer.Ordinal);
+                var methods = new HashSet<string>(StringComparer.Ordinal);
                 var fieldOrder = new List<string>(structDecl.Fields.Count);
                 var fieldTypes = new Dictionary<string, (TypeKind Type, string? StructName)>(StringComparer.Ordinal);
+                var methodSignatures = new Dictionary<string, StructMethodSignature>(StringComparer.Ordinal);
 
                 foreach (var field in structDecl.Fields)
                 {
@@ -169,8 +174,26 @@ public sealed class SemanticAnalyzer
                     fieldTypes[field.Name.Name] = InferDeclaredTypeInfo(field.Type);
                 }
 
+                foreach (var method in structDecl.Methods)
+                {
+                    if (method.Id is not IdentifierNode methodName)
+                        throw SemanticAnalyzerError.InvalidFunctionDeclaration();
+
+                    if (KeywordCatalog.Contains(methodName.Name))
+                        throw SemanticAnalyzerError.FunctionNameIsKeyword(methodName.Name);
+
+                    if (fieldTypes.ContainsKey(methodName.Name))
+                        throw SemanticAnalyzerError.DuplicateStructMember(structDecl.Name.Name, methodName.Name);
+
+                    if (!methods.Add(methodName.Name))
+                        throw SemanticAnalyzerError.DuplicateStructMethod(structDecl.Name.Name, methodName.Name);
+
+                    methodSignatures[methodName.Name] = new StructMethodSignature(method.Params.Count);
+                }
+
                 _structFieldOrder[structDecl.Name.Name] = fieldOrder;
                 _structFieldTypes[structDecl.Name.Name] = fieldTypes;
+                _structMethods[structDecl.Name.Name] = methodSignatures;
                 _scopes.RegisterSymbol(new Symbol(structDecl.Name.Name, SymbolKind.Struct, TypeKind.Struct, IsReadOnly: true, StructName: structDecl.Name.Name));
             }
         }
@@ -405,10 +428,15 @@ public sealed class SemanticAnalyzer
 
     private void VisitFunctionDeclaration(FunctionDeclaration funcDecl)
     {
+        VisitFunctionDeclaration(funcDecl, receiverStructName: null);
+    }
+
+    private void VisitFunctionDeclaration(FunctionDeclaration funcDecl, string? receiverStructName)
+    {
         if (funcDecl.Id is not IdentifierNode functionName)
             throw SemanticAnalyzerError.InvalidFunctionDeclaration();
 
-        if (KeywordCatalog.Contains(functionName.Name))
+        if (receiverStructName is null && KeywordCatalog.Contains(functionName.Name))
             throw SemanticAnalyzerError.FunctionNameIsKeyword(functionName.Name);
 
         // Function is already registered by VisitProgram's first pass,
@@ -416,6 +444,12 @@ public sealed class SemanticAnalyzer
 
         // Create a new scope for the function body
         _scopes.EnterScope();
+
+        if (receiverStructName is not null)
+        {
+            var thisSymbol = new Symbol("this", SymbolKind.Variable, TypeKind.Struct, IsReadOnly: true, StructName: receiverStructName);
+            _scopes.RegisterSymbol(thisSymbol);
+        }
 
         // Register parameters as variables in the function scope
         foreach (var param in funcDecl.Params)
@@ -433,10 +467,13 @@ public sealed class SemanticAnalyzer
         _scopes.ExitScope();
     }
 
-    private static void VisitStructDeclaration(StructDeclaration structDecl)
+    private void VisitStructDeclaration(StructDeclaration structDecl)
     {
         if (KeywordCatalog.Contains(structDecl.Name.Name))
             throw SemanticAnalyzerError.StructNameIsKeyword(structDecl.Name.Name);
+
+        foreach (var method in structDecl.Methods)
+            VisitFunctionDeclaration(method, structDecl.Name.Name);
     }
 
     private void VisitMemberExpression(MemberExpression memberExpr)
@@ -496,16 +533,33 @@ public sealed class SemanticAnalyzer
 
         var objectType = InferType(memberExpr.Object);
 
-        // NOTE: TpyeKind.Object will come later.
-        if (objectType != TypeKind.Array)
-            throw SemanticAnalyzerError.MethodNotSupportedOnType(memberExpr.Property.Name, objectType);
+        if (objectType == TypeKind.Array)
+        {
+            if (!ListMethodParameterCounts.TryGetValue(memberExpr.Property.Name, out var expectedArgumentCount))
+                throw SemanticAnalyzerError.UnknownListMethod(memberExpr.Property.Name);
 
-        // NOTE: we can only validate list methods at this stage, since we don't have class definitions or other types yet.
-        if (!ListMethodParameterCounts.TryGetValue(memberExpr.Property.Name, out var expectedArgumentCount))
-            throw SemanticAnalyzerError.UnknownListMethod(memberExpr.Property.Name);
+            if (callExpr.Arguments.Count != expectedArgumentCount)
+                throw SemanticAnalyzerError.MethodArgumentCountMismatch(memberExpr.Property.Name, expectedArgumentCount, callExpr.Arguments.Count);
 
-        if (callExpr.Arguments.Count != expectedArgumentCount)
-            throw SemanticAnalyzerError.MethodArgumentCountMismatch(memberExpr.Property.Name, expectedArgumentCount, callExpr.Arguments.Count);
+            return;
+        }
+
+        var (_, structName) = InferTypeInfo(memberExpr.Object);
+        if (objectType == TypeKind.Struct)
+        {
+            if (string.IsNullOrWhiteSpace(structName) || !_structMethods.TryGetValue(structName, out var methods))
+                throw SemanticAnalyzerError.UndefinedStruct(structName ?? "");
+
+            if (!methods.TryGetValue(memberExpr.Property.Name, out var methodSignature))
+                throw SemanticAnalyzerError.UnknownStructMethod(structName, memberExpr.Property.Name);
+
+            if (callExpr.Arguments.Count != methodSignature.ParameterCount)
+                throw SemanticAnalyzerError.MethodArgumentCountMismatch(memberExpr.Property.Name, methodSignature.ParameterCount, callExpr.Arguments.Count);
+
+            return;
+        }
+
+        throw SemanticAnalyzerError.MethodNotSupportedOnType(memberExpr.Property.Name, objectType);
     }
 
     private void VisitNewExpression(NewExpression newExpression)
@@ -615,8 +669,6 @@ public sealed class SemanticAnalyzer
 
     private (TypeKind Type, string? StructName) InferArrayElementTypeInfo(ArrayLiteral arrayLiteral)
     {
-        // TODO: need a way to declare an empty list with specific type info
-        // e.g. let cars: list<Car> -> [];
         if (arrayLiteral.Elements.Count == 0)
             return (TypeKind.Unknown, null);
 

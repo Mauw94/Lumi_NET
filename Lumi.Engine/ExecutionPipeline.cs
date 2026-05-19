@@ -5,14 +5,9 @@ using SemanticAnalyzerType = Lumi.SemanticAnalyzer.SemanticAnalyzer;
 
 namespace Lumi.Engine;
 
-public class ExecutionPipeline
+public class ExecutionPipeline(IEnumerable<IPipelineExecutionStep> steps)
 {
-    private readonly IEnumerable<IPipelineExecutionStep> _steps;
-
-    public ExecutionPipeline(IEnumerable<IPipelineExecutionStep> steps)
-    {
-        _steps = [.. steps.OrderBy(step => step.Order)];
-    }
+    private readonly IEnumerable<IPipelineExecutionStep> _steps = [.. steps.OrderBy(step => step.Order)];
 
     public bool TryExecute(string source, VirtualMachine vm, BytecodeGenerator bytecodeGenerator, SemanticAnalyzerType semanticAnalyzer, TextWriter output)
     {

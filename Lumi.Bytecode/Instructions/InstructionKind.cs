@@ -32,7 +32,7 @@ public enum InstructionKind
     JumpIfTrue,
     JumpIfFalse,
     CallFn,
-    CallListMethod,
+    CallMemberMethod,
     Return,
     LoadVar,
     StoreVar,
