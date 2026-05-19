@@ -55,6 +55,7 @@ public class StructFieldDeclaration : Node
 {
     public required IdentifierNode Name { get; set; }
     public required IdentifierNode Type { get; set; }
+    public Node? Init { get; set; }
 }
 
 public class CallExpression : Node

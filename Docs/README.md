@@ -37,6 +37,7 @@ The language currently supports:
 - **Functions** — `fn` declarations with parameters, return statements, and calls.
 - **Arrays** — array literals and basic support (indexing and methods being added).
 - **Print** — built-in `print` statement for output.
+- **Structs** — user-defined types with fields and methods, using the `struct` keyword. Field access (with type checking) and method calls are supported; inheritance and interfaces are planned.
 
 For a detailed analysis of implemented vs. missing language features and recommendations for what to add next, see [LANGUAGE_FEATURES.md](./docs/LANGUAGE_FEATURES.md).
 

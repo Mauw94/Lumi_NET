@@ -472,6 +472,31 @@ public sealed class SemanticAnalyzer
         if (KeywordCatalog.Contains(structDecl.Name.Name))
             throw SemanticAnalyzerError.StructNameIsKeyword(structDecl.Name.Name);
 
+        foreach (var field in structDecl.Fields)
+        {
+            if (field.Init is null)
+                continue;
+
+            Visit(field.Init);
+
+            var expectedTypeInfo = InferDeclaredTypeInfo(field.Type);
+            var actualTypeInfo = InferTypeInfo(field.Init);
+
+            if (expectedTypeInfo.Type == TypeKind.Unknown || actualTypeInfo.Type == TypeKind.Unknown)
+                continue;
+
+            var isDifferentStruct = expectedTypeInfo.Type == TypeKind.Struct
+                && actualTypeInfo.Type == TypeKind.Struct
+                && !string.Equals(expectedTypeInfo.StructName, actualTypeInfo.StructName, StringComparison.Ordinal);
+
+            if (expectedTypeInfo.Type != actualTypeInfo.Type || isDifferentStruct)
+            {
+                var expected = expectedTypeInfo.Type == TypeKind.Struct ? expectedTypeInfo.StructName ?? "struct" : expectedTypeInfo.Type.ToString();
+                var actual = actualTypeInfo.Type == TypeKind.Struct ? actualTypeInfo.StructName ?? "struct" : actualTypeInfo.Type.ToString();
+                throw SemanticAnalyzerError.TypeMismatch($"{structDecl.Name.Name}.{field.Name.Name}", expected, actual);
+            }
+        }
+
         foreach (var method in structDecl.Methods)
             VisitFunctionDeclaration(method, structDecl.Name.Name);
     }

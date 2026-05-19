@@ -433,6 +433,29 @@ public sealed class ParserTests
     }
 
     [TestMethod]
+    public void Test_Parsing_Struct_Declaration_With_Field_Initializer()
+    {
+        var source = "struct Person { name: str -> \"Unknown\"; age: int; }";
+        var program = ParseProgram(source);
+
+        Assert.HasCount(1, program.Body);
+        Assert.IsInstanceOfType<StructDeclaration>(program.Body[0]);
+
+        var structDecl = (StructDeclaration)program.Body[0];
+        Assert.AreEqual("Person", structDecl.Name.Name);
+        Assert.HasCount(2, structDecl.Fields);
+
+        Assert.AreEqual("name", structDecl.Fields[0].Name.Name);
+        Assert.AreEqual("str", structDecl.Fields[0].Type.Name);
+        Assert.IsInstanceOfType<StringNode>(structDecl.Fields[0].Init);
+        Assert.AreEqual("Unknown", ((StringNode)structDecl.Fields[0].Init!).Value);
+
+        Assert.AreEqual("age", structDecl.Fields[1].Name.Name);
+        Assert.AreEqual("int", structDecl.Fields[1].Type.Name);
+        Assert.IsNull(structDecl.Fields[1].Init);
+    }
+
+    [TestMethod]
     public void Test_Parsing_Struct_Method_Source_Program()
     {
         var source = """

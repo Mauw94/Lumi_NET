@@ -304,10 +304,17 @@ public sealed class Parser
                     throw ParserError.InvalidSyntax("Expected struct field type", CurrentPosition() ?? new Position());
                 }
 
+                Node? init = null;
+                if (Check(TokenKind.Arrow))
+                {
+                    Advance();
+                    init = ParseExpression();
+                }
+
                 if (Check(TokenKind.Semicolon))
                     Advance();
 
-                fields.Add(new StructFieldDeclaration { Name = fieldName, Type = fieldType, Span = CreateSpanFromTokens() });
+                fields.Add(new StructFieldDeclaration { Name = fieldName, Type = fieldType, Init = init, Span = CreateSpanFromTokens() });
             }
 
             Expect(TokenKind.RightBrace);

@@ -2,7 +2,6 @@
 using Lumi.Bytecode.Constants;
 using Lumi.Bytecode.Instructions;
 using Lumi.Bytecode.Locals;
-using Lumi.Language;
 
 namespace Lumi.Bytecode;
 
@@ -17,6 +16,8 @@ public sealed class BytecodeGenerator
     private readonly Dictionary<string, int> _functionAddresses = [];
     // TKey: struct name, TValue: list of field names in declaration order
     private readonly Dictionary<string, IReadOnlyList<string>> _structDefinitions = new(StringComparer.Ordinal);
+    // TKey: struct name, TValue: list of field initializer expressions in declaration order (null if no initializer)
+    private readonly Dictionary<string, IReadOnlyList<Node?>> _structFieldInitializers = new(StringComparer.Ordinal);
     // TKey: struct name, TValue: (TKey: method name, TValue: method entry point) pairs
     private readonly Dictionary<string, Dictionary<string, int>> _structMethodAddresses = new(StringComparer.Ordinal);
     private readonly LocalManager _locals = new();
@@ -27,7 +28,7 @@ public sealed class BytecodeGenerator
     public IReadOnlyList<Local> Locals => _locals.AllLocals;
     public IReadOnlyDictionary<string, int> FunctionAddresses => _functionAddresses;
     public IReadOnlyDictionary<string, IReadOnlyList<string>> StructDefinitions => _structDefinitions;
-    public IReadOnlyDictionary<string, IReadOnlyDictionary<string, int>> StructMethodAddresses 
+    public IReadOnlyDictionary<string, IReadOnlyDictionary<string, int>> StructMethodAddresses
         => _structMethodAddresses.ToDictionary(static kvp => kvp.Key, static kvp => (IReadOnlyDictionary<string, int>)kvp.Value, StringComparer.Ordinal);
 
     public BytecodeGenerator()
@@ -182,7 +183,9 @@ public sealed class BytecodeGenerator
                 throw BytecodeError.StructAlreadyDefined(structName);
 
             var fields = structDeclaration.Fields.Select(static f => f.Name.Name).ToArray();
+            var fieldInitializers = structDeclaration.Fields.Select(static f => f.Init).ToArray();
             _structDefinitions[structName] = fields;
+            _structFieldInitializers[structName] = fieldInitializers;
             _structMethodAddresses[structName] = new Dictionary<string, int>(StringComparer.Ordinal);
         }
     }
@@ -292,7 +295,6 @@ public sealed class BytecodeGenerator
         _locals.ExitScope();
     }
 
-    // TODO: Test scope management here
     private void VisitIfStatement(IfStatement ifStatement)
     {
         _locals.EnterScope();
@@ -507,6 +509,8 @@ public sealed class BytecodeGenerator
         if (!_structDefinitions.ContainsKey(structName))
             _structDefinitions[structName] = [.. structDeclaration.Fields.Select(static f => f.Name.Name)];
 
+        _structFieldInitializers.TryAdd(structName, [.. structDeclaration.Fields.Select(static f => f.Init)]);
+
         _structMethodAddresses.TryAdd(structName, new Dictionary<string, int>(StringComparer.Ordinal));
 
         foreach (var method in structDeclaration.Methods)
@@ -526,13 +530,48 @@ public sealed class BytecodeGenerator
     private void VisitNewExpression(NewExpression newExpression)
     {
         var structName = newExpression.TypeName.Name;
-        if (!_structDefinitions.ContainsKey(structName))
+        if (!_structDefinitions.TryGetValue(structName, out var fields))
             throw BytecodeError.UndefinedStruct(structName);
+
+        var argumentCount = newExpression.Arguments.Count;
+        if (argumentCount > fields.Count)
+            throw BytecodeError.StructConstructorArgumentCountMismatch(structName, fields.Count, argumentCount);
 
         foreach (var argument in newExpression.Arguments)
             Visit(argument);
 
-        Emit(Instruction.NewStruct(structName, newExpression.Arguments.Count));
+        // NOTE: if there are missing arguments, we have two options:
+        // 1) Materialize them as undefined values on the stack, so the constructor can access them as normal parameters.
+        // 2) Leave them off the stack and have the constructor know to treat missing arguments as undefined.
+        var materializeMissingArguments = false;
+        if (argumentCount < fields.Count && _structFieldInitializers.TryGetValue(structName, out var fieldInitializers))
+        {
+            for (int i = argumentCount; i < fieldInitializers.Count; i++)
+            {
+                if (fieldInitializers[i] is not null)
+                {
+                    materializeMissingArguments = true;
+                    break;
+                }
+            }
+
+            if (materializeMissingArguments)
+            {
+                for (int i = argumentCount; i < fieldInitializers.Count; i++)
+                {
+                    var initializer = fieldInitializers[i];
+                    if (initializer is null)
+                    {
+                        Emit(Instruction.PushConst(AddConstant(Constant.Undefined())));
+                        continue;
+                    }
+
+                    Visit(initializer);
+                }
+            }
+        }
+
+        Emit(Instruction.NewStruct(structName, materializeMissingArguments ? fields.Count : argumentCount));
     }
 
     private void VisitMemberExpression(MemberExpression memberExpression)
