@@ -1,0 +1,8 @@
+struct Dog {
+    breed: str;
+    color: str;
+}
+
+let a -> new Dog(color: "brown", breed: "german sheperd");
+print a.breed;
+print a.color;

@@ -70,6 +70,12 @@ public class NewExpression : Node
     public List<Node> Arguments { get; set; } = [];
 }
 
+public class StructFieldInitializerArgument : Node
+{
+    public required IdentifierNode Name { get; set; }
+    public required Node Value { get; set; }
+}
+
 public class MemberExpression : Node
 {
     public required Node Object { get; set; }

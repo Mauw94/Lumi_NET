@@ -1566,4 +1566,97 @@ public sealed class SemanticAnalyzerTests
         Assert.Contains("Person.age", result.Errors[0].Message);
         Assert.Contains("expects type 'Int'", result.Errors[0].Message);
     }
+
+    [TestMethod]
+    public void Analyze_NewStruct_With_Named_Arguments_Reordered_IsValid()
+    {
+        var program = new Program
+        {
+            Body =
+            [
+                new StructDeclaration
+                {
+                    Name = new IdentifierNode { Name = "Person" },
+                    Fields =
+                    [
+                        new StructFieldDeclaration { Name = new IdentifierNode { Name = "name" }, Type = new IdentifierNode { Name = "str" } },
+                        new StructFieldDeclaration { Name = new IdentifierNode { Name = "age" }, Type = new IdentifierNode { Name = "int" } }
+                    ]
+                },
+                new VariableDeclaration
+                {
+                    Kind = "let",
+                    Declarations =
+                    [
+                        new VariableDeclarator
+                        {
+                            VarName = new IdentifierNode { Name = "p" },
+                            VarType = new IdentifierNode { Name = "Person" },
+                            Init = new NewExpression
+                            {
+                                TypeName = new IdentifierNode { Name = "Person" },
+                                Arguments =
+                                [
+                                    new StructFieldInitializerArgument { Name = new IdentifierNode { Name = "age" }, Value = new NumberNode { Value = 5 } },
+                                    new StructFieldInitializerArgument { Name = new IdentifierNode { Name = "name" }, Value = new StringNode { Value = "test" } }
+                                ]
+                            }
+                        }
+                    ]
+                }
+            ]
+        };
+
+        var result = new SemanticAnalyzer().Analyze(program);
+
+        Assert.IsTrue(result.IsValid);
+        Assert.IsEmpty(result.Errors);
+    }
+
+    [TestMethod]
+    public void Analyze_NewStruct_Mixing_Named_And_Positional_Arguments_ReturnsError()
+    {
+        var program = new Program
+        {
+            Body =
+            [
+                new StructDeclaration
+                {
+                    Name = new IdentifierNode { Name = "Person" },
+                    Fields =
+                    [
+                        new StructFieldDeclaration { Name = new IdentifierNode { Name = "name" }, Type = new IdentifierNode { Name = "str" } },
+                        new StructFieldDeclaration { Name = new IdentifierNode { Name = "age" }, Type = new IdentifierNode { Name = "int" } }
+                    ]
+                },
+                new VariableDeclaration
+                {
+                    Kind = "let",
+                    Declarations =
+                    [
+                        new VariableDeclarator
+                        {
+                            VarName = new IdentifierNode { Name = "p" },
+                            VarType = new IdentifierNode { Name = "Person" },
+                            Init = new NewExpression
+                            {
+                                TypeName = new IdentifierNode { Name = "Person" },
+                                Arguments =
+                                [
+                                    new StructFieldInitializerArgument { Name = new IdentifierNode { Name = "name" }, Value = new StringNode { Value = "test" } },
+                                    new NumberNode { Value = 5 }
+                                ]
+                            }
+                        }
+                    ]
+                }
+            ]
+        };
+
+        var result = new SemanticAnalyzer().Analyze(program);
+
+        Assert.IsFalse(result.IsValid);
+        Assert.HasCount(1, result.Errors);
+        Assert.Contains("cannot mix named and positional", result.Errors[0].Message);
+    }
 }

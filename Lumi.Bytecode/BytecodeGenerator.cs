@@ -533,6 +533,48 @@ public sealed class BytecodeGenerator
         if (!_structDefinitions.TryGetValue(structName, out var fields))
             throw BytecodeError.UndefinedStruct(structName);
 
+        var hasNamedArguments = newExpression.Arguments.Any(static a => a is StructFieldInitializerArgument);
+        if (hasNamedArguments)
+        {
+            if (newExpression.Arguments.Any(static a => a is not StructFieldInitializerArgument))
+                throw BytecodeError.InvalidStructConstructorArgumentsMixing(structName);
+
+            var namedArguments = new Dictionary<string, Node>(StringComparer.Ordinal);
+            foreach (var argument in newExpression.Arguments)
+            {
+                var named = (StructFieldInitializerArgument)argument;
+                namedArguments[named.Name.Name] = named.Value;
+            }
+
+            _structFieldInitializers.TryGetValue(structName, out var fieldInitializers);
+
+            for (int i = 0; i < fields.Count; i++)
+            {
+                var fieldName = fields[i];
+                if (namedArguments.TryGetValue(fieldName, out var providedValue))
+                {
+                    Visit(providedValue);
+                    continue;
+                }
+
+                var initializer = fieldInitializers is not null && i < fieldInitializers.Count
+                    ? fieldInitializers[i]
+                    : null;
+
+                if (initializer is null)
+                {
+                    Emit(Instruction.PushConst(AddConstant(Constant.Undefined())));
+                }
+                else
+                {
+                    Visit(initializer);
+                }
+            }
+
+            Emit(Instruction.NewStruct(structName, fields.Count));
+            return;
+        }
+
         var argumentCount = newExpression.Arguments.Count;
         if (argumentCount > fields.Count)
             throw BytecodeError.StructConstructorArgumentCountMismatch(structName, fields.Count, argumentCount);
@@ -544,11 +586,11 @@ public sealed class BytecodeGenerator
         // 1) Materialize them as undefined values on the stack, so the constructor can access them as normal parameters.
         // 2) Leave them off the stack and have the constructor know to treat missing arguments as undefined.
         var materializeMissingArguments = false;
-        if (argumentCount < fields.Count && _structFieldInitializers.TryGetValue(structName, out var fieldInitializers))
+        if (argumentCount < fields.Count && _structFieldInitializers.TryGetValue(structName, out var fieldInitializersPositional))
         {
-            for (int i = argumentCount; i < fieldInitializers.Count; i++)
+            for (int i = argumentCount; i < fieldInitializersPositional.Count; i++)
             {
-                if (fieldInitializers[i] is not null)
+                if (fieldInitializersPositional[i] is not null)
                 {
                     materializeMissingArguments = true;
                     break;
@@ -557,9 +599,9 @@ public sealed class BytecodeGenerator
 
             if (materializeMissingArguments)
             {
-                for (int i = argumentCount; i < fieldInitializers.Count; i++)
+                for (int i = argumentCount; i < fieldInitializersPositional.Count; i++)
                 {
-                    var initializer = fieldInitializers[i];
+                    var initializer = fieldInitializersPositional[i];
                     if (initializer is null)
                     {
                         Emit(Instruction.PushConst(AddConstant(Constant.Undefined())));
