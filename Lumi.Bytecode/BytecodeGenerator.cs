@@ -15,7 +15,9 @@ public sealed class BytecodeGenerator
     private readonly ConstantPool _constantPool = new();
     private readonly Dictionary<Label, List<int>> _unpatchedJumps = [];
     private readonly Dictionary<string, int> _functionAddresses = [];
+    // TKey: struct name, TValue: list of field names in declaration order
     private readonly Dictionary<string, IReadOnlyList<string>> _structDefinitions = new(StringComparer.Ordinal);
+    // TKey: struct name, TValue: (TKey: method name, TValue: method entry point) pairs
     private readonly Dictionary<string, Dictionary<string, int>> _structMethodAddresses = new(StringComparer.Ordinal);
     private readonly LocalManager _locals = new();
     private int _nextLabelId = 0;
@@ -404,13 +406,15 @@ public sealed class BytecodeGenerator
         if (functionDeclaration.Id is not IdentifierNode functionName)
             throw BytecodeError.ExpectedIdentifierInFunctionDeclaration();
 
-        VisitFunctionBody(functionDeclaration, static (generator, name, address) => generator._functionAddresses[name] = address, functionName.Name, receiverLocalName: null);
+        VisitFunctionBody(
+            functionDeclaration,
+            address => _functionAddresses[functionName.Name] = address,
+            receiverLocalName: null);
     }
 
     private void VisitFunctionBody(
         FunctionDeclaration functionDeclaration,
-        Action<BytecodeGenerator, string, int> registerEntryPoint,
-        string entryName,
+        Action<int> registerEntryPoint,
         string? receiverLocalName)
     {
         // Jump over the function body so it isn't executed during normal program flow.
@@ -418,7 +422,7 @@ public sealed class BytecodeGenerator
         EmitJump(skipLabel);
 
         // Record the function entry point (the instruction right after the jump).
-        registerEntryPoint(this, entryName, _instructions.Count);
+        registerEntryPoint(_instructions.Count);
 
         // Reset the slot counter so function-local variables are numbered from 0,
         // relative to the function's base pointer at runtime.
@@ -514,14 +518,7 @@ public sealed class BytecodeGenerator
             // so it can be called via CallMemberMethod instructions.
             VisitFunctionBody(
                 method,
-                static (generator, entryName, address) =>
-                {
-                    var separatorIndex = entryName.IndexOf('.', StringComparison.Ordinal);
-                    var structName = entryName[..separatorIndex];
-                    var methodName = entryName[(separatorIndex + 1)..];
-                    generator._structMethodAddresses[structName][methodName] = address;
-                },
-                $"{structName}.{methodName.Name}",
+                address => _structMethodAddresses[structName][methodName.Name] = address,
                 receiverLocalName: "this");
         }
     }
