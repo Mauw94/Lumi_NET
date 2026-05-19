@@ -1213,4 +1213,45 @@ public sealed class BytecodeTests
         Assert.AreEqual("Person", ctor.GetSafeStringOperand());
         Assert.AreEqual(2, ctor.GetSafeIntOperand());
     }
+
+    [TestMethod]
+    public void Test_NewStruct_With_Field_Initializers_Materializes_Defaults_For_Missing_Arguments()
+    {
+        var program = new Program
+        {
+            Body =
+            [
+                new StructDeclaration
+                {
+                    Name = new IdentifierNode { Name = "Person" },
+                    Fields =
+                    [
+                        new StructFieldDeclaration { Name = new IdentifierNode { Name = "name" }, Type = new IdentifierNode { Name = "str" }, Init = new StringNode { Value = "Unknown" } },
+                        new StructFieldDeclaration { Name = new IdentifierNode { Name = "age" }, Type = new IdentifierNode { Name = "int" } }
+                    ]
+                },
+                new VariableDeclaration
+                {
+                    Kind = "let",
+                    Declarations =
+                    [
+                        new VariableDeclarator
+                        {
+                            VarName = new IdentifierNode { Name = "p" },
+                            VarType = new IdentifierNode { Name = "Person" },
+                            Init = new NewExpression { TypeName = new IdentifierNode { Name = "Person" } }
+                        }
+                    ]
+                }
+            ]
+        };
+
+        var result = new BytecodeGenerator().Generate(program);
+
+        Assert.AreEqual(InstructionKind.PushConst, result.Instructions[0].Kind);
+        Assert.AreEqual(InstructionKind.PushConst, result.Instructions[1].Kind);
+        Assert.AreEqual(InstructionKind.NewStruct, result.Instructions[2].Kind);
+        Assert.AreEqual("Person", result.Instructions[2].GetSafeStringOperand());
+        Assert.AreEqual(2, result.Instructions[2].GetSafeIntOperand());
+    }
 }

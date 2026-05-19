@@ -1535,4 +1535,35 @@ public sealed class SemanticAnalyzerTests
         Assert.IsTrue(result.Errors.Any(e => e.Message.Contains("Only 'list' type can have type parameters")),
             $"Expected error about parameterized type restriction, got: {string.Join(", ", result.Errors.Select(e => e.Message))}");
     }
+
+    [TestMethod]
+    public void Analyze_Struct_Field_Initializer_TypeMismatch_ReturnsError()
+    {
+        var program = new Program
+        {
+            Body =
+            [
+                new StructDeclaration
+                {
+                    Name = new IdentifierNode { Name = "Person" },
+                    Fields =
+                    [
+                        new StructFieldDeclaration
+                        {
+                            Name = new IdentifierNode { Name = "age" },
+                            Type = new IdentifierNode { Name = "int" },
+                            Init = new StringNode { Value = "invalid" }
+                        }
+                    ]
+                }
+            ]
+        };
+
+        var result = new SemanticAnalyzer().Analyze(program);
+
+        Assert.IsFalse(result.IsValid);
+        Assert.HasCount(1, result.Errors);
+        Assert.Contains("Person.age", result.Errors[0].Message);
+        Assert.Contains("expects type 'Int'", result.Errors[0].Message);
+    }
 }

@@ -75,7 +75,7 @@ public sealed class BenchmarkTests
     }
 
     [TestMethod]
-    public void Test_Finonacci()
+    public void Test_Fibonacci()
     {
         // Arrange
         var source = SourceStrings.FibonacciSource;

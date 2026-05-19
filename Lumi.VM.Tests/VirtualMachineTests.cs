@@ -999,4 +999,58 @@ public sealed class VirtualMachineTests
         Assert.AreEqual("5", output);
     }
 
+    [TestMethod]
+    public void VM_NewStruct_Uses_Field_Initializers_For_Missing_Arguments()
+    {
+        var bytecode = Build(
+            new StructDeclaration
+            {
+                Name = new IdentifierNode { Name = "Person" },
+                Fields =
+                [
+                    new StructFieldDeclaration { Name = new IdentifierNode { Name = "name" }, Type = new IdentifierNode { Name = "str" }, Init = new StringNode { Value = "Unknown" } },
+                    new StructFieldDeclaration { Name = new IdentifierNode { Name = "age" }, Type = new IdentifierNode { Name = "int" } }
+                ]
+            },
+            new VariableDeclaration
+            {
+                Kind = "let",
+                Declarations =
+                [
+                    new VariableDeclarator
+                    {
+                        VarName = new IdentifierNode { Name = "p" },
+                        VarType = new IdentifierNode { Name = "Person" },
+                        Init = new NewExpression
+                        {
+                            TypeName = new IdentifierNode { Name = "Person" }
+                        }
+                    }
+                ]
+            },
+            new PrintStatement
+            {
+                Argument = new MemberExpression
+                {
+                    Object = new IdentifierNode { Name = "p" },
+                    Property = new IdentifierNode { Name = "name" }
+                }
+            },
+            new PrintStatement
+            {
+                Argument = new MemberExpression
+                {
+                    Object = new IdentifierNode { Name = "p" },
+                    Property = new IdentifierNode { Name = "age" }
+                }
+            }
+        );
+
+        var output = CaptureOutput(() => new VirtualMachine().Execute(bytecode));
+        var lines = output.Split(Environment.NewLine);
+        Assert.HasCount(2, lines);
+        Assert.AreEqual("\"Unknown\"", lines[0]);
+        Assert.AreEqual("undefined", lines[1]);
+    }
+
 }

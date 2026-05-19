@@ -1,0 +1,14 @@
+struct Person {
+    name: str -> "Harry";
+    age: int -> 275;
+
+    fn increaseAge(amount) {
+        this.age = this.age + amount;
+    }
+}
+
+let p: Person -> new Person();
+p.increaseAge(2);
+
+print p.name;
+print p.age;
