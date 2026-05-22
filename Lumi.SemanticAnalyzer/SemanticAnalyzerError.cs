@@ -63,4 +63,8 @@ public sealed class SemanticAnalyzerError(string message) : Exception(message)
         => new($"Struct '{structName}' constructor accepts up to {maxExpected} argument(s) but was called with {actual}");
     public static SemanticAnalyzerError InvalidTypeAnnotation(string baseTypeName)
         => new($"Only 'list' type can have type parameters, not '{baseTypeName}'");
+    public static SemanticAnalyzerError InvalidStructConstructorArgumentsMixing(string structName)
+        => new($"Struct '{structName}' constructor cannot mix named and positional arguments.");
+    public static SemanticAnalyzerError DuplicateStructFieldInitializer(string structName, string fieldName)
+        => new($"Struct '{structName}' constructor received multiple initializers for field '{fieldName}'.");
 }

@@ -1053,4 +1053,63 @@ public sealed class VirtualMachineTests
         Assert.AreEqual("undefined", lines[1]);
     }
 
+    [TestMethod]
+    public void VM_NewStruct_With_Named_Arguments_Ignores_Order()
+    {
+        var bytecode = Build(
+            new StructDeclaration
+            {
+                Name = new IdentifierNode { Name = "Person" },
+                Fields =
+                [
+                    new StructFieldDeclaration { Name = new IdentifierNode { Name = "name" }, Type = new IdentifierNode { Name = "str" }, Init = new StringNode { Value = "Harry" } },
+                    new StructFieldDeclaration { Name = new IdentifierNode { Name = "age" }, Type = new IdentifierNode { Name = "int" }, Init = new NumberNode { Value = 275 } }
+                ]
+            },
+            new VariableDeclaration
+            {
+                Kind = "let",
+                Declarations =
+                [
+                    new VariableDeclarator
+                    {
+                        VarName = new IdentifierNode { Name = "p" },
+                        VarType = new IdentifierNode { Name = "Person" },
+                        Init = new NewExpression
+                        {
+                            TypeName = new IdentifierNode { Name = "Person" },
+                            Arguments =
+                            [
+                                new StructFieldInitializerArgument { Name = new IdentifierNode { Name = "age" }, Value = new NumberNode { Value = 5 } },
+                                new StructFieldInitializerArgument { Name = new IdentifierNode { Name = "name" }, Value = new StringNode { Value = "test" } }
+                            ]
+                        }
+                    }
+                ]
+            },
+            new PrintStatement
+            {
+                Argument = new MemberExpression
+                {
+                    Object = new IdentifierNode { Name = "p" },
+                    Property = new IdentifierNode { Name = "name" }
+                }
+            },
+            new PrintStatement
+            {
+                Argument = new MemberExpression
+                {
+                    Object = new IdentifierNode { Name = "p" },
+                    Property = new IdentifierNode { Name = "age" }
+                }
+            }
+        );
+
+        var output = CaptureOutput(() => new VirtualMachine().Execute(bytecode));
+        var lines = output.Split(Environment.NewLine);
+        Assert.HasCount(2, lines);
+        Assert.AreEqual("\"test\"", lines[0]);
+        Assert.AreEqual("5", lines[1]);
+    }
+
 }

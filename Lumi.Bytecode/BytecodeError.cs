@@ -27,6 +27,8 @@ public sealed class BytecodeError(string message) : Exception(message)
     public static BytecodeError UndefinedStruct(string structName) => new($"Undefined struct: {structName}");
     public static BytecodeError StructConstructorArgumentCountMismatch(string structName, int maxExpected, int actual)
         => new($"Struct '{structName}' constructor accepts up to {maxExpected} argument(s) but was called with {actual}.");
+    public static BytecodeError InvalidStructConstructorArgumentsMixing(string structName)
+        => new($"Struct '{structName}' constructor cannot mix named and positional arguments.");
     public static BytecodeError UndefinedVariable(string name) => new($"Undefined variable: {name}");
     public static BytecodeError NoActiveScope() => new("No active scope.");
     public static BytecodeError ForStatementMissingIterator() => new("For statement is missing an iterator expression.");

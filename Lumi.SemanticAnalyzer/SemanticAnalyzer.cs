@@ -593,6 +593,48 @@ public sealed class SemanticAnalyzer
         if (!_structFieldOrder.TryGetValue(structName, out var fieldOrder))
             throw SemanticAnalyzerError.UndefinedStruct(structName);
 
+        var hasNamedArguments = newExpression.Arguments.Any(static a => a is StructFieldInitializerArgument);
+        if (hasNamedArguments)
+        {
+            if (newExpression.Arguments.Any(static a => a is not StructFieldInitializerArgument))
+                throw SemanticAnalyzerError.InvalidStructConstructorArgumentsMixing(structName);
+
+            if (!_structFieldTypes.TryGetValue(structName, out var fieldTypes))
+                throw SemanticAnalyzerError.UndefinedStruct(structName);
+
+            var providedFields = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var argument in newExpression.Arguments)
+            {
+                var named = (StructFieldInitializerArgument)argument;
+                var fieldName = named.Name.Name;
+
+                if (!fieldTypes.TryGetValue(fieldName, out var expectedTypeInfo))
+                    throw SemanticAnalyzerError.UnknownStructField(structName, fieldName);
+
+                if (!providedFields.Add(fieldName))
+                    throw SemanticAnalyzerError.DuplicateStructFieldInitializer(structName, fieldName);
+
+                Visit(named.Value);
+
+                var actualTypeInfo = InferTypeInfo(named.Value);
+                if (expectedTypeInfo.Type == TypeKind.Unknown || actualTypeInfo.Type == TypeKind.Unknown)
+                    continue;
+
+                var isDifferentStruct = expectedTypeInfo.Type == TypeKind.Struct
+                    && actualTypeInfo.Type == TypeKind.Struct
+                    && !string.Equals(expectedTypeInfo.StructName, actualTypeInfo.StructName, StringComparison.Ordinal);
+
+                if (expectedTypeInfo.Type != actualTypeInfo.Type || isDifferentStruct)
+                {
+                    var expected = expectedTypeInfo.Type == TypeKind.Struct ? expectedTypeInfo.StructName ?? "struct" : expectedTypeInfo.Type.ToString();
+                    var actual = actualTypeInfo.Type == TypeKind.Struct ? actualTypeInfo.StructName ?? "struct" : actualTypeInfo.Type.ToString();
+                    throw SemanticAnalyzerError.TypeMismatch($"{structName}.{fieldName}", expected, actual);
+                }
+            }
+
+            return;
+        }
+
         foreach (var argument in newExpression.Arguments)
             Visit(argument);
 

@@ -534,6 +534,31 @@ public sealed class ParserTests
     }
 
     [TestMethod]
+    public void Test_Parsing_New_Expression_With_Named_Arguments()
+    {
+        var source = "let person: Person -> new Person(name: \"Alice\", age: 30);";
+        var program = ParseProgram(source);
+
+        Assert.HasCount(1, program.Body);
+        var declarator = ((VariableDeclaration)program.Body[0]).Declarations[0];
+        Assert.IsInstanceOfType<NewExpression>(declarator.Init);
+
+        var newExpr = (NewExpression)declarator.Init!;
+        Assert.AreEqual("Person", newExpr.TypeName.Name);
+        Assert.HasCount(2, newExpr.Arguments);
+        Assert.IsInstanceOfType<StructFieldInitializerArgument>(newExpr.Arguments[0]);
+        Assert.IsInstanceOfType<StructFieldInitializerArgument>(newExpr.Arguments[1]);
+
+        var first = (StructFieldInitializerArgument)newExpr.Arguments[0];
+        var second = (StructFieldInitializerArgument)newExpr.Arguments[1];
+
+        Assert.AreEqual("name", first.Name.Name);
+        Assert.IsInstanceOfType<StringNode>(first.Value);
+        Assert.AreEqual("age", second.Name.Name);
+        Assert.IsInstanceOfType<NumberNode>(second.Value);
+    }
+
+    [TestMethod]
     public void Test_Parsing_Struct_Field_Assignment()
     {
         var source = "person.age = 5;";

@@ -356,6 +356,36 @@ public sealed class Parser
         return args;
     }
 
+    private List<Node> ParseStructConstructorArguments()
+    {
+        var args = new List<Node>();
+
+        while (!Check(TokenKind.RightParen) && !IsEof())
+        {
+            var expr = ParseExpression();
+
+            if (expr is IdentifierNode identifier && Check(TokenKind.Colon))
+            {
+                Advance();
+                var value = ParseExpression();
+                args.Add(new StructFieldInitializerArgument
+                {
+                    Name = identifier,
+                    Value = value
+                });
+            }
+            else
+            {
+                args.Add(expr);
+            }
+
+            if (Check(TokenKind.Comma))
+                Advance();
+        }
+
+        return args;
+    }
+
     private Node ParseFunctionBody()
     {
         return ParseBlockStatement;
@@ -759,7 +789,7 @@ public sealed class Parser
             if (Check(TokenKind.LeftParen))
             {
                 Advance();
-                arguments = ParseArguments();
+                arguments = ParseStructConstructorArguments();
                 Expect(TokenKind.RightParen);
             }
 
