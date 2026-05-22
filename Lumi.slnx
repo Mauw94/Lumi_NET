@@ -22,6 +22,10 @@
   <Folder Name="/Language/">
     <Project Path="Lumi.Language/Lumi.Language.csproj" />
   </Folder>
+  <Folder Name="/StdLib/">
+    <Project Path="Lumi.StdLib.Tests/Lumi.StdLib.Tests.csproj" />
+    <Project Path="Lumi.StdLib/Lumi.StdLib.csproj" />
+  </Folder>
   <Folder Name="/Parser/">
     <Project Path="Lumi.Parser.Tests/Lumi.Parser.Tests.csproj" />
     <Project Path="Lumi.Parser/Lumi.Parser.csproj" />

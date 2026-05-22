@@ -328,6 +328,60 @@ public sealed class SemanticAnalyzerTests
     }
 
     [TestMethod]
+    public void Analyze_FileReadText_AssignedToString_IsValid()
+    {
+        var declaration = new VariableDeclaration
+        {
+            Kind = "let",
+            Declarations =
+            [
+                new VariableDeclarator
+                {
+                    VarName = new IdentifierNode { Name = "contents" },
+                    VarType = new IdentifierNode { Name = "str" },
+                    Init = new CallExpression
+                    {
+                        Callee = new MemberExpression
+                        {
+                            Object = new IdentifierNode { Name = "File" },
+                            Property = new IdentifierNode { Name = "readText" }
+                        },
+                        Arguments = [new StringNode { Value = "input.txt" }]
+                    }
+                }
+            ]
+        };
+
+        var result = _analyzer.Analyze(new Program { Body = [declaration] });
+
+        Assert.IsTrue(result.IsValid, "Prelude File.readText should behave like a typed stdlib method");
+        Assert.IsEmpty(result.Errors);
+    }
+
+    [TestMethod]
+    public void Analyze_FileWriteText_WithWrongArgumentType_ReturnsError()
+    {
+        var expression = new ExpressionStatement
+        {
+            Expression = new CallExpression
+            {
+                Callee = new MemberExpression
+                {
+                    Object = new IdentifierNode { Name = "File" },
+                    Property = new IdentifierNode { Name = "writeText" }
+                },
+                Arguments = [new NumberNode { Value = 1.0 }, new StringNode { Value = "hello" }]
+            }
+        };
+
+        var result = _analyzer.Analyze(new Program { Body = [expression] });
+
+        Assert.IsFalse(result.IsValid, "Prelude File.writeText should validate string path arguments");
+        Assert.HasCount(1, result.Errors);
+        Assert.Contains("argument 1", result.Errors[0].Message, "Error should identify the invalid stdlib argument");
+    }
+
+    [TestMethod]
     public void Analyze_ForLoopIteratorVariable_IsRegistered()
     {
         // Build AST: for i in 0 to 10 { print i }

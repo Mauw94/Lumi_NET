@@ -1,8 +1,6 @@
 ﻿using Lumi.Bytecode;
 using Lumi.Bytecode.Constants;
 using Lumi.Bytecode.Instructions;
-using Lumi.Language;
-
 namespace Lumi.VM;
 
 /// <summary>
@@ -103,6 +101,10 @@ public sealed class VirtualMachine
                             _variableCount = slot + 1;
                         break;
                     }
+
+                case InstructionKind.LoadPreludeGlobal:
+                    _stack[_stackTop++] = Value.FromNativeObject(instruction.GetSafeStringOperand());
+                    break;
 
                 case InstructionKind.NewStruct:
                     {
@@ -296,7 +298,7 @@ public sealed class VirtualMachine
                             continue;
                         }
 
-                        if (target.Kind == ValueKind.Array)
+                        if (target.Kind == ValueKind.Array || target.Kind == ValueKind.NativeObject)
                         {
                             var args = new Value[argumentCount];
                             for (int i = argumentCount - 1; i >= 0; i--)
@@ -305,52 +307,7 @@ public sealed class VirtualMachine
                             }
 
                             target = _stack[--_stackTop];
-                            if (target.Kind != ValueKind.Array || target.Array is null)
-                                throw VirtualMachineError.ListMethodTargetNotArray(target.Kind);
-
-                            switch (methodName)
-                            {
-                                case SupportedMethods.ListMethods.Add:
-                                    if (argumentCount != 1)
-                                        throw VirtualMachineError.ListMethodArgumentCountMismatch(methodName, 1, argumentCount);
-
-                                    target.Array.Add(args[0]);
-                                    _stack[_stackTop++] = target;
-                                    break;
-
-                                case SupportedMethods.ListMethods.Remove:
-                                    if (argumentCount != 1)
-                                        throw VirtualMachineError.ListMethodArgumentCountMismatch(methodName, 1, argumentCount);
-
-                                    var removed = target.Array.Remove(args[0]);
-                                    if (removed is false)
-                                    {
-                                        // If the value to remove was not found, we still need to push the original array back onto the stack
-                                        // to maintain correct stack state for the caller.
-                                        _stack[_stackTop++] = target;
-                                    }
-                                    _stack[_stackTop++] = Value.FromBoolean(removed);
-                                    break;
-
-                                case SupportedMethods.ListMethods.Length:
-                                    if (argumentCount != 0)
-                                        throw VirtualMachineError.ListMethodArgumentCountMismatch(methodName, 0, argumentCount);
-
-                                    _stack[_stackTop++] = Value.FromNumber(target.Array.Count);
-                                    break;
-
-                                case SupportedMethods.ListMethods.Contains:
-                                    if (argumentCount != 1)
-                                        throw VirtualMachineError.ListMethodArgumentCountMismatch(methodName, 1, argumentCount);
-
-                                    var contains = target.Array.Contains(args[0]);
-                                    _stack[_stackTop++] = Value.FromBoolean(contains);
-                                    break;
-
-                                default:
-                                    throw VirtualMachineError.UnknownListMethod(methodName);
-                            }
-
+                            _stack[_stackTop++] = NativeMemberDispatcher.Invoke(target, methodName, args);
                             break;
                         }
 

@@ -16,6 +16,7 @@ This document tracks what Lumi can do today, where the rough edges still are, an
 | Functions | `fn`, parameters, calls, `return` | Functions are compiled to bytecode entry points and invoked by name. |
 | Structs | `struct`, fields, methods, `this`, constructors, field access and mutation | Constructors support positional and named arguments. |
 | Collections | Array/list literals, indexing, `add`, `remove`, `length`, `contains` | Current collection behavior is centered on list-style operations. |
+| Standard library | Implicit prelude globals such as `File.readText(...)` and `File.writeText(...)` | The first stdlib surface is native/runtime-backed and available without `import`. |
 | Types in syntax | Primitive annotations and parameterized forms such as `list<Car>` | The syntax exists today even though the type system is still evolving. |
 
 ## Syntax snapshot
@@ -70,12 +71,20 @@ print items.length();
 print person.age;
 ```
 
+### Standard-library file I/O
+
+```lumi
+File.writeText("input.txt", "1\n2\n3");
+let contents: str -> File.readText("input.txt");
+print contents;
+```
+
 ## Current limits
 
 The implementation is already end-to-end, but some language areas are still in-progress:
 
 - keywords such as `while`, `switch`, `try`, `catch`, `async`, `await`, `import`, and `export` are reserved but not yet part of the executable feature set;
-- collections are useful today, but still feel closer to built-in runtime helpers than a full standard library;
+- collections are useful today, and the first prelude-based standard-library APIs now exist, but the broader stdlib surface is still small;
 - the type system validates common cases, but deeper generic behavior, richer inference, and more advanced user-defined type features are still ahead;
 - the current runtime is intentionally simple, so there is not yet a separate optimizer, debugger, package system, or module loader.
 
@@ -95,7 +104,7 @@ The implementation is already end-to-end, but some language areas are still in-p
 
 | Theme | Likely work |
 | --- | --- |
-| Standard library | Add string, math, collection, and basic I/O helpers. |
+| Standard library | Expand the implicit prelude with string, math, collection, and additional I/O helpers. |
 | Modules | Introduce `import`/`export` semantics and a file-based compilation story. |
 | Tooling | Split out a dedicated CLI and expand the REPL beyond the current host program. |
 | Runtime features | Add closures, lexical captures, and a more complete function story. |

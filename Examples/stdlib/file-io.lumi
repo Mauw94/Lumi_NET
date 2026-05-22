@@ -1,0 +1,6 @@
+let text: str = "Hello world!";
+
+File.writeText("aoc-sample.txt", text);
+
+let contents: str -> File.readText("aoc-sample.txt");
+print contents;

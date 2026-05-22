@@ -9,6 +9,7 @@ The codebase is organized as a set of focused projects rather than one large com
 | Area | Project | Responsibility |
 | --- | --- | --- |
 | Shared language metadata | `Lumi.Language` | Canonical keywords and shared language-level definitions. |
+| Standard library metadata | `Lumi.StdLib` | Prelude globals and native method signatures shared by analysis and runtime layers. |
 | Lexing | `Lumi.Lexer` | Converts source text into tokens with source positions. |
 | Syntax model | `Lumi.AST` | AST nodes used by the parser, semantic analyzer, and bytecode generator. |
 | Parsing | `Lumi.Parser` | Recursive-descent parser for statements, expressions, structs, and function syntax. |
@@ -38,6 +39,7 @@ The main architectural choices at the moment are:
 2. `Lumi.Bytecode` owns the compiler-side state: constant pooling, local-slot assignment, jump patching, function addresses, and struct metadata.
 3. `Lumi.VM` is a compact stack machine with array-backed variable storage and call frames, optimized for clarity over advanced runtime features.
 4. The REPL reuses the VM, semantic analyzer, and bytecode generator across iterations, so interactive sessions can preserve state between inputs.
+5. The first standard-library surface is an implicit prelude, so native globals such as `File` are available without introducing modules first.
 
 ## Documentation map
 

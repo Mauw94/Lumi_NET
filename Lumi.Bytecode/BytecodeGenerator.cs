@@ -2,6 +2,7 @@
 using Lumi.Bytecode.Constants;
 using Lumi.Bytecode.Instructions;
 using Lumi.Bytecode.Locals;
+using Lumi.StdLib;
 
 namespace Lumi.Bytecode;
 
@@ -83,9 +84,18 @@ public sealed class BytecodeGenerator
                 break;
 
             case IdentifierNode identifier:
-                var local = _locals.LookupLocal(identifier.Name) ?? throw BytecodeError.UndefinedVariable(identifier.Name);
-                Emit(Instruction.LoadVar(local.Label));
-                break;
+                if (_locals.LookupLocal(identifier.Name) is { } local)
+                {
+                    Emit(Instruction.LoadVar(local.Label));
+                    break;
+                }
+
+                if (StandardLibraryRegistry.TryGetPreludeGlobal(identifier.Name, out _))
+                {
+                    Emit(Instruction.LoadPreludeGlobal(identifier.Name));
+                    break;
+                }
+                throw BytecodeError.UndefinedVariable(identifier.Name);
 
             case NewExpression newExpression:
                 VisitNewExpression(newExpression);

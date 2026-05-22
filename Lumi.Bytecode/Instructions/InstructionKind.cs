@@ -34,6 +34,7 @@ public enum InstructionKind
     CallFn,
     CallMemberMethod,
     Return,
+    LoadPreludeGlobal,
     LoadVar,
     StoreVar,
     NewStruct,

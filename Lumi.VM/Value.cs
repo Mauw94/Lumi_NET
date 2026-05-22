@@ -18,6 +18,7 @@ internal readonly struct Value
     public List<Value>? Array { get; }
     public Dictionary<string, Value>? Struct { get; }
     public string? StructName { get; }
+    public string? NativeObjectName { get; }
 
     private Value(
         ValueKind kind,
@@ -26,7 +27,8 @@ internal readonly struct Value
         bool b = false,
         List<Value>? array = null,
         Dictionary<string, Value>? structValue = null,
-        string? structName = null)
+        string? structName = null,
+        string? nativeObjectName = null)
     {
         Kind = kind;
         Number = number;
@@ -35,6 +37,7 @@ internal readonly struct Value
         Array = array;
         Struct = structValue;
         StructName = structName;
+        NativeObjectName = nativeObjectName;
     }
 
     public static Value FromNumber(double n) => new(ValueKind.Number, number: n);
@@ -42,6 +45,7 @@ internal readonly struct Value
     public static Value FromBoolean(bool b) => new(ValueKind.Boolean, b: b);
     public static Value FromArray(List<Value> values) => new(ValueKind.Array, array: values);
     public static Value FromStruct(string structName, Dictionary<string, Value> fields) => new(ValueKind.Struct, structValue: fields, structName: structName);
+    public static Value FromNativeObject(string name) => new(ValueKind.NativeObject, nativeObjectName: name);
     public static Value Undefined() => new(ValueKind.Undefined);
 
     public static Value ConstantToValue(Constant constant) => constant.Kind switch
@@ -61,6 +65,7 @@ internal readonly struct Value
         ValueKind.Boolean => Bool.ToString(),
         ValueKind.Array => $"[{string.Join(", ", (Array ?? []).Select(static v => v.PrintValue()))}]",
         ValueKind.Struct => "{" + string.Join(", ", (Struct ?? []).Select(static kv => $"{kv.Key}: {kv.Value.PrintValue()}")) + "}",
+        ValueKind.NativeObject => $"<{NativeObjectName ?? "native"}>",
         ValueKind.Null => "null",
         ValueKind.Undefined => "undefined",
         _ => throw VirtualMachineError.UnkownValueKind(Kind),
