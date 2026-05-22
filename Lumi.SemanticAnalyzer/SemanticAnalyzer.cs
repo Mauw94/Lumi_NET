@@ -517,7 +517,7 @@ public sealed class SemanticAnalyzer
             return;
 
         if (objectType == TypeKind.NativeObject)
-            return;
+            throw SemanticAnalyzerError.MemberAccessNotSupportedOnType(objectType);
 
         throw SemanticAnalyzerError.MemberAccessNotSupportedOnType(objectType);
     }
