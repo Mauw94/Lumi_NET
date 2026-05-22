@@ -387,11 +387,11 @@ public sealed class ParserTests
         Assert.IsInstanceOfType<StructDeclaration>(program.Body[0]);
 
         var structDecl = (StructDeclaration)program.Body[0];
-        Assert.AreEqual("Person", structDecl.Name.Name);
+        Assert.AreEqual("Person", structDecl.Identifier.Name);
         Assert.HasCount(2, structDecl.Fields);
-        Assert.AreEqual("name", structDecl.Fields[0].Name.Name);
+        Assert.AreEqual("name", structDecl.Fields[0].Identifier.Name);
         Assert.AreEqual("str", structDecl.Fields[0].Type.Name);
-        Assert.AreEqual("age", structDecl.Fields[1].Name.Name);
+        Assert.AreEqual("age", structDecl.Fields[1].Identifier.Name);
         Assert.AreEqual("int", structDecl.Fields[1].Type.Name);
     }
 
@@ -412,7 +412,7 @@ public sealed class ParserTests
         Assert.IsInstanceOfType<StructDeclaration>(program.Body[0]);
 
         var structDecl = (StructDeclaration)program.Body[0];
-        Assert.AreEqual("Person", structDecl.Name.Name);
+        Assert.AreEqual("Person", structDecl.Identifier.Name);
         Assert.HasCount(1, structDecl.Fields);
         Assert.HasCount(1, structDecl.Methods);
 
@@ -442,15 +442,15 @@ public sealed class ParserTests
         Assert.IsInstanceOfType<StructDeclaration>(program.Body[0]);
 
         var structDecl = (StructDeclaration)program.Body[0];
-        Assert.AreEqual("Person", structDecl.Name.Name);
+        Assert.AreEqual("Person", structDecl.Identifier.Name);
         Assert.HasCount(2, structDecl.Fields);
 
-        Assert.AreEqual("name", structDecl.Fields[0].Name.Name);
+        Assert.AreEqual("name", structDecl.Fields[0].Identifier.Name);
         Assert.AreEqual("str", structDecl.Fields[0].Type.Name);
         Assert.IsInstanceOfType<StringNode>(structDecl.Fields[0].Init);
         Assert.AreEqual("Unknown", ((StringNode)structDecl.Fields[0].Init!).Value);
 
-        Assert.AreEqual("age", structDecl.Fields[1].Name.Name);
+        Assert.AreEqual("age", structDecl.Fields[1].Identifier.Name);
         Assert.AreEqual("int", structDecl.Fields[1].Type.Name);
         Assert.IsNull(structDecl.Fields[1].Init);
     }
@@ -552,9 +552,9 @@ public sealed class ParserTests
         var first = (StructFieldInitializerArgument)newExpr.Arguments[0];
         var second = (StructFieldInitializerArgument)newExpr.Arguments[1];
 
-        Assert.AreEqual("name", first.Name.Name);
+        Assert.AreEqual("name", first.Identifier.Name);
         Assert.IsInstanceOfType<StringNode>(first.Value);
-        Assert.AreEqual("age", second.Name.Name);
+        Assert.AreEqual("age", second.Identifier.Name);
         Assert.IsInstanceOfType<NumberNode>(second.Value);
     }
 

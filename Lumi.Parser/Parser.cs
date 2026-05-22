@@ -314,7 +314,7 @@ public sealed class Parser
                 if (Check(TokenKind.Semicolon))
                     Advance();
 
-                fields.Add(new StructFieldDeclaration { Name = fieldName, Type = fieldType, Init = init, Span = CreateSpanFromTokens() });
+                fields.Add(new StructFieldDeclaration { Identifier = fieldName, Type = fieldType, Init = init, Span = CreateSpanFromTokens() });
             }
 
             Expect(TokenKind.RightBrace);
@@ -324,7 +324,7 @@ public sealed class Parser
 
             var span = CreateSpanFromTokens();
 
-            return new StructDeclaration { Name = name, Fields = fields, Methods = methods, Span = span };
+            return new StructDeclaration { Identifier = name, Fields = fields, Methods = methods, Span = span };
         }
     }
 
@@ -370,7 +370,7 @@ public sealed class Parser
                 var value = ParseExpression();
                 args.Add(new StructFieldInitializerArgument
                 {
-                    Name = identifier,
+                    Identifier = identifier,
                     Value = value
                 });
             }

@@ -373,10 +373,10 @@ public sealed class BytecodeTests
             [
                 new StructDeclaration
                 {
-                    Name = new IdentifierNode { Name = "Person" },
+                    Identifier = new IdentifierNode { Name = "Person" },
                     Fields =
                     [
-                        new StructFieldDeclaration { Name = new IdentifierNode { Name = "name" }, Type = new IdentifierNode { Name = "str" } }
+                        new StructFieldDeclaration { Identifier = new IdentifierNode { Name = "name" }, Type = new IdentifierNode { Name = "str" } }
                     ],
                     Methods =
                     [
@@ -1072,11 +1072,11 @@ public sealed class BytecodeTests
             [
                 new StructDeclaration
                 {
-                    Name = new IdentifierNode { Name = "Person" },
+                    Identifier = new IdentifierNode { Name = "Person" },
                     Fields =
                     [
-                        new StructFieldDeclaration { Name = new IdentifierNode { Name = "name" }, Type = new IdentifierNode { Name = "str" } },
-                        new StructFieldDeclaration { Name = new IdentifierNode { Name = "age" }, Type = new IdentifierNode { Name = "int" } }
+                        new StructFieldDeclaration { Identifier = new IdentifierNode { Name = "name" }, Type = new IdentifierNode { Name = "str" } },
+                        new StructFieldDeclaration { Identifier = new IdentifierNode { Name = "age" }, Type = new IdentifierNode { Name = "int" } }
                     ]
                 },
                 new VariableDeclaration
@@ -1129,11 +1129,11 @@ public sealed class BytecodeTests
             [
                 new StructDeclaration
                 {
-                    Name = new IdentifierNode { Name = "Person" },
+                    Identifier = new IdentifierNode { Name = "Person" },
                     Fields =
                     [
-                        new StructFieldDeclaration { Name = new IdentifierNode { Name = "name" }, Type = new IdentifierNode { Name = "str" } },
-                        new StructFieldDeclaration { Name = new IdentifierNode { Name = "age" }, Type = new IdentifierNode { Name = "int" } }
+                        new StructFieldDeclaration { Identifier = new IdentifierNode { Name = "name" }, Type = new IdentifierNode { Name = "str" } },
+                        new StructFieldDeclaration { Identifier = new IdentifierNode { Name = "age" }, Type = new IdentifierNode { Name = "int" } }
                     ]
                 },
                 new VariableDeclaration
@@ -1180,11 +1180,11 @@ public sealed class BytecodeTests
             [
                 new StructDeclaration
                 {
-                    Name = new IdentifierNode { Name = "Person" },
+                    Identifier = new IdentifierNode { Name = "Person" },
                     Fields =
                     [
-                        new StructFieldDeclaration { Name = new IdentifierNode { Name = "name" }, Type = new IdentifierNode { Name = "str" } },
-                        new StructFieldDeclaration { Name = new IdentifierNode { Name = "age" }, Type = new IdentifierNode { Name = "int" } }
+                        new StructFieldDeclaration { Identifier = new IdentifierNode { Name = "name" }, Type = new IdentifierNode { Name = "str" } },
+                        new StructFieldDeclaration { Identifier = new IdentifierNode { Name = "age" }, Type = new IdentifierNode { Name = "int" } }
                     ]
                 },
                 new VariableDeclaration
@@ -1223,11 +1223,11 @@ public sealed class BytecodeTests
             [
                 new StructDeclaration
                 {
-                    Name = new IdentifierNode { Name = "Person" },
+                    Identifier = new IdentifierNode { Name = "Person" },
                     Fields =
                     [
-                        new StructFieldDeclaration { Name = new IdentifierNode { Name = "name" }, Type = new IdentifierNode { Name = "str" }, Init = new StringNode { Value = "Unknown" } },
-                        new StructFieldDeclaration { Name = new IdentifierNode { Name = "age" }, Type = new IdentifierNode { Name = "int" } }
+                        new StructFieldDeclaration { Identifier = new IdentifierNode { Name = "name" }, Type = new IdentifierNode { Name = "str" }, Init = new StringNode { Value = "Unknown" } },
+                        new StructFieldDeclaration { Identifier = new IdentifierNode { Name = "age" }, Type = new IdentifierNode { Name = "int" } }
                     ]
                 },
                 new VariableDeclaration
@@ -1264,11 +1264,11 @@ public sealed class BytecodeTests
             [
                 new StructDeclaration
                 {
-                    Name = new IdentifierNode { Name = "Person" },
+                    Identifier = new IdentifierNode { Name = "Person" },
                     Fields =
                     [
-                        new StructFieldDeclaration { Name = new IdentifierNode { Name = "name" }, Type = new IdentifierNode { Name = "str" } },
-                        new StructFieldDeclaration { Name = new IdentifierNode { Name = "age" }, Type = new IdentifierNode { Name = "int" } }
+                        new StructFieldDeclaration { Identifier = new IdentifierNode { Name = "name" }, Type = new IdentifierNode { Name = "str" } },
+                        new StructFieldDeclaration { Identifier = new IdentifierNode { Name = "age" }, Type = new IdentifierNode { Name = "int" } }
                     ]
                 },
                 new VariableDeclaration
@@ -1285,8 +1285,8 @@ public sealed class BytecodeTests
                                 TypeName = new IdentifierNode { Name = "Person" },
                                 Arguments =
                                 [
-                                    new StructFieldInitializerArgument { Name = new IdentifierNode { Name = "age" }, Value = new NumberNode { Value = 5 } },
-                                    new StructFieldInitializerArgument { Name = new IdentifierNode { Name = "name" }, Value = new StringNode { Value = "test" } }
+                                    new StructFieldInitializerArgument { Identifier = new IdentifierNode { Name = "age" }, Value = new NumberNode { Value = 5 } },
+                                    new StructFieldInitializerArgument { Identifier = new IdentifierNode { Name = "name" }, Value = new StringNode { Value = "test" } }
                                 ]
                             }
                         }
