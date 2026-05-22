@@ -56,4 +56,30 @@ public static class SourceStrings
                 print p.age;
             }
             """;
+
+    public const string FileIoWorkloadSource = """
+            for i in 0 to 99 step 1 {
+                let path: str -> "tempfile_" + i + ".txt";
+                File.writeText(path, "Hello, world!");
+                let contents -> File.readText(path);
+                // print contents; // printing this results in a HUGE standard test output
+            }
+            """;
+
+    public const string StructDefinitionWithMethodSource = """
+            struct Counter {
+                count: int;
+                fn increment() {
+                    this.count = this.count + 1;
+                }
+            }
+
+            let counter: Counter -> new Counter(count: 0);
+
+            for i in 0 to 999 step 1 {
+                counter.increment();
+                // print counter.count;
+            }
+
+            """;
 }

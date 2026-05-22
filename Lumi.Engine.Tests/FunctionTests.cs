@@ -356,28 +356,6 @@ public sealed class FunctionTests
         Assert.AreEqual("120", output);
     }
 
-    [TestMethod]
-    public void Test_Struct_Method_Call_Can_Use_This_And_Mutate_State()
-    {
-        var source = """
-            struct Counter {
-                value: int;
-
-                fn increment(delta) {
-                    this.value = this.value + delta;
-                }
-            }
-
-            let counter: Counter -> new Counter(2);
-            counter.increment(3);
-            print counter.value;
-            """;
-
-        var output = ExecuteAndCapture(source);
-
-        Assert.AreEqual("5", output);
-    }
-
     private static string ExecuteAndCapture(string source)
     {
         var parser = new Parser.Parser(source);

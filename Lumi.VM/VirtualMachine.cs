@@ -55,6 +55,13 @@ public sealed class VirtualMachine
                     {
                         var b = _stack[--_stackTop];
                         var a = _stack[--_stackTop];
+                        
+                        // NOTE: clean this up.
+                        if (a.Kind == ValueKind.String || b.Kind == ValueKind.String)
+                        {
+                            _stack[_stackTop++] = Value.FromString(a.ToString() + b.ToString());
+                            break;
+                        }
                         _stack[_stackTop++] = Value.FromNumber(a.Number + b.Number);
                         break;
                     }

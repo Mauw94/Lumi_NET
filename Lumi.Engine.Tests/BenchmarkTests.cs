@@ -10,6 +10,30 @@ public sealed class BenchmarkTests
     public TestContext TestContext { get; set; }
 
     [TestMethod]
+    public void Test_File_IO_Workload()
+    {
+        // Arrange
+        var source = SourceStrings.FileIoWorkloadSource;
+
+        // Act + Benchmark
+        const int iterations = 100;
+        Warmup(source);
+        CollectBenchmarkData(iterations, source);
+    }
+
+    [TestMethod]
+    public void Test_Struct_Definition_With_Method_Sources()
+    {
+        // Arrange
+        var source = SourceStrings.StructDefinitionWithMethodSource;
+
+        // Act + Benchmark
+        const int iterations = 1000;
+        Warmup(source);
+        CollectBenchmarkData(iterations, source);
+    }
+
+    [TestMethod]
     public void Test_Simple_Binary_Operation()
     {
         // Arrange
