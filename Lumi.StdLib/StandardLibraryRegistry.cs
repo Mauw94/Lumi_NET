@@ -18,8 +18,11 @@ public static class StandardLibraryRegistry
         {
             [FilePreludeName] = new(FilePreludeName, StdLibTypeDescriptor.NativeObject(FilePreludeName))
         };
-    
+
     // NOTE: will this be available in the prelude or do we want an import for this?
+    // NOTE: type descriptors for array methods are a bit tricky since they depend on the type of the array elements, which is not known at compile time.
+    // For simplicity, we can use a placeholder type descriptor (e.g. "Unknown") for the element type in the method signatures,
+    // and the VM can handle the actual types at runtime.
     private static readonly Dictionary<string, StdLibMethodDescriptor> ArrayMethods
         = new(StringComparer.Ordinal)
         {

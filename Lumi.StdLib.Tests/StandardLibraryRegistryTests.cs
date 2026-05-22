@@ -40,7 +40,7 @@ public sealed class StandardLibraryRegistryTests
 
         Assert.IsTrue(found);
         Assert.IsNotNull(descriptor);
-        Assert.AreEqual(1, descriptor.ParameterTypes.Count);
+        Assert.HasCount(1, descriptor.ParameterTypes);
         Assert.AreEqual(StdLibTypeDescriptor.String(), descriptor.ParameterTypes[0]);
         Assert.AreEqual(StdLibTypeDescriptor.String(), descriptor.ReturnType);
     }
