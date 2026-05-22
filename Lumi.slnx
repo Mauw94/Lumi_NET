@@ -9,7 +9,7 @@
   </Folder>
   <Folder Name="/Docs/">
     <File Path="Docs/README.md" />
-    <File Path="Docs/ROADMAP.md" />
+    <File Path="Docs/LANGUAGE_FEATURES.md" />
   </Folder>
    <Folder Name="/Engine/">
      <Project Path="Lumi.Engine.Tests/Lumi.Engine.Tests.csproj" Id="a73834e7-2885-4baf-ab46-ebdcf7f6261b" />
