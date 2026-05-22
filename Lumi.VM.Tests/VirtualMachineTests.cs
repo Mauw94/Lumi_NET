@@ -766,11 +766,11 @@ public sealed class VirtualMachineTests
         var bytecode = Build(
             new StructDeclaration
             {
-                Name = new IdentifierNode { Name = "Person" },
+                Identifier = new IdentifierNode { Name = "Person" },
                 Fields =
                 [
-                    new StructFieldDeclaration { Name = new IdentifierNode { Name = "name" }, Type = new IdentifierNode { Name = "str" } },
-                    new StructFieldDeclaration { Name = new IdentifierNode { Name = "age" }, Type = new IdentifierNode { Name = "int" } }
+                    new StructFieldDeclaration { Identifier = new IdentifierNode { Name = "name" }, Type = new IdentifierNode { Name = "str" } },
+                    new StructFieldDeclaration { Identifier = new IdentifierNode { Name = "age" }, Type = new IdentifierNode { Name = "int" } }
                 ]
             },
             new VariableDeclaration
@@ -806,11 +806,11 @@ public sealed class VirtualMachineTests
         var bytecode = Build(
             new StructDeclaration
             {
-                Name = new IdentifierNode { Name = "Person" },
+                Identifier = new IdentifierNode { Name = "Person" },
                 Fields =
                 [
-                    new StructFieldDeclaration { Name = new IdentifierNode { Name = "name" }, Type = new IdentifierNode { Name = "str" } },
-                    new StructFieldDeclaration { Name = new IdentifierNode { Name = "age" }, Type = new IdentifierNode { Name = "int" } }
+                    new StructFieldDeclaration { Identifier = new IdentifierNode { Name = "name" }, Type = new IdentifierNode { Name = "str" } },
+                    new StructFieldDeclaration { Identifier = new IdentifierNode { Name = "age" }, Type = new IdentifierNode { Name = "int" } }
                 ]
             },
             new VariableDeclaration
@@ -859,11 +859,11 @@ public sealed class VirtualMachineTests
         var bytecode = Build(
             new StructDeclaration
             {
-                Name = new IdentifierNode { Name = "Person" },
+                Identifier = new IdentifierNode { Name = "Person" },
                 Fields =
                 [
-                    new StructFieldDeclaration { Name = new IdentifierNode { Name = "name" }, Type = new IdentifierNode { Name = "str" } },
-                    new StructFieldDeclaration { Name = new IdentifierNode { Name = "age" }, Type = new IdentifierNode { Name = "int" } }
+                    new StructFieldDeclaration { Identifier = new IdentifierNode { Name = "name" }, Type = new IdentifierNode { Name = "str" } },
+                    new StructFieldDeclaration { Identifier = new IdentifierNode { Name = "age" }, Type = new IdentifierNode { Name = "int" } }
                 ]
             },
             new VariableDeclaration
@@ -914,10 +914,10 @@ public sealed class VirtualMachineTests
         var bytecode = Build(
             new StructDeclaration
             {
-                Name = new IdentifierNode { Name = "Counter" },
+                Identifier = new IdentifierNode { Name = "Counter" },
                 Fields =
                 [
-                    new StructFieldDeclaration { Name = new IdentifierNode { Name = "value" }, Type = new IdentifierNode { Name = "int" } }
+                    new StructFieldDeclaration { Identifier = new IdentifierNode { Name = "value" }, Type = new IdentifierNode { Name = "int" } }
                 ],
                 Methods =
                 [
@@ -1005,11 +1005,11 @@ public sealed class VirtualMachineTests
         var bytecode = Build(
             new StructDeclaration
             {
-                Name = new IdentifierNode { Name = "Person" },
+                Identifier = new IdentifierNode { Name = "Person" },
                 Fields =
                 [
-                    new StructFieldDeclaration { Name = new IdentifierNode { Name = "name" }, Type = new IdentifierNode { Name = "str" }, Init = new StringNode { Value = "Unknown" } },
-                    new StructFieldDeclaration { Name = new IdentifierNode { Name = "age" }, Type = new IdentifierNode { Name = "int" } }
+                    new StructFieldDeclaration { Identifier = new IdentifierNode { Name = "name" }, Type = new IdentifierNode { Name = "str" }, Init = new StringNode { Value = "Unknown" } },
+                    new StructFieldDeclaration { Identifier = new IdentifierNode { Name = "age" }, Type = new IdentifierNode { Name = "int" } }
                 ]
             },
             new VariableDeclaration
@@ -1059,11 +1059,11 @@ public sealed class VirtualMachineTests
         var bytecode = Build(
             new StructDeclaration
             {
-                Name = new IdentifierNode { Name = "Person" },
+                Identifier = new IdentifierNode { Name = "Person" },
                 Fields =
                 [
-                    new StructFieldDeclaration { Name = new IdentifierNode { Name = "name" }, Type = new IdentifierNode { Name = "str" }, Init = new StringNode { Value = "Harry" } },
-                    new StructFieldDeclaration { Name = new IdentifierNode { Name = "age" }, Type = new IdentifierNode { Name = "int" }, Init = new NumberNode { Value = 275 } }
+                    new StructFieldDeclaration { Identifier = new IdentifierNode { Name = "name" }, Type = new IdentifierNode { Name = "str" }, Init = new StringNode { Value = "Harry" } },
+                    new StructFieldDeclaration { Identifier = new IdentifierNode { Name = "age" }, Type = new IdentifierNode { Name = "int" }, Init = new NumberNode { Value = 275 } }
                 ]
             },
             new VariableDeclaration
@@ -1080,8 +1080,8 @@ public sealed class VirtualMachineTests
                             TypeName = new IdentifierNode { Name = "Person" },
                             Arguments =
                             [
-                                new StructFieldInitializerArgument { Name = new IdentifierNode { Name = "age" }, Value = new NumberNode { Value = 5 } },
-                                new StructFieldInitializerArgument { Name = new IdentifierNode { Name = "name" }, Value = new StringNode { Value = "test" } }
+                                new StructFieldInitializerArgument { Identifier = new IdentifierNode { Name = "age" }, Value = new NumberNode { Value = 5 } },
+                                new StructFieldInitializerArgument { Identifier = new IdentifierNode { Name = "name" }, Value = new StringNode { Value = "test" } }
                             ]
                         }
                     }

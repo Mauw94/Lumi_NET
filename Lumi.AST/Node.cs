@@ -46,14 +46,14 @@ public class FunctionDeclaration : Node
 
 public class StructDeclaration : Node
 {
-    public required IdentifierNode Name { get; set; }
+    public required IdentifierNode Identifier { get; set; }
     public List<StructFieldDeclaration> Fields { get; set; } = [];
     public List<FunctionDeclaration> Methods { get; set; } = [];
 }
 
 public class StructFieldDeclaration : Node
 {
-    public required IdentifierNode Name { get; set; }
+    public required IdentifierNode Identifier { get; set; }
     public required IdentifierNode Type { get; set; }
     public Node? Init { get; set; }
 }
@@ -72,7 +72,7 @@ public class NewExpression : Node
 
 public class StructFieldInitializerArgument : Node
 {
-    public required IdentifierNode Name { get; set; }
+    public required IdentifierNode Identifier { get; set; }
     public required Node Value { get; set; }
 }
 

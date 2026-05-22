@@ -156,8 +156,8 @@ public sealed class SemanticAnalyzer
 
             if (statement is StructDeclaration structDecl)
             {
-                if (KeywordCatalog.Contains(structDecl.Name.Name))
-                    throw SemanticAnalyzerError.StructNameIsKeyword(structDecl.Name.Name);
+                if (KeywordCatalog.Contains(structDecl.Identifier.Name))
+                    throw SemanticAnalyzerError.StructNameIsKeyword(structDecl.Identifier.Name);
 
                 var fields = new HashSet<string>(StringComparer.Ordinal);
                 var methods = new HashSet<string>(StringComparer.Ordinal);
@@ -167,11 +167,11 @@ public sealed class SemanticAnalyzer
 
                 foreach (var field in structDecl.Fields)
                 {
-                    if (!fields.Add(field.Name.Name))
-                        throw SemanticAnalyzerError.DuplicateStructField(structDecl.Name.Name, field.Name.Name);
+                    if (!fields.Add(field.Identifier.Name))
+                        throw SemanticAnalyzerError.DuplicateStructField(structDecl.Identifier.Name, field.Identifier.Name);
 
-                    fieldOrder.Add(field.Name.Name);
-                    fieldTypes[field.Name.Name] = InferDeclaredTypeInfo(field.Type);
+                    fieldOrder.Add(field.Identifier.Name);
+                    fieldTypes[field.Identifier.Name] = InferDeclaredTypeInfo(field.Type);
                 }
 
                 foreach (var method in structDecl.Methods)
@@ -183,18 +183,18 @@ public sealed class SemanticAnalyzer
                         throw SemanticAnalyzerError.FunctionNameIsKeyword(methodName.Name);
 
                     if (fieldTypes.ContainsKey(methodName.Name))
-                        throw SemanticAnalyzerError.DuplicateStructMember(structDecl.Name.Name, methodName.Name);
+                        throw SemanticAnalyzerError.DuplicateStructMember(structDecl.Identifier.Name, methodName.Name);
 
                     if (!methods.Add(methodName.Name))
-                        throw SemanticAnalyzerError.DuplicateStructMethod(structDecl.Name.Name, methodName.Name);
+                        throw SemanticAnalyzerError.DuplicateStructMethod(structDecl.Identifier.Name, methodName.Name);
 
                     methodSignatures[methodName.Name] = new StructMethodSignature(method.Params.Count);
                 }
 
-                _structFieldOrder[structDecl.Name.Name] = fieldOrder;
-                _structFieldTypes[structDecl.Name.Name] = fieldTypes;
-                _structMethods[structDecl.Name.Name] = methodSignatures;
-                _scopes.RegisterSymbol(new Symbol(structDecl.Name.Name, SymbolKind.Struct, TypeKind.Struct, IsReadOnly: true, StructName: structDecl.Name.Name));
+                _structFieldOrder[structDecl.Identifier.Name] = fieldOrder;
+                _structFieldTypes[structDecl.Identifier.Name] = fieldTypes;
+                _structMethods[structDecl.Identifier.Name] = methodSignatures;
+                _scopes.RegisterSymbol(new Symbol(structDecl.Identifier.Name, SymbolKind.Struct, TypeKind.Struct, IsReadOnly: true, StructName: structDecl.Identifier.Name));
             }
         }
 
@@ -469,8 +469,8 @@ public sealed class SemanticAnalyzer
 
     private void VisitStructDeclaration(StructDeclaration structDecl)
     {
-        if (KeywordCatalog.Contains(structDecl.Name.Name))
-            throw SemanticAnalyzerError.StructNameIsKeyword(structDecl.Name.Name);
+        if (KeywordCatalog.Contains(structDecl.Identifier.Name))
+            throw SemanticAnalyzerError.StructNameIsKeyword(structDecl.Identifier.Name);
 
         foreach (var field in structDecl.Fields)
         {
@@ -493,12 +493,12 @@ public sealed class SemanticAnalyzer
             {
                 var expected = expectedTypeInfo.Type == TypeKind.Struct ? expectedTypeInfo.StructName ?? "struct" : expectedTypeInfo.Type.ToString();
                 var actual = actualTypeInfo.Type == TypeKind.Struct ? actualTypeInfo.StructName ?? "struct" : actualTypeInfo.Type.ToString();
-                throw SemanticAnalyzerError.TypeMismatch($"{structDecl.Name.Name}.{field.Name.Name}", expected, actual);
+                throw SemanticAnalyzerError.TypeMismatch($"{structDecl.Identifier.Name}.{field.Identifier.Name}", expected, actual);
             }
         }
 
         foreach (var method in structDecl.Methods)
-            VisitFunctionDeclaration(method, structDecl.Name.Name);
+            VisitFunctionDeclaration(method, structDecl.Identifier.Name);
     }
 
     private void VisitMemberExpression(MemberExpression memberExpr)
@@ -606,7 +606,7 @@ public sealed class SemanticAnalyzer
             foreach (var argument in newExpression.Arguments)
             {
                 var named = (StructFieldInitializerArgument)argument;
-                var fieldName = named.Name.Name;
+                var fieldName = named.Identifier.Name;
 
                 if (!fieldTypes.TryGetValue(fieldName, out var expectedTypeInfo))
                     throw SemanticAnalyzerError.UnknownStructField(structName, fieldName);

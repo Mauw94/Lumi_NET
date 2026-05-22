@@ -178,11 +178,11 @@ public sealed class BytecodeGenerator
             if (statement is not StructDeclaration structDeclaration)
                 continue;
 
-            var structName = structDeclaration.Name.Name;
+            var structName = structDeclaration.Identifier.Name;
             if (_structDefinitions.ContainsKey(structName))
                 throw BytecodeError.StructAlreadyDefined(structName);
 
-            var fields = structDeclaration.Fields.Select(static f => f.Name.Name).ToArray();
+            var fields = structDeclaration.Fields.Select(static f => f.Identifier.Name).ToArray();
             var fieldInitializers = structDeclaration.Fields.Select(static f => f.Init).ToArray();
             _structDefinitions[structName] = fields;
             _structFieldInitializers[structName] = fieldInitializers;
@@ -505,9 +505,9 @@ public sealed class BytecodeGenerator
 
     private void VisitStructDeclaration(StructDeclaration structDeclaration)
     {
-        var structName = structDeclaration.Name.Name;
+        var structName = structDeclaration.Identifier.Name;
         if (!_structDefinitions.ContainsKey(structName))
-            _structDefinitions[structName] = [.. structDeclaration.Fields.Select(static f => f.Name.Name)];
+            _structDefinitions[structName] = [.. structDeclaration.Fields.Select(static f => f.Identifier.Name)];
 
         _structFieldInitializers.TryAdd(structName, [.. structDeclaration.Fields.Select(static f => f.Init)]);
 
@@ -543,7 +543,7 @@ public sealed class BytecodeGenerator
             foreach (var argument in newExpression.Arguments)
             {
                 var named = (StructFieldInitializerArgument)argument;
-                namedArguments[named.Name.Name] = named.Value;
+                namedArguments[named.Identifier.Name] = named.Value;
             }
 
             _structFieldInitializers.TryGetValue(structName, out var fieldInitializers);
