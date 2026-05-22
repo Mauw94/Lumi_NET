@@ -9,12 +9,17 @@ public static class StandardLibraryRegistry
 {
     public const string FilePreludeName = "File";
 
+    /// <summary>
+    /// Set of globals automatically available in the standard library by default (no import needed), keyed by their name. 
+    /// Each global has an associated descriptor that includes its name and type information.
+    /// </summary>
     private static readonly IReadOnlyDictionary<string, PreludeGlobalDescriptor> PreludeGlobalsByName
         = new Dictionary<string, PreludeGlobalDescriptor>(StringComparer.Ordinal)
         {
             [FilePreludeName] = new(FilePreludeName, StdLibTypeDescriptor.NativeObject(FilePreludeName))
         };
-
+    
+    // NOTE: will this be available in the prelude or do we want an import for this?
     private static readonly Dictionary<string, StdLibMethodDescriptor> ArrayMethods
         = new(StringComparer.Ordinal)
         {
