@@ -55,12 +55,19 @@ internal static class NativeMemberDispatcher
 
     private static Value InvokeFilePreludeMethod(string methodName, IReadOnlyList<Value> args)
     {
-        return methodName switch
+        try
         {
-            "readText" => Value.FromString(File.ReadAllText(GetRequiredStringArgument(methodName, 0, args[0]))),
-            "writeText" => WriteText(args),
-            _ => throw VirtualMachineError.UnknownPreludeMethod(StandardLibraryRegistry.FilePreludeName, methodName)
-        };
+            return methodName switch
+            {
+                "readText" => Value.FromString(File.ReadAllText(GetRequiredStringArgument(methodName, 0, args[0]))),
+                "writeText" => WriteText(args),
+                _ => throw VirtualMachineError.UnknownPreludeMethod(StandardLibraryRegistry.FilePreludeName, methodName)
+            };
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or NotSupportedException or ArgumentException)
+        {
+            throw VirtualMachineError.PreludeMethodIoFailure(StandardLibraryRegistry.FilePreludeName, methodName, ex);
+        }
     }
 
     private static Value AddArrayItem(Value target, Value item)

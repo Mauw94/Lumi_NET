@@ -156,6 +156,28 @@ public sealed class ExecutionPipelineTests
         }
     }
 
+    [TestMethod]
+    public void TryExecute_FileReadFailure_UsesVirtualMachineError()
+    {
+        var missingPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.txt");
+        var escapedPath = EscapeForLumi(missingPath);
+
+        var source = $$"""
+            let contents: str -> File.readText("{{escapedPath}}");
+            print contents;
+            """;
+
+        using var writer = new StringWriter();
+
+        var pipeline = CreatePipeline();
+        var succeeded = pipeline.TryExecute(source, new VirtualMachine(), new BytecodeGenerator(), new SemanticAnalyzerType(), writer);
+        var output = writer.ToString();
+
+        Assert.IsFalse(succeeded);
+        Assert.Contains("Lumi.VM.VirtualMachineError", output);
+        Assert.IsFalse(output.Contains("System.IO.FileNotFoundException", StringComparison.Ordinal));
+    }
+
     private static ExecutionPipeline CreatePipeline()
     {
         var services = new ServiceCollection();
