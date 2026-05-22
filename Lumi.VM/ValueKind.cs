@@ -10,6 +10,7 @@ internal enum ValueKind
     Boolean,
     Array,
     Struct,
+    NativeObject,
     Function,
     Null,
     Undefined

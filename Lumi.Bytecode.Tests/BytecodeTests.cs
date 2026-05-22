@@ -437,6 +437,38 @@ public sealed class BytecodeTests
     }
 
     [TestMethod]
+    public void Test_PreludeFileMethodCall_Loads_Prelude_Global_And_Emits_CallMemberMethod()
+    {
+        var program = new Program
+        {
+            Body =
+            [
+                new ExpressionStatement
+                {
+                    Expression = new CallExpression
+                    {
+                        Callee = new MemberExpression
+                        {
+                            Object = new IdentifierNode { Name = "File" },
+                            Property = new IdentifierNode { Name = "readText" }
+                        },
+                        Arguments = [new StringNode { Value = "input.txt" }]
+                    }
+                }
+            ]
+        };
+
+        var result = new BytecodeGenerator().Generate(program);
+
+        Assert.AreEqual(InstructionKind.LoadPreludeGlobal, result.Instructions[0].Kind);
+        Assert.AreEqual("File", result.Instructions[0].StringOperand);
+
+        var call = result.Instructions.First(i => i.Kind == InstructionKind.CallMemberMethod);
+        Assert.AreEqual("readText", call.StringOperand);
+        Assert.AreEqual(1, call.GetSafeIntOperand());
+    }
+
+    [TestMethod]
     public void Test_String_Constant()
     {
         // Build AST: "hello"

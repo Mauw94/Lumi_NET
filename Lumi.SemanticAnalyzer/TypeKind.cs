@@ -15,4 +15,5 @@ public enum TypeKind
     Function,
     Array,
     Struct,
+    NativeObject,
 }

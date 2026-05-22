@@ -68,6 +68,7 @@ public readonly struct Instruction
     public static Instruction Jump(int operand) => new(InstructionKind.Jump, operand);
     public static Instruction CallFn(string functionName) => new(InstructionKind.CallFn, functionName);
     public static Instruction CallMemberMethod(string methodName, int argumentCount) => new(InstructionKind.CallMemberMethod, argumentCount, methodName);
+    public static Instruction LoadPreludeGlobal(string name) => new(InstructionKind.LoadPreludeGlobal, name);
     public static Instruction NewStruct(string structName, int argumentCount) => new(InstructionKind.NewStruct, argumentCount, structName);
     public static Instruction LoadField(string fieldName) => new(InstructionKind.LoadField, fieldName);
     public static Instruction StoreField(string fieldName) => new(InstructionKind.StoreField, fieldName);

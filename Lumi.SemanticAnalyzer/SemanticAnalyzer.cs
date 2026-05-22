@@ -1,5 +1,6 @@
 using Lumi.AST;
 using Lumi.Language;
+using Lumi.StdLib;
 
 namespace Lumi.SemanticAnalyzer;
 
@@ -16,17 +17,11 @@ public sealed class SemanticAnalyzer
     private readonly Dictionary<string, Dictionary<string, (TypeKind Type, string? StructName)>> _structFieldTypes = new(StringComparer.Ordinal);
     private readonly Dictionary<string, Dictionary<string, StructMethodSignature>> _structMethods = new(StringComparer.Ordinal);
     private readonly Dictionary<string, (TypeKind Type, string? StructName)> _listElementTypes = new(StringComparer.Ordinal);
-    private static readonly Dictionary<string, int> ListMethodParameterCounts = new(StringComparer.Ordinal)
-    {
-        ["add"] = 1,
-        ["remove"] = 1,
-        ["length"] = 0,
-        ["contains"] = 1
-    };
 
     public SemanticAnalyzer()
     {
         _scopes.EnterScope(); // Global scope
+        RegisterPreludeGlobals();
     }
 
     /// <summary>
@@ -521,6 +516,9 @@ public sealed class SemanticAnalyzer
         if (objectType == TypeKind.Array)
             return;
 
+        if (objectType == TypeKind.NativeObject)
+            return;
+
         throw SemanticAnalyzerError.MemberAccessNotSupportedOnType(objectType);
     }
 
@@ -560,16 +558,28 @@ public sealed class SemanticAnalyzer
 
         if (objectType == TypeKind.Array)
         {
-            if (!ListMethodParameterCounts.TryGetValue(memberExpr.Property.Name, out var expectedArgumentCount))
+            if (!StandardLibraryRegistry.TryGetArrayMethod(memberExpr.Property.Name, out var descriptor) || descriptor is null)
                 throw SemanticAnalyzerError.UnknownListMethod(memberExpr.Property.Name);
 
-            if (callExpr.Arguments.Count != expectedArgumentCount)
-                throw SemanticAnalyzerError.MethodArgumentCountMismatch(memberExpr.Property.Name, expectedArgumentCount, callExpr.Arguments.Count);
+            ValidateMethodArguments("list", memberExpr.Property.Name, descriptor.ParameterTypes, callExpr.Arguments);
 
             return;
         }
 
         var (_, structName) = InferTypeInfo(memberExpr.Object);
+        if (objectType == TypeKind.NativeObject)
+        {
+            if (string.IsNullOrWhiteSpace(structName)
+                || !StandardLibraryRegistry.TryGetPreludeMethod(structName, memberExpr.Property.Name, out var descriptor)
+                || descriptor is null)
+            {
+                throw SemanticAnalyzerError.MethodNotSupportedOnType(memberExpr.Property.Name, objectType);
+            }
+
+            ValidateMethodArguments(structName, memberExpr.Property.Name, descriptor.ParameterTypes, callExpr.Arguments);
+            return;
+        }
+
         if (objectType == TypeKind.Struct)
         {
             if (string.IsNullOrWhiteSpace(structName) || !_structMethods.TryGetValue(structName, out var methods))
@@ -771,13 +781,41 @@ public sealed class SemanticAnalyzer
             BinaryExpression => (TypeKind.Int, null), // Simplified: assume arithmetic results in numbers
             NewExpression newExpression when _structFieldOrder.ContainsKey(newExpression.TypeName.Name) => (TypeKind.Struct, newExpression.TypeName.Name),
             MemberExpression memberExpression => InferMemberExpressionType(memberExpression),
+            CallExpression callExpression => InferCallExpressionType(callExpression),
             _ => (TypeKind.Unknown, null)
         };
+    }
+
+    private (TypeKind Type, string? StructName) InferCallExpressionType(CallExpression callExpression)
+    {
+        if (callExpression.Callee is not MemberExpression memberExpression)
+            return (TypeKind.Unknown, null);
+
+        var (objectType, objectName) = InferTypeInfo(memberExpression.Object);
+        if (objectType == TypeKind.Array
+            && StandardLibraryRegistry.TryGetArrayMethod(memberExpression.Property.Name, out var arrayMethod)
+            && arrayMethod is not null)
+        {
+            return ToSemanticType(arrayMethod.ReturnType);
+        }
+
+        if (objectType == TypeKind.NativeObject
+            && !string.IsNullOrWhiteSpace(objectName)
+            && StandardLibraryRegistry.TryGetPreludeMethod(objectName, memberExpression.Property.Name, out var preludeMethod)
+            && preludeMethod is not null)
+        {
+            return ToSemanticType(preludeMethod.ReturnType);
+        }
+
+        return (TypeKind.Unknown, null);
     }
 
     private (TypeKind Type, string? StructName) InferMemberExpressionType(MemberExpression memberExpression)
     {
         var (objectType, structName) = InferTypeInfo(memberExpression.Object);
+        if (objectType == TypeKind.NativeObject)
+            return (TypeKind.Unknown, structName);
+
         if (objectType != TypeKind.Struct || string.IsNullOrWhiteSpace(structName))
             return (TypeKind.Unknown, null);
 
@@ -793,5 +831,58 @@ public sealed class SemanticAnalyzer
         }
 
         return (TypeKind.Unknown, null);
+    }
+
+    private void RegisterPreludeGlobals()
+    {
+        foreach (var global in StandardLibraryRegistry.PreludeGlobals)
+        {
+            var symbol = new Symbol(global.Name, SymbolKind.Constant, TypeKind.NativeObject, IsReadOnly: true, StructName: global.Type.Name);
+            _scopes.RegisterSymbol(symbol);
+        }
+    }
+
+    private void ValidateMethodArguments(string receiverName, string methodName, IReadOnlyList<StdLibTypeDescriptor> parameterTypes, IReadOnlyList<Node> arguments)
+    {
+        if (arguments.Count != parameterTypes.Count)
+            throw SemanticAnalyzerError.MethodArgumentCountMismatch(methodName, parameterTypes.Count, arguments.Count);
+
+        for (int i = 0; i < parameterTypes.Count; i++)
+        {
+            var expectedType = parameterTypes[i];
+            if (expectedType.Kind == StdLibValueType.Unknown)
+                continue;
+
+            var actualType = InferTypeInfo(arguments[i]);
+            var expectedSemanticType = ToSemanticType(expectedType);
+
+            if (expectedSemanticType.Type == TypeKind.Unknown || actualType.Type == TypeKind.Unknown)
+                continue;
+
+            var isDifferentStruct = expectedSemanticType.Type == TypeKind.Struct
+                && actualType.Type == TypeKind.Struct
+                && !string.Equals(expectedSemanticType.StructName, actualType.StructName, StringComparison.Ordinal);
+
+            if (expectedSemanticType.Type != actualType.Type || isDifferentStruct)
+            {
+                var expected = expectedSemanticType.Type == TypeKind.Struct ? expectedSemanticType.StructName ?? "struct" : expectedSemanticType.Type.ToString();
+                var actual = actualType.Type == TypeKind.Struct ? actualType.StructName ?? "struct" : actualType.Type.ToString();
+                throw SemanticAnalyzerError.TypeMismatch($"{receiverName}.{methodName} argument {i + 1}", expected, actual);
+            }
+        }
+    }
+
+    private static (TypeKind Type, string? StructName) ToSemanticType(StdLibTypeDescriptor descriptor)
+    {
+        return descriptor.Kind switch
+        {
+            StdLibValueType.Int => (TypeKind.Int, null),
+            StdLibValueType.String => (TypeKind.String, null),
+            StdLibValueType.Boolean => (TypeKind.Boolean, null),
+            StdLibValueType.Array => (TypeKind.Array, null),
+            StdLibValueType.NativeObject => (TypeKind.NativeObject, descriptor.Name),
+            StdLibValueType.Undefined => (TypeKind.Undefined, null),
+            _ => (TypeKind.Unknown, null)
+        };
     }
 }

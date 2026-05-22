@@ -1,0 +1,4 @@
+File.writeText("aoc-sample.txt", "line 1\nline 2");
+
+let contents: str -> File.readText("aoc-sample.txt");
+print contents;

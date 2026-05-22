@@ -123,12 +123,48 @@ public sealed class ExecutionPipelineTests
         Assert.IsInstanceOfType<VirtualMachineExecutionStep>(steps[3]);
     }
 
+    [TestMethod]
+    public void TryExecute_FileWriteThenRead_Succeeds()
+    {
+        var tempPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.txt");
+        var escapedPath = EscapeForLumi(tempPath);
+
+        var source = $$"""
+            File.writeText("{{escapedPath}}", "42");
+            let contents: str -> File.readText("{{escapedPath}}");
+            print contents;
+            """;
+
+        using var writer = new StringWriter();
+
+        try
+        {
+            var pipeline = CreatePipeline();
+            var succeeded = pipeline.TryExecute(source, new VirtualMachine(), new BytecodeGenerator(), new SemanticAnalyzerType(), writer);
+            var output = writer.ToString();
+            var lines = SplitLines(output);
+
+            Assert.IsTrue(succeeded);
+            Assert.HasCount(1, lines);
+            Assert.AreEqual("\"42\"", lines[0]);
+            Assert.AreEqual("42", File.ReadAllText(tempPath));
+        }
+        finally
+        {
+            if (File.Exists(tempPath))
+                File.Delete(tempPath);
+        }
+    }
+
     private static ExecutionPipeline CreatePipeline()
     {
         var services = new ServiceCollection();
         services.AddLumiEngine();
         return services.BuildServiceProvider().GetRequiredService<ExecutionPipeline>();
     }
+
+    private static string EscapeForLumi(string value)
+        => value.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("\"", "\\\"", StringComparison.Ordinal);
 
     private static string[] SplitLines(string value) =>
         value.Split(["\r\n", "\n", "\r"], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
