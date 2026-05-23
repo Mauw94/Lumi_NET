@@ -61,7 +61,7 @@ public sealed class StandardLibraryRegistryTests
     [TestMethod]
     public void TryGetPreludeMethod_UnknownMethod_Returns_False()
     {
-        var found = StandardLibraryRegistry.TryGetPreludeMethod(StandardLibraryRegistry.FilePreludeName, "appendText", out var descriptor);
+        var found = StandardLibraryRegistry.TryGetPreludeMethod(StandardLibraryRegistry.FilePreludeName, "unknown", out var descriptor);
 
         Assert.IsFalse(found);
         Assert.IsNull(descriptor);
@@ -91,11 +91,73 @@ public sealed class StandardLibraryRegistryTests
     }
 
     [TestMethod]
+    public void TryGetPreludeMethod_WriteLines_Returns_Array_Signature()
+    {
+        var found = StandardLibraryRegistry.TryGetPreludeMethod(StandardLibraryRegistry.FilePreludeName, "writeLines", out var descriptor);
+
+        Assert.IsTrue(found);
+        Assert.IsNotNull(descriptor);
+        Assert.HasCount(2, descriptor.ParameterTypes);
+        Assert.AreEqual(StdLibTypeDescriptor.String(), descriptor.ParameterTypes[0]);
+        Assert.AreEqual(StdLibTypeDescriptor.Array(), descriptor.ParameterTypes[1]);
+        Assert.AreEqual(StdLibTypeDescriptor.Undefined(), descriptor.ReturnType);
+    }
+
+    [TestMethod]
     public void TryGetArrayMethod_UnknownMethod_Returns_False()
     {
         var found = StandardLibraryRegistry.TryGetArrayMethod("map", out var descriptor);
 
         Assert.IsFalse(found);
         Assert.IsNull(descriptor);
+    }
+
+    [TestMethod]
+    public void TrGetPreludeMethod_ReadLines_Returns_Array_Signature()
+    {
+        var found = StandardLibraryRegistry.TryGetPreludeMethod(StandardLibraryRegistry.FilePreludeName, "readLines", out var descriptor);
+
+        Assert.IsTrue(found);
+        Assert.IsNotNull(descriptor);
+        Assert.HasCount(1, descriptor.ParameterTypes);
+        Assert.AreEqual(StdLibTypeDescriptor.String(), descriptor.ParameterTypes[0]);
+        Assert.AreEqual(StdLibTypeDescriptor.Array(), descriptor.ReturnType);
+    }
+
+    [TestMethod]
+    public void TrGetPreludeMethod_AppendText_Returns_Two_String_Parameters()
+    {
+        var found = StandardLibraryRegistry.TryGetPreludeMethod(StandardLibraryRegistry.FilePreludeName, "appendText", out var descriptor);
+
+        Assert.IsTrue(found);
+        Assert.IsNotNull(descriptor);
+        Assert.HasCount(2, descriptor.ParameterTypes);
+        Assert.AreEqual(StdLibTypeDescriptor.String(), descriptor.ParameterTypes[0]);
+        Assert.AreEqual(StdLibTypeDescriptor.String(), descriptor.ParameterTypes[1]);
+        Assert.AreEqual(StdLibTypeDescriptor.Undefined(), descriptor.ReturnType);
+    }
+
+    [TestMethod]
+    public void TrGetPreludeMethod_Create()
+    {
+        var found = StandardLibraryRegistry.TryGetPreludeMethod(StandardLibraryRegistry.FilePreludeName, "create", out var descriptor);
+
+        Assert.IsTrue(found);
+        Assert.IsNotNull(descriptor);
+        Assert.HasCount(1, descriptor.ParameterTypes);
+        Assert.AreEqual(StdLibTypeDescriptor.String(), descriptor.ParameterTypes[0]);
+        Assert.AreEqual(StdLibTypeDescriptor.Undefined(), descriptor.ReturnType);
+    }
+
+    [TestMethod]
+    public void TrGetPreludeMethod_Delete()
+    {
+        var found = StandardLibraryRegistry.TryGetPreludeMethod(StandardLibraryRegistry.FilePreludeName, "delete", out var descriptor);
+
+        Assert.IsTrue(found);
+        Assert.IsNotNull(descriptor);
+        Assert.HasCount(1, descriptor.ParameterTypes);
+        Assert.AreEqual(StdLibTypeDescriptor.String(), descriptor.ParameterTypes[0]);
+        Assert.AreEqual(StdLibTypeDescriptor.Undefined(), descriptor.ReturnType);
     }
 }

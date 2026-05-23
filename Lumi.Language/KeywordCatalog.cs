@@ -13,7 +13,7 @@ public static class KeywordCatalog
         "let", "const", "var", "fn", "if", "else", "return", "async", "await", "yield",
         "import", "export", "new", "class", "extends", "static", "get", "set",
         "try", "catch", "finally", "throw", "break", "continue", "switch", "case",
-        "default", "for", "while", "do", "in", "of", "with", "delete",
+        "default", "for", "while", "do", "in", "of", "with",
         "instanceof", "typeof", "void", "debugger", "enum", "interface", "package",
         "private", "protected", "public", "implements", "abstract", "bool", "byte",
         "char", "double", "final", "float", "goto", "int", "long", "str",

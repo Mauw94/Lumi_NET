@@ -23,22 +23,43 @@ public static class StandardLibraryRegistry
     // NOTE: type descriptors for array methods are a bit tricky since they depend on the type of the array elements, which is not known at compile time.
     // For simplicity, we can use a placeholder type descriptor (e.g. "Unknown") for the element type in the method signatures,
     // and the VM can handle the actual types at runtime.
+
+    /// <summary>
+    /// Provides a mapping of standard array method names to their corresponding type descriptors for use in the
+    /// standard library.
+    /// </summary>
+    /// <remarks><see cref="Dictionary{TKey, TValue}"/>Dictionary&lt;string, StdLibMethodDescriptor&gt; 
+    /// TKey: Method name (e.g. "add", "remove", "length", "contains")
+    /// TValue: StdLibMethodDescriptor containing parameter types and return type for the method.
+    /// </remarks>
     private static readonly Dictionary<string, StdLibMethodDescriptor> ArrayMethods
         = new(StringComparer.Ordinal)
         {
-            ["add"] = new([StdLibTypeDescriptor.Unknown()], StdLibTypeDescriptor.Array()),
-            ["remove"] = new([StdLibTypeDescriptor.Unknown()], StdLibTypeDescriptor.Boolean()),
-            ["length"] = new([], StdLibTypeDescriptor.Int()),
-            ["contains"] = new([StdLibTypeDescriptor.Unknown()], StdLibTypeDescriptor.Boolean())
+            [StdLibConstants.ArrayMethods.Add] = new([StdLibTypeDescriptor.Unknown()], StdLibTypeDescriptor.Array()),
+            [StdLibConstants.ArrayMethods.Remove] = new([StdLibTypeDescriptor.Unknown()], StdLibTypeDescriptor.Boolean()),
+            [StdLibConstants.ArrayMethods.Length] = new([], StdLibTypeDescriptor.Int()),
+            [StdLibConstants.ArrayMethods.Contains] = new([StdLibTypeDescriptor.Unknown()], StdLibTypeDescriptor.Boolean())
         };
 
+    /// <summary>
+    /// Provides a mapping of prelude names to their corresponding standard library method descriptors.
+    /// </summary>
+    /// <remarks><see cref="Dictionary{TKey, TValue}"/>
+    /// TKey: Prelude name 
+    /// TValue: Dictionary of method names to descriptors.
+    /// Descriptors: list of parameter types and return type for each method.</remarks>
     private static readonly Dictionary<string, IReadOnlyDictionary<string, StdLibMethodDescriptor>> PreludeMethods
         = new(StringComparer.Ordinal)
         {
             [FilePreludeName] = new Dictionary<string, StdLibMethodDescriptor>(StringComparer.Ordinal)
             {
-                ["readText"] = new([StdLibTypeDescriptor.String()], StdLibTypeDescriptor.String()),
-                ["writeText"] = new([StdLibTypeDescriptor.String(), StdLibTypeDescriptor.String()], StdLibTypeDescriptor.Undefined())
+                [StdLibConstants.FilePreludeMethods.ReadText] = new([StdLibTypeDescriptor.String()], StdLibTypeDescriptor.String()),
+                [StdLibConstants.FilePreludeMethods.WriteText] = new([StdLibTypeDescriptor.String(), StdLibTypeDescriptor.String()], StdLibTypeDescriptor.Undefined()),
+                [StdLibConstants.FilePreludeMethods.AppendText] = new([StdLibTypeDescriptor.String(), StdLibTypeDescriptor.String()], StdLibTypeDescriptor.Undefined()),
+                [StdLibConstants.FilePreludeMethods.ReadLines] = new([StdLibTypeDescriptor.String()], StdLibTypeDescriptor.Array()),
+                [StdLibConstants.FilePreludeMethods.WriteLines] = new([StdLibTypeDescriptor.String(), StdLibTypeDescriptor.Array()], StdLibTypeDescriptor.Undefined()),
+                [StdLibConstants.FilePreludeMethods.Create] = new([StdLibTypeDescriptor.String()], StdLibTypeDescriptor.Undefined()),
+                [StdLibConstants.FilePreludeMethods.Delete] = new([StdLibTypeDescriptor.String()], StdLibTypeDescriptor.Undefined()),
             }
         };
 

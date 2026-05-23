@@ -1,0 +1,31 @@
+struct Point {
+    x: int;
+    y: int;
+
+    fn move(dx, dy) {
+        this.x = this.x + dx;
+        this.y = this.y + dy;
+    }
+}
+
+let points: list -> [];
+
+for i in 0 to 99 step 1 {
+    points.add(new Point(x: i, y: i));
+}
+
+for i in 0 to points.length() - 1 {
+    let p: Point -> points[i];
+    p.move(1, 1);
+    File.appendText("point.txt", "xoxo");
+}
+
+for i in points.length() - 1 to 0 step -1 {
+    points.remove(points[i]);
+}
+
+let content -> File.readLines("point.txt");
+
+for i in 0 to content.length() - 1 {
+    print content[i];
+}
