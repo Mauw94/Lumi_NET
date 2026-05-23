@@ -89,9 +89,8 @@ internal static class NativeMemberDispatcher
     private static Value Create(IReadOnlyList<Value> args)
     {
         var path = GetRequiredStringArgument(StdLibConstants.FilePreludeMethods.Create, 0, args[0]);
-        var fileStream = File.Create(path);
-        fileStream.Close(); // Not sure. Only create here and then just close?
-        
+        using var fileStream = File.Create(path);
+
         return Value.Undefined();
     }
 
