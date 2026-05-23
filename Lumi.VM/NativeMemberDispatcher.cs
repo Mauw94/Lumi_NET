@@ -59,11 +59,13 @@ internal static class NativeMemberDispatcher
         {
             return methodName switch
             {
-                StdLibConstants.FilePreludeMethods.ReadText => Value.FromString(File.ReadAllText(GetRequiredStringArgument(methodName, 0, args[0]))),
+                StdLibConstants.FilePreludeMethods.ReadText => Value.FromString(ReadAllText(methodName, args)),
                 StdLibConstants.FilePreludeMethods.WriteText => WriteText(args),
                 StdLibConstants.FilePreludeMethods.AppendText => AppendText(args),
                 StdLibConstants.FilePreludeMethods.ReadLines => Value.FromArray(ReadLines(methodName, args)),
                 StdLibConstants.FilePreludeMethods.WriteLines => WriteLines(args),
+                StdLibConstants.FilePreludeMethods.Delete => Delete(args),
+                StdLibConstants.FilePreludeMethods.Create => Create(args),
                 _ => throw VirtualMachineError.UnknownPreludeMethod(StandardLibraryRegistry.FilePreludeName, methodName)
             };
         }
@@ -71,6 +73,26 @@ internal static class NativeMemberDispatcher
         {
             throw VirtualMachineError.PreludeMethodIoFailure(StandardLibraryRegistry.FilePreludeName, methodName, ex);
         }
+    }
+
+    private static string ReadAllText(string methodName, IReadOnlyList<Value> args)
+        => File.ReadAllText(GetRequiredStringArgument(methodName, 0, args[0]));
+
+    private static Value Delete(IReadOnlyList<Value> args)
+    {
+        var path = GetRequiredStringArgument(StdLibConstants.FilePreludeMethods.Delete, 0, args[0]);
+        File.Delete(path);
+
+        return Value.Undefined();
+    }
+
+    private static Value Create(IReadOnlyList<Value> args)
+    {
+        var path = GetRequiredStringArgument(StdLibConstants.FilePreludeMethods.Create, 0, args[0]);
+        var fileStream = File.Create(path);
+        fileStream.Close(); // Not sure. Only create here and then just close?
+        
+        return Value.Undefined();
     }
 
     private static Value AppendText(IReadOnlyList<Value> args)

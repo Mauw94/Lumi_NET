@@ -12,6 +12,8 @@ public static class StdLibConstants
 
     public static class FilePreludeMethods
     {
+        public const string Create = "create";
+        public const string Delete = "delete";
         public const string ReadText = "readText";
         public const string WriteText = "writeText";
         public const string AppendText = "appendText";

@@ -57,7 +57,9 @@ public static class StandardLibraryRegistry
                 [StdLibConstants.FilePreludeMethods.WriteText] = new([StdLibTypeDescriptor.String(), StdLibTypeDescriptor.String()], StdLibTypeDescriptor.Undefined()),
                 [StdLibConstants.FilePreludeMethods.AppendText] = new([StdLibTypeDescriptor.String(), StdLibTypeDescriptor.String()], StdLibTypeDescriptor.Undefined()),
                 [StdLibConstants.FilePreludeMethods.ReadLines] = new([StdLibTypeDescriptor.String()], StdLibTypeDescriptor.Array()),
-                [StdLibConstants.FilePreludeMethods.WriteLines] = new([StdLibTypeDescriptor.String(), StdLibTypeDescriptor.Array()], StdLibTypeDescriptor.Undefined())
+                [StdLibConstants.FilePreludeMethods.WriteLines] = new([StdLibTypeDescriptor.String(), StdLibTypeDescriptor.Array()], StdLibTypeDescriptor.Undefined()),
+                [StdLibConstants.FilePreludeMethods.Create] = new([StdLibTypeDescriptor.String()], StdLibTypeDescriptor.Undefined()),
+                [StdLibConstants.FilePreludeMethods.Delete] = new([StdLibTypeDescriptor.String()], StdLibTypeDescriptor.Undefined()),
             }
         };
 

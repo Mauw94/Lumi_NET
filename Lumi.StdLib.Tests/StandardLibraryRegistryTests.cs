@@ -136,4 +136,28 @@ public sealed class StandardLibraryRegistryTests
         Assert.AreEqual(StdLibTypeDescriptor.String(), descriptor.ParameterTypes[1]);
         Assert.AreEqual(StdLibTypeDescriptor.Undefined(), descriptor.ReturnType);
     }
+
+    [TestMethod]
+    public void TrGetPreludeMethod_Create()
+    {
+        var found = StandardLibraryRegistry.TryGetPreludeMethod(StandardLibraryRegistry.FilePreludeName, "create", out var descriptor);
+
+        Assert.IsTrue(found);
+        Assert.IsNotNull(descriptor);
+        Assert.HasCount(1, descriptor.ParameterTypes);
+        Assert.AreEqual(StdLibTypeDescriptor.String(), descriptor.ParameterTypes[0]);
+        Assert.AreEqual(StdLibTypeDescriptor.Undefined(), descriptor.ReturnType);
+    }
+
+    [TestMethod]
+    public void TrGetPreludeMethod_Delete()
+    {
+        var found = StandardLibraryRegistry.TryGetPreludeMethod(StandardLibraryRegistry.FilePreludeName, "delete", out var descriptor);
+
+        Assert.IsTrue(found);
+        Assert.IsNotNull(descriptor);
+        Assert.HasCount(1, descriptor.ParameterTypes);
+        Assert.AreEqual(StdLibTypeDescriptor.String(), descriptor.ParameterTypes[0]);
+        Assert.AreEqual(StdLibTypeDescriptor.Undefined(), descriptor.ReturnType);
+    }
 }
