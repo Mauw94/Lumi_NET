@@ -121,8 +121,9 @@ public static class SourceStrings
                 File.appendText("point.txt", "xoxo");
             }
 
-            for i in 0 to points.length() - 1 step 1 {
-                points.remove(i);
+            let pointCount -> points.length();
+            for i in 0 to pointCount - 1 step 1 {
+                points.remove(points[0]);
             }
 
             let content -> File.readLines("point.txt");
