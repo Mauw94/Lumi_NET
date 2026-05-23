@@ -23,6 +23,15 @@ public static class StandardLibraryRegistry
     // NOTE: type descriptors for array methods are a bit tricky since they depend on the type of the array elements, which is not known at compile time.
     // For simplicity, we can use a placeholder type descriptor (e.g. "Unknown") for the element type in the method signatures,
     // and the VM can handle the actual types at runtime.
+
+    /// <summary>
+    /// Provides a mapping of standard array method names to their corresponding type descriptors for use in the
+    /// standard library.
+    /// </summary>
+    /// <remarks><see cref="Dictionary{TKey, TValue}"/>Dictionary<string, StdLibMethodDescriptor> 
+    /// TKey: Method name (e.g. "add", "remove", "length", "contains")
+    /// TValue: StdLibMethodDescriptor containing parameter types and return type for the method.
+    /// </remarks>
     private static readonly Dictionary<string, StdLibMethodDescriptor> ArrayMethods
         = new(StringComparer.Ordinal)
         {
@@ -35,9 +44,10 @@ public static class StandardLibraryRegistry
     /// <summary>
     /// Provides a mapping of prelude names to their corresponding standard library method descriptors.
     /// </summary>
-    /// <remarks>The dictionary uses case-sensitive string comparison for both the prelude and method names.
-    /// This collection is intended for internal use to look up available standard library methods by prelude
-    /// context.</remarks>
+    /// <remarks><see cref="Dictionary{TKey, TValue}"/>Dictionary<string, IReadOnlyDictionary<string, StdLibMethodDescriptor>> 
+    /// TKey: Prelude name 
+    /// TValue: Dictionary of method names to descriptors.
+    /// Descriptors: list of parameter types and return type for each method.</remarks>
     private static readonly Dictionary<string, IReadOnlyDictionary<string, StdLibMethodDescriptor>> PreludeMethods
         = new(StringComparer.Ordinal)
         {
