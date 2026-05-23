@@ -44,7 +44,7 @@ public static class StandardLibraryRegistry
     /// <summary>
     /// Provides a mapping of prelude names to their corresponding standard library method descriptors.
     /// </summary>
-    /// <remarks><see cref="Dictionary{TKey, TValue}"/>Dictionary<string, IReadOnlyDictionary<string, StdLibMethodDescriptor>> 
+    /// <remarks><see cref="Dictionary{TKey, TValue}"/>
     /// TKey: Prelude name 
     /// TValue: Dictionary of method names to descriptors.
     /// Descriptors: list of parameter types and return type for each method.</remarks>
