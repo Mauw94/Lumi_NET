@@ -29,10 +29,10 @@ internal static class NativeMemberDispatcher
 
         return methodName switch
         {
-            "add" => AddArrayItem(target, args[0]),
-            "remove" => RemoveArrayItem(target, args[0]),
-            "length" => Value.FromNumber(target.Array.Count),
-            "contains" => Value.FromBoolean(target.Array.Contains(args[0])),
+            StdLibConstants.ArrayMethods.Add => AddArrayItem(target, args[0]),
+            StdLibConstants.ArrayMethods.Remove => RemoveArrayItem(target, args[0]),
+            StdLibConstants.ArrayMethods.Length => Value.FromNumber(target.Array.Count),
+            StdLibConstants.ArrayMethods.Contains => Value.FromBoolean(target.Array.Contains(args[0])),
             _ => throw VirtualMachineError.UnknownListMethod(methodName)
         };
     }
@@ -59,8 +59,11 @@ internal static class NativeMemberDispatcher
         {
             return methodName switch
             {
-                "readText" => Value.FromString(File.ReadAllText(GetRequiredStringArgument(methodName, 0, args[0]))),
-                "writeText" => WriteText(args),
+                StdLibConstants.FilePreludeMethods.ReadText => Value.FromString(File.ReadAllText(GetRequiredStringArgument(methodName, 0, args[0]))),
+                StdLibConstants.FilePreludeMethods.WriteText => WriteText(args),
+                StdLibConstants.FilePreludeMethods.AppendText => AppendText(args),
+                StdLibConstants.FilePreludeMethods.ReadLines => Value.FromArray(ReadLines(methodName, args)),
+                StdLibConstants.FilePreludeMethods.WriteLines => WriteLines(args),
                 _ => throw VirtualMachineError.UnknownPreludeMethod(StandardLibraryRegistry.FilePreludeName, methodName)
             };
         }
@@ -70,22 +73,42 @@ internal static class NativeMemberDispatcher
         }
     }
 
+    private static Value AppendText(IReadOnlyList<Value> args)
+    {
+        var path = GetRequiredStringArgument(StdLibConstants.FilePreludeMethods.AppendText, 0, args[0]);
+        var contents = GetRequiredStringArgument(StdLibConstants.FilePreludeMethods.AppendText, 1, args[1]);
+        File.AppendAllText(path, contents);
+
+        return Value.Undefined();
+    }
+
+    private static Value WriteLines(IReadOnlyList<Value> args)
+    {
+        var path = GetRequiredStringArgument(StdLibConstants.FilePreludeMethods.WriteLines, 0, args[0]);
+        var contents = GetRequiredStringArgument(StdLibConstants.FilePreludeMethods.WriteLines, 1, args[1]);
+        File.WriteAllLines(path, contents.Split(Environment.NewLine));
+
+        return Value.Undefined();
+    }
+
     private static Value AddArrayItem(Value target, Value item)
     {
         target.Array!.Add(item);
+
         return target;
     }
 
     private static Value RemoveArrayItem(Value target, Value item)
     {
         var removed = target.Array!.Remove(item);
+
         return Value.FromBoolean(removed);
     }
 
     private static Value WriteText(IReadOnlyList<Value> args)
     {
-        var path = GetRequiredStringArgument("writeText", 0, args[0]);
-        var contents = GetRequiredStringArgument("writeText", 1, args[1]);
+        var path = GetRequiredStringArgument(StdLibConstants.FilePreludeMethods.WriteText, 0, args[0]);
+        var contents = GetRequiredStringArgument(StdLibConstants.FilePreludeMethods.WriteText, 1, args[1]);
         File.WriteAllText(path, contents);
 
         return Value.Undefined();
@@ -103,5 +126,18 @@ internal static class NativeMemberDispatcher
     {
         if (expected != actual)
             throw VirtualMachineError.MethodArgumentCountMismatch(methodName, expected, actual);
+    }
+
+    private static List<Value> ReadLines(string methodName, IReadOnlyList<Value> args)
+    {
+        var lines = File.ReadAllLines(GetRequiredStringArgument(methodName, 0, args[0]));
+        var values = new List<Value>(lines.Length);
+
+        foreach (var line in lines)
+        {
+            values.Add(Value.FromString(line));
+        }
+
+        return values;
     }
 }

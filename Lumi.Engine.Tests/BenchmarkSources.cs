@@ -82,4 +82,50 @@ public static class SourceStrings
             }
 
             """;
+
+    public const string ArrayMethodsWorkloadSource = """
+            let arr: list -> [];
+
+            for i in 0 to 99 step 1 {
+                arr.add(i);
+            }
+
+            for i in 0 to 99 step 1 {
+                arr.contains(i);
+            }
+            for i in 0 to 99 step 1 {
+                arr.remove(i);
+            }
+            """;
+
+    public const string MixedWorkloadSource = """
+            struct Point {
+                x: int;
+                y: int;
+
+                fn move(dx, dy) {
+                    this.x = this.x + dx;
+                    this.y = this.y + dy;
+                }
+            }
+
+            let points: list -> [];
+
+            for i in 0 to 99 step 1 {
+                points.add(new Point(x: i, y: i));
+            }
+
+            for i in 0 to points.length() - 1 {
+                let p: Point -> points[i];
+                p.move(1, 1);
+                File.appendText("point.txt", "xoxo");
+            }
+
+            for i in 0 to points.length() - 1 step 1 {
+                points.remove(i);
+            }
+
+            let content -> File.readLines("point.txt");
+            // print content;
+            """;
 }

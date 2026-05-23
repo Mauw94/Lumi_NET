@@ -34,6 +34,30 @@ public sealed class BenchmarkTests
     }
 
     [TestMethod]
+    public void Test_Array_Methods_Workload()
+    {
+        // Arrange
+        var source = SourceStrings.ArrayMethodsWorkloadSource;
+
+        // Act + Benchmark
+        const int iterations = 1000;
+        Warmup(source);
+        CollectBenchmarkData(iterations, source);
+    }
+
+    [TestMethod]
+    public void Test_Mixed_Workload()
+    {
+        // Arrange
+        var source = SourceStrings.MixedWorkloadSource;
+
+        // Act + Benchmark
+        const int iterations = 100;
+        Warmup(source);
+        CollectBenchmarkData(iterations, source);
+    }
+
+    [TestMethod]
     public void Test_Simple_Binary_Operation()
     {
         // Arrange

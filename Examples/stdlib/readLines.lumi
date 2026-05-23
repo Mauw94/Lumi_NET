@@ -1,0 +1,9 @@
+let text -> "line1\nline2\nline3";
+
+File.writeText("test.txt", text);
+
+let lines -> File.readLines("test.txt");
+
+for i in 0 to lines.length() - 1 {
+    print lines[i];
+}
