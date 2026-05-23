@@ -106,9 +106,22 @@ internal static class NativeMemberDispatcher
     private static Value WriteLines(IReadOnlyList<Value> args)
     {
         var path = GetRequiredStringArgument(StdLibConstants.FilePreludeMethods.WriteLines, 0, args[0]);
-        var contents = GetRequiredStringArgument(StdLibConstants.FilePreludeMethods.WriteLines, 1, args[1]);
-        File.WriteAllLines(path, contents.Split(Environment.NewLine));
+        var linesValue = args[1];
 
+        if (linesValue.Kind != ValueKind.Array || linesValue.Array is null)
+            throw VirtualMachineError.MethodArgumentTypeMismatch(StdLibConstants.FilePreludeMethods.WriteLines, 1, ValueKind.Array, linesValue.Kind);
+
+        var lines = new string[linesValue.Array.Count];
+        for (var i = 0; i < linesValue.Array.Count; i++)
+        {
+            var element = linesValue.Array[i];
+            if (element.Kind != ValueKind.String || element.String is null)
+                throw VirtualMachineError.MethodArgumentTypeMismatch(StdLibConstants.FilePreludeMethods.WriteLines, 1, ValueKind.String, element.Kind);
+
+            lines[i] = element.String;
+        }
+
+        File.WriteAllLines(path, lines);
         return Value.Undefined();
     }
 
