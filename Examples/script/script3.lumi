@@ -20,8 +20,8 @@ for i in 0 to points.length() - 1 {
     File.appendText("point.txt", "xoxo");
 }
 
-for i in 0 to points.length() - 1 step 1 {
-    points.remove(i);
+for i in points.length() - 1 to 0 step -1 {
+    points.remove(points[i]);
 }
 
 let content -> File.readLines("point.txt");
