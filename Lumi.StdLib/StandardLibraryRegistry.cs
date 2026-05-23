@@ -28,7 +28,7 @@ public static class StandardLibraryRegistry
     /// Provides a mapping of standard array method names to their corresponding type descriptors for use in the
     /// standard library.
     /// </summary>
-    /// <remarks><see cref="Dictionary{TKey, TValue}"/>Dictionary<string, StdLibMethodDescriptor> 
+    /// <remarks><see cref="Dictionary{TKey, TValue}"/>Dictionary&lt;string, StdLibMethodDescriptor&gt; 
     /// TKey: Method name (e.g. "add", "remove", "length", "contains")
     /// TValue: StdLibMethodDescriptor containing parameter types and return type for the method.
     /// </remarks>
