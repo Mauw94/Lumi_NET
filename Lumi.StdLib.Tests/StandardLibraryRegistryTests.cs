@@ -61,7 +61,7 @@ public sealed class StandardLibraryRegistryTests
     [TestMethod]
     public void TryGetPreludeMethod_UnknownMethod_Returns_False()
     {
-        var found = StandardLibraryRegistry.TryGetPreludeMethod(StandardLibraryRegistry.FilePreludeName, "unkown", out var descriptor);
+        var found = StandardLibraryRegistry.TryGetPreludeMethod(StandardLibraryRegistry.FilePreludeName, "unknown", out var descriptor);
 
         Assert.IsFalse(found);
         Assert.IsNull(descriptor);
