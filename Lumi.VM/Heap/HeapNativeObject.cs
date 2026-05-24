@@ -6,15 +6,15 @@ internal sealed class HeapNativeObject : HeapObject
     {
         NativeObjectName = nativeObjectName;
         Fields = fields;
-        Kind = ValueKind.NativeObject;
     }
 
     public string NativeObjectName { get; }
     public Dictionary<string, Value> Fields { get; }
+    public override ValueKind Kind => ValueKind.NativeObject;
 
     public override string PrintValue() => $"<{NativeObjectName ?? "native"}>";
 
-    protected override void VisitReferences(Action<int> visitHandle, Action<Value> visitValue)
+    internal override void VisitReferences(Action<Value> visitValue)
     {
         foreach (var field in Fields.Values)
         {

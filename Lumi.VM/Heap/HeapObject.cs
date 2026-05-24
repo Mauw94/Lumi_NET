@@ -3,9 +3,8 @@
 abstract class HeapObject()
 {
     public bool IsMarked { get; set; }
-    public bool IsAllocated { get; set; } = false;
-    public ValueKind Kind;
-    public int SizeEstimate { get; set; }
+    public abstract ValueKind Kind { get; }
+
+    internal abstract void VisitReferences(Action<Value> visitValue);
     public abstract string PrintValue();
-    protected abstract void VisitReferences(Action<int> visitHandle, Action<Value> visitValue);
 }

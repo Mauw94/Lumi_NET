@@ -6,7 +6,9 @@ internal sealed class HeapStringObject(string value) : HeapObject
 
     public override string PrintValue() => $"\"{Value}\"";
 
-    protected override void VisitReferences(Action<int> visitHandle, Action<Value> visitValue)
+    public override ValueKind Kind => ValueKind.String;
+
+    internal override void VisitReferences(Action<Value> visitValue)
     {
         // No references to visit for a string object.
     }

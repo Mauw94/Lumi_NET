@@ -7,7 +7,6 @@ internal sealed class Heap
 {
     private readonly HeapObject[] _slots = [];
     private readonly Stack<int> _freeSlots = [];
-    private int _nextSlot = 0;
 
     public Heap(int capacity = 1024)
     {
@@ -34,22 +33,10 @@ internal sealed class Heap
             throw HeapError.OutOfMemory();
         }
 
+        heapObject.IsMarked = false;
         _slots[slot] = heapObject;
 
         return new HeapHandle(slot);
-    }
-
-    /// <summary>
-    /// Deallocates the object associated with the specified handle from the heap, making its slot available for future allocations.
-    /// </summary>
-    /// <param name="handle">The handle of the object to deallocate.</param>
-    public void Deallocate(HeapHandle handle)
-    {
-        if (_slots[handle.HandleId].IsAllocated)
-        {
-            _slots[handle.HandleId] = null!;
-            _freeSlots.Push(handle.HandleId);
-        }
     }
 
     /// <summary>
@@ -57,65 +44,99 @@ internal sealed class Heap
     /// </summary>
     /// <param name="handle">The handle of the object to retrieve.</param>
     /// <returns>The heap-allocated object associated with the specified handle.</returns>
-    public HeapObject Get(HeapHandle handle) => _slots[handle.HandleId] ?? throw HeapError.DanglingReference();
-
-    public void MaybeCollect(int requestedCapacity)
+    public T Get<T>(HeapHandle handle) where T : HeapObject
     {
-        if (_slots.Length >= requestedCapacity)
+        var obj = Get(handle);
+        return obj as T ?? throw HeapError.DanglingReference();
+    }
+
+    private HeapObject Get(HeapHandle handle) => _slots[handle.HandleId];
+
+    /// <summary>
+    /// Attempts to ensure that the specified number of free slots are available by performing garbage collection if
+    /// necessary.  
+    /// </summary>
+    /// <remarks>If the required number of free slots cannot be made available after garbage collection, an
+    /// out-of-memory error is thrown.</remarks>
+    /// <param name="roots">A collection of root values that are used to determine which objects are reachable during garbage collection.</param>
+    /// <param name="requestSlots">The minimum number of free slots required after garbage collection. Must be greater than zero. The default is 1.</param>
+    public void MaybeCollect(IEnumerable<Value> roots, int requestSlots = 1)
+    {
+        if (_freeSlots.Count >= requestSlots)
         {
-            CollectGarbage();
+            return;
+        }
+
+        CollectGarbage(roots);
+
+        if (_freeSlots.Count < requestSlots)
+        {
+            throw HeapError.OutOfMemory();
         }
     }
 
-    int AllocateString(string text)
+    /// <summary>
+    /// Performs a garbage collection cycle using the specified root values as entry points.
+    /// </summary>
+    /// <remarks>Use this method to manually trigger garbage collection when managing memory for custom value
+    /// objects. Only objects reachable from the provided roots will be preserved; all others are eligible for
+    /// collection.</remarks>
+    /// <param name="roots">A collection of root values from which object reachability is determined. Cannot be null.</param>
+    public void CollectGarbage(IEnumerable<Value> roots)
     {
-        throw new NotImplementedException();
+        MarkRoots(roots);
+        Sweep();
     }
 
-    bool TryGetInternedString(string text, out HeapHandle handle)
+    public int FreeCount => _freeSlots.Count;
+
+    public string FormatValue(Value value)
     {
-        throw new NotImplementedException();
+        if (value.IsHeapAllocated()) return Get(value.GetRequiredHeapHandle()).PrintValue();
+
+        return value.PrintValue();
     }
 
     void MarkRoots(IEnumerable<Value> roots)
     {
-        throw new NotImplementedException();
+        foreach (var root in roots)
+        {
+            MarkValue(root);
+        }
     }
 
     void MarkValue(Value value)
     {
         if (value.IsHeapAllocated())
         {
-            MarkReachable(value.GetRequiredHeapHandle());
+            MarkObject(value.GetRequiredHeapHandle());
         }
     }
 
     void MarkObject(HeapHandle handle)
     {
-        throw new NotImplementedException();
+        var obj = _slots[handle.HandleId];
+        if (obj is null || obj.IsMarked) return;
+
+        obj.IsMarked = true;
+        obj.VisitReferences(MarkValue);
     }
 
     void Sweep()
     {
-        throw new NotImplementedException();
-
-    }
-
-    public void MarkReachable(HeapHandle handle)
-    {
-
-    }
-
-    public bool IsReachable(HeapHandle handle)
-    {
-        return false;
-    }
-
-    // TODO: move to garbage collector class
-    public void CollectGarbage()
-    {
-        foreach (var obj in _slots)
+        for (var i = 0; i < _slots.Length; i++)
         {
+            var obj = _slots[i];
+            if (obj is null) continue;
+
+            if (obj.IsMarked)
+            {
+                obj.IsMarked = false;
+                continue;
+            }
+
+            _slots[i] = null!;
+            _freeSlots.Push(i);
         }
     }
 }
