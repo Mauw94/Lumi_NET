@@ -1,0 +1,12 @@
+let a -> [1, 2, 3];
+
+struct Container {
+    items: list;
+
+    fn printItems() {
+        print this.items;
+    }
+}
+
+let c -> new Container(items: a);
+c.printItems();

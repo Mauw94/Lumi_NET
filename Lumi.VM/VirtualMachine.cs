@@ -22,7 +22,7 @@ public sealed class VirtualMachine
     private int _variableCount;
 
     // Heap for dynamically allocated objects (arrays, structs, strings, etc.).
-    private readonly Heap.Heap _heap = new();
+    private readonly Heap.HeapManager _heap = new();
 
     private readonly Stack<CallFrame> _callStack = [];
     private IReadOnlyDictionary<string, int> _functionAddresses = new Dictionary<string, int>();

@@ -1,7 +1,30 @@
-let a: list -> [1,2,3];
-let b: list -> [];
-b = a;
-b.add(5);
-
-print a;
-print b;
+struct Point {
+    x: int;
+    y: int;
+ 
+    fn move(dx, dy) {
+        this.x = this.x + dx;
+        this.y = this.y + dy;
+    }
+ }
+ 
+ let points: list -> [];
+ 
+ for i in 0 to 499 step 1 {
+     points.add(new Point(x: i, y: i));
+ }
+ 
+ for pass in 0 to 9 step 1 {
+     for i in 0 to points.length() - 1 step 1 {
+         let p: Point -> points[i];
+         p.move(1, 1);
+     }
+ }
+ 
+ let checksum -> 0;
+ for i in 0 to points.length() - 1 step 1 {
+     let p: Point -> points[i];
+     checksum = checksum + p.x + p.y;
+ }
+ 
+ print checksum;

@@ -8,7 +8,7 @@ namespace Lumi.VM;
 /// </summary>
 internal static class NativeMemberDispatcher
 {
-    public static Value Invoke(Heap.Heap heap, HeapObject target, string methodName, IReadOnlyList<Value> args)
+    public static Value Invoke(Heap.HeapManager heap, HeapObject target, string methodName, IReadOnlyList<Value> args)
     {
         return target.Kind switch
         {
@@ -38,7 +38,7 @@ internal static class NativeMemberDispatcher
         };
     }
 
-    private static Value InvokePreludeMethod(Heap.Heap heap, HeapNativeObject target, string methodName, IReadOnlyList<Value> args)
+    private static Value InvokePreludeMethod(Heap.HeapManager heap, HeapNativeObject target, string methodName, IReadOnlyList<Value> args)
     {
         var preludeName = target.NativeObjectName ?? throw VirtualMachineError.UnknownPreludeGlobal("<unknown>");
 
@@ -54,7 +54,7 @@ internal static class NativeMemberDispatcher
         };
     }
 
-    private static Value InvokeFilePreludeMethod(Heap.Heap heap, string methodName, IReadOnlyList<Value> args)
+    private static Value InvokeFilePreludeMethod(Heap.HeapManager heap, string methodName, IReadOnlyList<Value> args)
     {
         try
         {
@@ -104,7 +104,7 @@ internal static class NativeMemberDispatcher
         return Value.Undefined();
     }
 
-    private static Value WriteLines(Heap.Heap heap, IReadOnlyList<Value> args)
+    private static Value WriteLines(Heap.HeapManager heap, IReadOnlyList<Value> args)
     {
         var path = GetRequiredStringArgument(StdLibConstants.FilePreludeMethods.WriteLines, 0, args[0]);
         var linesArray = GetRequiredArrayArgument(StdLibConstants.FilePreludeMethods.WriteLines, 1, args[1], heap);
@@ -155,7 +155,7 @@ internal static class NativeMemberDispatcher
         return value.String;
     }
 
-    private static HeapArrayObject GetRequiredArrayArgument(string methodName, int parameterIndex, Value value, Heap.Heap heap)
+    private static HeapArrayObject GetRequiredArrayArgument(string methodName, int parameterIndex, Value value, Heap.HeapManager heap)
     {
         if (!value.IsHeapAllocated())
             throw VirtualMachineError.MethodArgumentTypeMismatch(methodName, parameterIndex, ValueKind.Array, value.Kind);
@@ -173,7 +173,7 @@ internal static class NativeMemberDispatcher
             throw VirtualMachineError.MethodArgumentCountMismatch(methodName, expected, actual);
     }
 
-    private static Value ReadLines(Heap.Heap heap, IReadOnlyList<Value> args)
+    private static Value ReadLines(Heap.HeapManager heap, IReadOnlyList<Value> args)
     {
         var lines = File.ReadAllLines(GetRequiredStringArgument(StdLibConstants.FilePreludeMethods.ReadLines, 0, args[0]));
         var values = new List<Value>(lines.Length);

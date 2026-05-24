@@ -35,6 +35,7 @@
     <Project Path="Lumi.SemanticAnalyzer/Lumi.SemanticAnalyzer.csproj" />
   </Folder>
   <Folder Name="/VM/">
+    <Project Path="Lumi.VM.Heap.Tests/Lumi.VM.Heap.Tests.csproj" />
     <Project Path="Lumi.VM.Tests/Lumi.VM.Tests.csproj" Id="8ad99de0-3338-4a31-8f45-f4af1f525e68" />
     <Project Path="Lumi.VM/Lumi.VM.csproj" Id="9c4addc6-51bc-4c11-97cb-d4623b4dd17d" />
   </Folder>
