@@ -1,6 +1,7 @@
 ﻿using Lumi.Bytecode;
 using Lumi.Bytecode.Constants;
 using Lumi.Bytecode.Instructions;
+using Lumi.VM.Heap;
 namespace Lumi.VM;
 
 /// <summary>
@@ -19,6 +20,9 @@ public sealed class VirtualMachine
     // Variable storage, fixed-size with count.
     private Value[] _variables = new Value[InitialVariableCapacity];
     private int _variableCount;
+
+    // Heap for dynamically allocated objects (arrays, structs, strings, etc.).
+    private readonly Heap.Heap _heap = new();
 
     private readonly Stack<CallFrame> _callStack = [];
     private IReadOnlyDictionary<string, int> _functionAddresses = new Dictionary<string, int>();
@@ -55,7 +59,7 @@ public sealed class VirtualMachine
                     {
                         var b = _stack[--_stackTop];
                         var a = _stack[--_stackTop];
-                        
+
                         // NOTE: clean this up.
                         if (a.Kind == ValueKind.String || b.Kind == ValueKind.String)
                         {
@@ -110,6 +114,7 @@ public sealed class VirtualMachine
                     }
 
                 case InstructionKind.LoadPreludeGlobal:
+                    // TODO: move to the heap
                     _stack[_stackTop++] = Value.FromNativeObject(instruction.GetSafeStringOperand());
                     break;
 
@@ -136,7 +141,9 @@ public sealed class VirtualMachine
                             values[fields[i]] = i < args.Length ? args[i] : Value.Undefined();
                         }
 
-                        _stack[_stackTop++] = Value.FromStruct(structName, values);
+                        var heapObject = new HeapStructObject(structName, values);
+
+                        _stack[_stackTop++] = Value.FromHeapObject(_heap.Allocate(heapObject));
                         break;
                     }
 
@@ -183,22 +190,25 @@ public sealed class VirtualMachine
                             values[i] = _stack[--_stackTop];
                         }
 
-                        _stack[_stackTop++] = Value.FromArray([.. values]);
+                        var heapObject = new HeapArrayObject([.. values]);
+
+                        _stack[_stackTop++] = Value.FromHeapObject(_heap.Allocate(heapObject));
                         break;
                     }
 
                 case InstructionKind.IndexArray:
                     {
                         var index = (int)_stack[--_stackTop].Number;
-                        var array = _stack[--_stackTop];
+                        var heapHandle = _stack[--_stackTop];
 
-                        if (array.Kind != ValueKind.Array || array.Array is null)
-                            throw VirtualMachineError.IndexTargetNotArray(array.Kind);
+                        var heapObject = _heap.GetArray(heapHandle.GetRequiredHeapHandle());
+                        if (heapObject.Kind != ValueKind.Array || heapObject is null)
+                            throw VirtualMachineError.IndexTargetNotArray(heapHandle.Kind);
 
-                        if (index < 0 || index >= array.Array.Count)
-                            throw VirtualMachineError.IndexOutOfRange(index, array.Array.Count);
+                        if (index < 0 || index >= heapObject.Elements.Count)
+                            throw VirtualMachineError.IndexOutOfRange(index, heapObject.Elements.Count);
 
-                        _stack[_stackTop++] = array.Array[index];
+                        _stack[_stackTop++] = heapObject.Elements[index];
                         break;
                     }
 
@@ -314,6 +324,7 @@ public sealed class VirtualMachine
                             }
 
                             target = _stack[--_stackTop];
+                            // TODO: move native objects to the heap as well and unify this with the array case.
                             _stack[_stackTop++] = NativeMemberDispatcher.Invoke(target, methodName, args);
                             break;
                         }

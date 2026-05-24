@@ -49,19 +49,32 @@ internal sealed class VirtualMachineError(string message) : Exception(message)
 
     internal static VirtualMachineError ListMethodArgumentCountMismatch(string methodName, int expected, int actual)
         => new($"List method '{methodName}' expects {expected} argument(s) but got {actual}.");
+
     internal static VirtualMachineError MethodArgumentCountMismatch(string methodName, int expected, int actual)
         => new($"Method '{methodName}' expects {expected} argument(s) but got {actual}.");
+
     internal static VirtualMachineError UnknownPreludeGlobal(string name) => new($"Unknown prelude global: {name}.");
+
     internal static VirtualMachineError UnknownPreludeMethod(string preludeName, string methodName) => new($"Prelude global '{preludeName}' does not contain method '{methodName}'.");
+
     internal static VirtualMachineError PreludeMethodIoFailure(string preludeName, string methodName, Exception innerException)
         => new($"Prelude global '{preludeName}' method '{methodName}' failed: {innerException.Message}");
+
     internal static VirtualMachineError MethodArgumentTypeMismatch(string methodName, int parameterIndex, ValueKind expected, ValueKind actual)
         => new($"Method '{methodName}' argument {parameterIndex + 1} expects {expected} but got {actual}.");
+
     internal static VirtualMachineError UndefinedStruct(string structName) => new($"Undefined struct: {structName}.");
+
     internal static VirtualMachineError FieldAccessTargetNotStruct(ValueKind kind) => new($"Field access target must be a struct, got {kind}.");
+
     internal static VirtualMachineError UnknownStructField(string fieldName) => new($"Unknown struct field: {fieldName}.");
+
     internal static VirtualMachineError UnknownStructMethod(string structName, string methodName) => new($"Struct '{structName}' does not contain method '{methodName}'.");
+
     internal static VirtualMachineError MethodTargetNotSupported(string methodName, ValueKind kind) => new($"Method '{methodName}' is not supported on values of kind {kind}.");
+
     internal static VirtualMachineError StructConstructorArgumentCountMismatch(string structName, int maxExpected, int actual)
         => new($"Struct '{structName}' constructor accepts up to {maxExpected} argument(s) but got {actual}.");
+
+    internal static VirtualMachineError ValueNotHeapAllocated(ValueKind kind) => new($"Value of kind {kind} is not heap-allocated and does not have a valid heap handle.");
 }

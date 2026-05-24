@@ -1,4 +1,5 @@
 ﻿using Lumi.Bytecode.Constants;
+using Lumi.VM.Heap;
 
 namespace Lumi.VM;
 
@@ -19,6 +20,7 @@ internal readonly struct Value
     public Dictionary<string, Value>? Struct { get; }
     public string? StructName { get; }
     public string? NativeObjectName { get; }
+    public HeapHandle? HeapHandle { get; }
 
     private Value(
         ValueKind kind,
@@ -28,7 +30,8 @@ internal readonly struct Value
         List<Value>? array = null,
         Dictionary<string, Value>? structValue = null,
         string? structName = null,
-        string? nativeObjectName = null)
+        string? nativeObjectName = null,
+        HeapHandle? heapHandle = null)
     {
         Kind = kind;
         Number = number;
@@ -38,20 +41,27 @@ internal readonly struct Value
         Struct = structValue;
         StructName = structName;
         NativeObjectName = nativeObjectName;
+        HeapHandle = heapHandle;
     }
 
     public static Value FromNumber(double n) => new(ValueKind.Number, number: n);
     public static Value FromString(string s) => new(ValueKind.String, str: s);
     public static Value FromBoolean(bool b) => new(ValueKind.Boolean, b: b);
+    // TODO: remove fromarray, fromstruct, fromnativeobject and just heap allocate
+    // fromstring later
     public static Value FromArray(List<Value> values) => new(ValueKind.Array, array: values);
     public static Value FromStruct(string structName, Dictionary<string, Value> fields) => new(ValueKind.Struct, structValue: fields, structName: structName);
     public static Value FromNativeObject(string name) => new(ValueKind.NativeObject, nativeObjectName: name);
     public static Value Undefined() => new(ValueKind.Undefined);
+    public static Value FromHeapObject(HeapHandle heapHandle) => new(ValueKind.HeapObject, heapHandle: heapHandle);
+
+    public bool IsHeapAllocated() => HeapHandle is not null;
+    public HeapHandle GetRequiredHeapHandle() => HeapHandle ?? throw VirtualMachineError.ValueNotHeapAllocated(Kind);
 
     public static Value ConstantToValue(Constant constant) => constant.Kind switch
     {
         ConstantKind.Number => FromNumber(constant.Number),
-        ConstantKind.String => FromString(constant.String!),
+        ConstantKind.String => FromString(constant.String!), // TODO: we leave strings on the stack for now. Move to heap later.
         ConstantKind.Boolean => FromBoolean(constant.Boolean),
         ConstantKind.Null => new(ValueKind.Null),
         ConstantKind.Undefined => new(ValueKind.Undefined),

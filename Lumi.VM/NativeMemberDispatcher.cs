@@ -62,7 +62,7 @@ internal static class NativeMemberDispatcher
                 StdLibConstants.FilePreludeMethods.ReadText => Value.FromString(ReadAllText(methodName, args)),
                 StdLibConstants.FilePreludeMethods.WriteText => WriteText(args),
                 StdLibConstants.FilePreludeMethods.AppendText => AppendText(args),
-                StdLibConstants.FilePreludeMethods.ReadLines => Value.FromArray(ReadLines(methodName, args)),
+                StdLibConstants.FilePreludeMethods.ReadLines => Value.FromArray(ReadLines(methodName, args)), // TODO: move to heap
                 StdLibConstants.FilePreludeMethods.WriteLines => WriteLines(args),
                 StdLibConstants.FilePreludeMethods.Delete => Delete(args),
                 StdLibConstants.FilePreludeMethods.Create => Create(args),
