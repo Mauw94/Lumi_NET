@@ -1,0 +1,6 @@
+let a: list -> [1,2,3];
+let b: list;
+b = a;
+b.add(4); // pointer to a so a is also modified
+
+print a;

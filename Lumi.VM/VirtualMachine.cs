@@ -114,9 +114,11 @@ public sealed class VirtualMachine
                     }
 
                 case InstructionKind.LoadPreludeGlobal:
-                    // TODO: move to the heap
-                    _stack[_stackTop++] = Value.FromNativeObject(instruction.GetSafeStringOperand());
-                    break;
+                    {
+                        var heapObject = new HeapNativeObject(instruction.GetSafeStringOperand(), []); // TODO: fields?
+                        _stack[_stackTop++] = Value.FromHeapObject(_heap.Allocate(heapObject));
+                        break;
+                    }
 
                 case InstructionKind.NewStruct:
                     {
@@ -151,11 +153,12 @@ public sealed class VirtualMachine
                     {
                         var fieldName = instruction.GetSafeStringOperand();
                         var target = _stack[--_stackTop];
+                        var heapObject = (HeapStructObject)_heap.Get(target.GetRequiredHeapHandle());
 
-                        if (target.Kind != ValueKind.Struct || target.Struct is null)
-                            throw VirtualMachineError.FieldAccessTargetNotStruct(target.Kind);
+                        if (heapObject.Kind != ValueKind.Struct || heapObject.Fields is null)
+                            throw VirtualMachineError.FieldAccessTargetNotStruct(heapObject.Kind);
 
-                        if (!target.Struct.TryGetValue(fieldName, out var fieldValue))
+                        if (!heapObject.Fields.TryGetValue(fieldName, out var fieldValue))
                             throw VirtualMachineError.UnknownStructField(fieldName);
 
                         _stack[_stackTop++] = fieldValue;
@@ -167,14 +170,15 @@ public sealed class VirtualMachine
                         var fieldName = instruction.GetSafeStringOperand();
                         var fieldValue = _stack[--_stackTop];
                         var target = _stack[--_stackTop];
+                        var heapObject = (HeapStructObject)_heap.Get(target.GetRequiredHeapHandle());
 
-                        if (target.Kind != ValueKind.Struct || target.Struct is null)
-                            throw VirtualMachineError.FieldAccessTargetNotStruct(target.Kind);
+                        if (heapObject.Kind != ValueKind.Struct || heapObject.Fields is null)
+                            throw VirtualMachineError.FieldAccessTargetNotStruct(heapObject.Kind);
 
-                        if (!target.Struct.ContainsKey(fieldName))
+                        if (!heapObject.Fields.ContainsKey(fieldName))
                             throw VirtualMachineError.UnknownStructField(fieldName);
 
-                        target.Struct[fieldName] = fieldValue;
+                        heapObject.Fields[fieldName] = fieldValue;
                         break;
                     }
 
@@ -201,7 +205,7 @@ public sealed class VirtualMachine
                         var index = (int)_stack[--_stackTop].Number;
                         var heapHandle = _stack[--_stackTop];
 
-                        var heapObject = _heap.GetArray(heapHandle.GetRequiredHeapHandle());
+                        var heapObject = (HeapArrayObject)_heap.Get(heapHandle.GetRequiredHeapHandle());
                         if (heapObject.Kind != ValueKind.Array || heapObject is null)
                             throw VirtualMachineError.IndexTargetNotArray(heapHandle.Kind);
 
@@ -297,15 +301,31 @@ public sealed class VirtualMachine
                         var argumentCount = instruction.GetSafeIntOperand();
                         var receiverIndex = _stackTop - argumentCount - 1;
                         var target = _stack[receiverIndex];
+                        var heapObject = _heap.Get(target.GetRequiredHeapHandle());
 
-                        // NOTE: move this to switch statement and cleaner approach for the ListMethods section
-                        if (target.Kind == ValueKind.Struct)
+                        if (heapObject is HeapArrayObject)
                         {
-                            if (target.StructName is null
-                                || !_structMethodAddresses.TryGetValue(target.StructName, out var methods)
+                            var args = new Value[argumentCount];
+                            for (int i = argumentCount - 1; i >= 0; i--)
+                            {
+                                args[i] = _stack[--_stackTop];
+                            }
+
+                            target = _stack[--_stackTop];
+                            var heapHandle = target.GetRequiredHeapHandle();
+                            heapObject = _heap.Get(heapHandle);
+
+                            _stack[_stackTop++] = NativeMemberDispatcher.Invoke(_heap, heapObject, methodName, args);
+                            break;
+                        }
+
+                        if (heapObject is HeapStructObject heapStructObject)
+                        {
+                            if (heapStructObject.StructName is null
+                                || !_structMethodAddresses.TryGetValue(heapStructObject.StructName, out var methods)
                                 || !methods.TryGetValue(methodName, out var methodAddress))
                             {
-                                throw VirtualMachineError.UnknownStructMethod(target.StructName ?? "struct", methodName);
+                                throw VirtualMachineError.UnknownStructMethod(heapStructObject.StructName ?? "struct", methodName);
                             }
 
                             _callStack.Push(new CallFrame(ReturnAddress: _ip + 1, PreviousBasePointer: _basePointer));
@@ -315,17 +335,19 @@ public sealed class VirtualMachine
                             continue;
                         }
 
-                        if (target.Kind == ValueKind.Array || target.Kind == ValueKind.NativeObject)
+                        if (heapObject is HeapNativeObject)
                         {
                             var args = new Value[argumentCount];
+
                             for (int i = argumentCount - 1; i >= 0; i--)
                             {
                                 args[i] = _stack[--_stackTop];
                             }
 
                             target = _stack[--_stackTop];
-                            // TODO: move native objects to the heap as well and unify this with the array case.
-                            _stack[_stackTop++] = NativeMemberDispatcher.Invoke(target, methodName, args);
+                            heapObject = _heap.Get(target.GetRequiredHeapHandle()); // heapobject ValueKind is number?
+
+                            _stack[_stackTop++] = NativeMemberDispatcher.Invoke(_heap, heapObject, methodName, args);
                             break;
                         }
 
@@ -353,8 +375,19 @@ public sealed class VirtualMachine
                     break;
 
                 case InstructionKind.Print:
-                    Console.WriteLine(_stack[--_stackTop].PrintValue());
-                    break;
+                    {
+                        var result = _stack[--_stackTop];
+                        if (result.Kind == ValueKind.HeapObject)
+                        {
+                            var heapObject = _heap.Get(result.GetRequiredHeapHandle());
+                            Console.WriteLine(heapObject.PrintValue());
+                        }
+                        else
+                        {
+                            Console.WriteLine(result.PrintValue());
+                        }
+                        break;
+                    }
             }
             _ip += 1;
         }

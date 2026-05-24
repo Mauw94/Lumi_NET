@@ -42,7 +42,8 @@ static async Task<string> LoadScript(string scriptName)
 
     if (!File.Exists(path))
     {
-        throw new FileNotFoundException($"Script not found: {path}", path);
+        Console.Error.WriteLine($"Script not found: {path}");
+        return string.Empty;
     }
 
     return await File.ReadAllTextAsync(path);

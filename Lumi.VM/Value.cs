@@ -16,10 +16,6 @@ internal readonly struct Value
     public double Number { get; }
     public string? String { get; }
     public bool Bool { get; }
-    public List<Value>? Array { get; }
-    public Dictionary<string, Value>? Struct { get; }
-    public string? StructName { get; }
-    public string? NativeObjectName { get; }
     public HeapHandle? HeapHandle { get; }
 
     private Value(
@@ -27,35 +23,31 @@ internal readonly struct Value
         double number = 0,
         string? str = null,
         bool b = false,
-        List<Value>? array = null,
-        Dictionary<string, Value>? structValue = null,
-        string? structName = null,
-        string? nativeObjectName = null,
         HeapHandle? heapHandle = null)
     {
         Kind = kind;
         Number = number;
         String = str;
         Bool = b;
-        Array = array;
-        Struct = structValue;
-        StructName = structName;
-        NativeObjectName = nativeObjectName;
         HeapHandle = heapHandle;
     }
 
     public static Value FromNumber(double n) => new(ValueKind.Number, number: n);
-    public static Value FromString(string s) => new(ValueKind.String, str: s);
+    public static Value FromString(string s) => new(ValueKind.String, str: s); // REMOVE after full implementation to heap-allocated strings
     public static Value FromBoolean(bool b) => new(ValueKind.Boolean, b: b);
-    // TODO: remove fromarray, fromstruct, fromnativeobject and just heap allocate
-    // fromstring later
-    public static Value FromArray(List<Value> values) => new(ValueKind.Array, array: values);
-    public static Value FromStruct(string structName, Dictionary<string, Value> fields) => new(ValueKind.Struct, structValue: fields, structName: structName);
-    public static Value FromNativeObject(string name) => new(ValueKind.NativeObject, nativeObjectName: name);
     public static Value Undefined() => new(ValueKind.Undefined);
     public static Value FromHeapObject(HeapHandle heapHandle) => new(ValueKind.HeapObject, heapHandle: heapHandle);
 
+    /// <summary>
+    /// Determines whether this Value represents a heap-allocated object. If true, the HeapHandle field contains
+    /// a valid reference to the heap-allocated object.
+    /// </summary>
     public bool IsHeapAllocated() => HeapHandle is not null;
+
+    /// <summary>
+    /// Returns the HeapHandle for this Value if it is heap-allocated, or throws an exception if it is not. 
+    /// </summary>
+    /// <returns><see cref="HeapHandle"/></returns>
     public HeapHandle GetRequiredHeapHandle() => HeapHandle ?? throw VirtualMachineError.ValueNotHeapAllocated(Kind);
 
     public static Value ConstantToValue(Constant constant) => constant.Kind switch
@@ -71,11 +63,8 @@ internal readonly struct Value
     public string PrintValue() => Kind switch
     {
         ValueKind.Number => Number.ToString(),
-        ValueKind.String => "\"" + String + "\"" ?? string.Empty,
+        ValueKind.String => "\"" + String + "\"" ?? string.Empty, // TODO: will be obsolute once we move string to the heap
         ValueKind.Boolean => Bool.ToString(),
-        ValueKind.Array => $"[{string.Join(", ", (Array ?? []).Select(static v => v.PrintValue()))}]",
-        ValueKind.Struct => "{" + string.Join(", ", (Struct ?? []).Select(static kv => $"{kv.Key}: {kv.Value.PrintValue()}")) + "}",
-        ValueKind.NativeObject => $"<{NativeObjectName ?? "native"}>",
         ValueKind.Null => "null",
         ValueKind.Undefined => "undefined",
         _ => throw VirtualMachineError.UnkownValueKind(Kind),

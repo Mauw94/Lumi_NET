@@ -1,77 +1,5 @@
 ﻿namespace Lumi.VM.Heap;
 
-abstract class HeapObject()
-{
-    public bool IsMarked { get; set; }
-    public bool IsAllocated { get; set; } = false;
-    public ValueKind Kind;
-    public int SizeEstimate { get; set; }
-    protected abstract void VisitReferences(Action<int> visitHandle, Action<Value> visitValue);
-}
-
-internal sealed class HeapArrayObject : HeapObject
-{
-    public HeapArrayObject(List<Value> elements)
-    {
-        Elements = elements;
-        Kind = ValueKind.Array;
-    }
-
-    public List<Value> Elements { get; }
-
-    protected override void VisitReferences(Action<int> visitHandle, Action<Value> visitValue)
-    {
-        foreach (var element in Elements)
-        {
-            visitValue(element);
-        }
-    }
-}
-
-internal sealed class HeapStructObject : HeapObject
-{
-    public HeapStructObject(string structName, Dictionary<string, Value> fields)
-    {
-        StructName = structName;
-        Fields = fields;
-        Kind = ValueKind.Struct;
-    }
-
-    public string StructName { get; }
-    public Dictionary<string, Value> Fields { get; }
-
-    protected override void VisitReferences(Action<int> visitHandle, Action<Value> visitValue)
-    {
-        foreach (var field in Fields.Values)
-        {
-            visitValue(field);
-        }
-    }
-}
-
-internal sealed class HeapNativeObject(string nativeObjectName, Dictionary<string, Value> fields) : HeapObject
-{
-    public string NativeObjectName { get; } = nativeObjectName;
-    public Dictionary<string, Value> Fields { get; } = fields;
-
-    protected override void VisitReferences(Action<int> visitHandle, Action<Value> visitValue)
-    {
-        foreach (var field in Fields.Values)
-        {
-            visitValue(field);
-        }
-    }
-}
-
-internal sealed class HeapStringObject(string value) : HeapObject
-{
-    public string Value { get; } = value;
-    protected override void VisitReferences(Action<int> visitHandle, Action<Value> visitValue)
-    {
-        // No references to visit for a string object.
-    }
-}
-
 /// <summary>
 /// Represents the heap of the virtual machine, which manages all heap-allocated objects.
 /// </summary>
@@ -124,19 +52,12 @@ internal sealed class Heap
         }
     }
 
-    public HeapObject Get(HeapHandle handle)
-        => _slots[handle.HandleId] ?? throw HeapError.DanglingReference();
-
-    public HeapArrayObject GetArray(HeapHandle handle)
-        => _slots[handle.HandleId] as HeapArrayObject ?? throw HeapError.DanglingReference();
-
-    public HeapObject GetStruct(HeapHandle handle)
-        => _slots[handle.HandleId] as HeapStructObject ?? throw HeapError.DanglingReference();
-
-    HeapObject GetString(HeapHandle handle)
-    {
-        throw new NotImplementedException();
-    }
+    /// <summary>
+    /// Retrieves the heap-allocated object associated with the specified handle. If the handle is invalid or the slot is unallocated, an exception is thrown.
+    /// </summary>
+    /// <param name="handle">The handle of the object to retrieve.</param>
+    /// <returns>The heap-allocated object associated with the specified handle.</returns>
+    public HeapObject Get(HeapHandle handle) => _slots[handle.HandleId] ?? throw HeapError.DanglingReference();
 
     public void MaybeCollect(int requestedCapacity)
     {
@@ -190,6 +111,7 @@ internal sealed class Heap
         return false;
     }
 
+    // TODO: move to garbage collector class
     public void CollectGarbage()
     {
         foreach (var obj in _slots)

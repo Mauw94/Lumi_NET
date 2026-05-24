@@ -15,4 +15,5 @@ internal enum ValueKind
     Null,
     Undefined,
     HeapObject,
+    Reference
 }

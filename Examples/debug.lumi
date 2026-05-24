@@ -1,0 +1,7 @@
+let a: list -> [1,2,3];
+let b: list -> [];
+b = a;
+b.add(5);
+
+print a;
+print b;
