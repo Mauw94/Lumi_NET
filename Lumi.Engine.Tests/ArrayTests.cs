@@ -91,6 +91,22 @@ public sealed class ArrayTests
         Assert.AreEqual("False", output.Trim());
     }
 
+    [TestMethod]
+    public void Test_List_Add_Method_In_Loop_Does_Not_Overflow_Stack()
+    {
+        var source = """
+            let items: list -> [];
+            for i in 0 to 1499 step 1 {
+                items.add(i);
+            }
+            print items.length();
+            """;
+
+        var output = ExecuteAndCapture(source);
+
+        Assert.AreEqual("1500", output.Trim());
+    }
+
     private static string ExecuteAndCapture(string source)
     {
         var originalOut = Console.Out;

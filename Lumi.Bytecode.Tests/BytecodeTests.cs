@@ -24,13 +24,14 @@ public sealed class BytecodeTests
         var gen = new BytecodeGenerator();
         var result = gen.Generate(program);
 
-        // Expect: PushConst 1, PushConst 2, Add
-        Assert.HasCount(3, result.Instructions, "Instruction count mismatch");
+        // Expect: PushConst 1, PushConst 2, Add, Pop
+        Assert.HasCount(4, result.Instructions, "Instruction count mismatch");
         Assert.HasCount(2, result.Constants, "Constants count mismatch");
 
         Assert.AreEqual(InstructionKind.PushConst, result.Instructions[0].Kind);
         Assert.AreEqual(InstructionKind.PushConst, result.Instructions[1].Kind);
         Assert.AreEqual(InstructionKind.Add, result.Instructions[2].Kind);
+        Assert.AreEqual(InstructionKind.Pop, result.Instructions[3].Kind);
 
         Assert.AreEqual(ConstantKind.Number, result.Constants[0].Kind);
         Assert.AreEqual(1.0, result.Constants[0].Number);
@@ -478,9 +479,10 @@ public sealed class BytecodeTests
         var gen = new BytecodeGenerator();
         var result = gen.Generate(program);
 
-        Assert.HasCount(1, result.Instructions);
+        Assert.HasCount(2, result.Instructions);
         Assert.HasCount(1, result.Constants);
         Assert.AreEqual(InstructionKind.PushConst, result.Instructions[0].Kind);
+        Assert.AreEqual(InstructionKind.Pop, result.Instructions[1].Kind);
         Assert.AreEqual(ConstantKind.String, result.Constants[0].Kind);
         Assert.AreEqual("hello", result.Constants[0].String);
     }
@@ -522,13 +524,14 @@ public sealed class BytecodeTests
         var gen = new BytecodeGenerator();
         var result = gen.Generate(program);
 
-        // Expect sequence: PushConst(1), StoreVar(outer x), PushConst(2), StoreVar(inner x), LoadVar(inner x)
-        Assert.IsGreaterThanOrEqualTo(5, result.Instructions.Count);
+        // Expect sequence: PushConst(1), StoreVar(outer x), PushConst(2), StoreVar(inner x), LoadVar(inner x), Pop
+        Assert.IsGreaterThanOrEqualTo(6, result.Instructions.Count);
         Assert.AreEqual(InstructionKind.PushConst, result.Instructions[0].Kind);
         Assert.AreEqual(InstructionKind.StoreVar, result.Instructions[1].Kind);
         Assert.AreEqual(InstructionKind.PushConst, result.Instructions[2].Kind);
         Assert.AreEqual(InstructionKind.StoreVar, result.Instructions[3].Kind);
         Assert.AreEqual(InstructionKind.LoadVar, result.Instructions[4].Kind);
+        Assert.AreEqual(InstructionKind.Pop, result.Instructions[5].Kind);
 
         // The LoadVar should point to the inner variable (label id 1)
         var loadOp = result.Instructions[4].GetSafeIntOperand();
@@ -1002,6 +1005,7 @@ public sealed class BytecodeTests
         Assert.AreEqual(InstructionKind.LoadVar, result.Instructions[4].Kind);
         Assert.AreEqual(InstructionKind.PushConst, result.Instructions[5].Kind);
         Assert.AreEqual(InstructionKind.IndexArray, result.Instructions[6].Kind);
+        Assert.AreEqual(InstructionKind.Pop, result.Instructions[7].Kind);
     }
 
     [TestMethod]
@@ -1034,11 +1038,12 @@ public sealed class BytecodeTests
             Body = [new ExpressionStatement { Expression = indexExpr }]
         });
 
-        Assert.HasCount(6, result.Instructions);
+        Assert.HasCount(7, result.Instructions);
         Assert.AreEqual(InstructionKind.MakeArray, result.Instructions[3].Kind);
         Assert.AreEqual(3, result.Instructions[3].GetSafeIntOperand());
         Assert.AreEqual(InstructionKind.PushConst, result.Instructions[4].Kind);
         Assert.AreEqual(InstructionKind.IndexArray, result.Instructions[5].Kind);
+        Assert.AreEqual(InstructionKind.Pop, result.Instructions[6].Kind);
     }
 
     [TestMethod]
