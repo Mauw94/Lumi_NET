@@ -129,4 +129,48 @@ public static class SourceStrings
             let content -> File.readLines("point.txt");
             // print content;
             """;
+
+    public const string HeapReferenceWorkloadSource = """
+            struct Bucket {
+                items: list;
+                sum: int;
+
+                fn addValue(value) {
+                    this.items.add(value);
+                    this.sum = this.sum + value;
+                }
+            }
+
+            let buckets: list -> [];
+
+            for i in 0 to 199 step 1 {
+                let items: list -> [];
+                let bucket: Bucket -> new Bucket(items: items, sum: 0);
+                buckets.add(bucket);
+            }
+
+            for i in 0 to buckets.length() - 1 step 1 {
+                let bucket: Bucket -> buckets[i];
+                let alias: list -> bucket.items;
+
+                for j in 0 to 49 step 1 {
+                    bucket.addValue(i + j);
+                }
+
+                for j in 0 to 24 step 1 {
+                    alias.add(j);
+                }
+            }
+
+            let total -> 0;
+            for i in 0 to buckets.length() - 1 step 1 {
+                let bucket: Bucket -> buckets[i];
+                total = total + bucket.sum;
+                total = total + bucket.items.length();
+                total = total + bucket.items[0];
+                total = total + bucket.items[bucket.items.length() - 1];
+            }
+
+            print total;
+            """;
 }

@@ -58,6 +58,18 @@ public sealed class BenchmarkTests
     }
 
     [TestMethod]
+    public void Test_Heap_Reference_Workload()
+    {
+        // Arrange
+        var source = SourceStrings.HeapReferenceWorkloadSource;
+
+        // Act + Benchmark
+        const int iterations = 1000;
+        Warmup(source);
+        CollectBenchmarkData(iterations, source);
+    }
+
+    [TestMethod]
     public void Test_Simple_Binary_Operation()
     {
         // Arrange
