@@ -13,5 +13,7 @@ internal enum ValueKind
     NativeObject,
     Function,
     Null,
-    Undefined
+    Undefined,
+    HeapObject,
+    Reference
 }

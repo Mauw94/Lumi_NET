@@ -146,6 +146,12 @@ public sealed class BytecodeGenerator
 
             case ExpressionStatement expressionStatement:
                 Visit(expressionStatement.Expression);
+
+                if (ExpressionLeavesValue(expressionStatement.Expression))
+                {
+                    Emit(Instruction.Pop());
+                }
+
                 break;
 
             case UnaryExpression unaryExpression:
@@ -512,6 +518,8 @@ public sealed class BytecodeGenerator
 
         Emit(Instruction.CallMemberMethod(methodIdentifier.Name, callExpression.Arguments.Count));
     }
+
+    private static bool ExpressionLeavesValue(Node expression) => expression is not AssignmentExpression;
 
     private void VisitStructDeclaration(StructDeclaration structDeclaration)
     {

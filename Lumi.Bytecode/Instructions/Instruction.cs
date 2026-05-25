@@ -63,6 +63,7 @@ public readonly struct Instruction
     public static Instruction StoreVar(Label label) => new(InstructionKind.StoreVar, label.Id);
     public static Instruction LoadVar(Label label) => new(InstructionKind.LoadVar, label.Id);
     public static Instruction PushConst(int constIndex) => new(InstructionKind.PushConst, constIndex);
+    public static Instruction Pop() => new(InstructionKind.Pop);
     public static Instruction Add() => new(InstructionKind.Add);
     public static Instruction JumpIfFalse(int operand) => new(InstructionKind.JumpIfFalse, operand);
     public static Instruction Jump(int operand) => new(InstructionKind.Jump, operand);

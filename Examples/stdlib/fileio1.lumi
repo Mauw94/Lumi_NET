@@ -1,4 +1,4 @@
-let text: str = "Hello world!";
+let text: str -> "Hello world!";
 
 File.writeText("aoc-sample.txt", text);
 

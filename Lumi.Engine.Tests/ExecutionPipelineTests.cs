@@ -178,6 +178,73 @@ public sealed class ExecutionPipelineTests
         Assert.IsFalse(output.Contains("System.IO.FileNotFoundException", StringComparison.Ordinal));
     }
 
+    [TestMethod]
+    public void TryExecute_FileReadLines_Returns_HeapBacked_List()
+    {
+        var tempPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.txt");
+        var escapedPath = EscapeForLumi(tempPath);
+
+        File.WriteAllLines(tempPath, ["alpha", "beta"]);
+
+        var source = $$"""
+            let lines: list -> File.readLines("{{escapedPath}}");
+            print lines.length();
+            print lines[0];
+            print lines[1];
+            """;
+
+        using var writer = new StringWriter();
+
+        try
+        {
+            var pipeline = CreatePipeline();
+            var succeeded = pipeline.TryExecute(source, new VirtualMachine(), new BytecodeGenerator(), new SemanticAnalyzerType(), writer);
+            var output = writer.ToString();
+            var lines = SplitLines(output);
+
+            Assert.IsTrue(succeeded);
+            Assert.HasCount(3, lines);
+            Assert.AreEqual("2", lines[0]);
+            Assert.AreEqual("\"alpha\"", lines[1]);
+            Assert.AreEqual("\"beta\"", lines[2]);
+        }
+        finally
+        {
+            if (File.Exists(tempPath))
+                File.Delete(tempPath);
+        }
+    }
+
+    [TestMethod]
+    public void TryExecute_FileWriteLines_Accepts_HeapBacked_List()
+    {
+        var tempPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.txt");
+        var escapedPath = EscapeForLumi(tempPath);
+
+        var source = $$"""
+            let lines: list -> ["alpha", "beta"];
+            File.writeLines("{{escapedPath}}", lines);
+            """;
+
+        using var writer = new StringWriter();
+
+        try
+        {
+            var pipeline = CreatePipeline();
+            var succeeded = pipeline.TryExecute(source, new VirtualMachine(), new BytecodeGenerator(), new SemanticAnalyzerType(), writer);
+            var output = writer.ToString();
+
+            Assert.IsTrue(succeeded);
+            Assert.AreEqual(string.Empty, output);
+            CollectionAssert.AreEqual(new[] { "alpha", "beta" }, File.ReadAllLines(tempPath));
+        }
+        finally
+        {
+            if (File.Exists(tempPath))
+                File.Delete(tempPath);
+        }
+    }
+
     private static ExecutionPipeline CreatePipeline()
     {
         var services = new ServiceCollection();
