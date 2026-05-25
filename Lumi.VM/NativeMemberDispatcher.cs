@@ -166,6 +166,7 @@ internal static class NativeMemberDispatcher
             throw VirtualMachineError.MethodArgumentTypeMismatch(methodName, parameterIndex, ValueKind.Array, heapObject.Kind);
 
         return arrayObject;
+    }
 
     private static void ValidateArgumentCount(string methodName, int expected, int actual)
     {
