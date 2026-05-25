@@ -214,14 +214,18 @@ public sealed class VirtualMachine
                         var index = (int)_stack[--_stackTop].Number;
                         var heapHandle = _stack[--_stackTop];
 
-                        var heapObject = _heap.Get<HeapArrayObject>(heapHandle.GetRequiredHeapHandle());
-                        if (heapObject.Kind != ValueKind.Array || heapObject is null)
+                        if (!heapHandle.IsHeapAllocated())
                             throw VirtualMachineError.IndexTargetNotArray(heapHandle.Kind);
 
-                        if (index < 0 || index >= heapObject.Elements.Count)
-                            throw VirtualMachineError.IndexOutOfRange(index, heapObject.Elements.Count);
+                        var heapObject = _heap.Get<HeapObject>(heapHandle.GetRequiredHeapHandle());
 
-                        _stack[_stackTop++] = heapObject.Elements[index];
+                        if (heapObject is not HeapArrayObject arrayObject)
+                            throw VirtualMachineError.IndexTargetNotArray(heapObject.Kind);
+
+                        if (index < 0 || index >= arrayObject.Elements.Count)
+                            throw VirtualMachineError.IndexOutOfRange(index, arrayObject.Elements.Count);
+
+                        _stack[_stackTop++] = arrayObject.Elements[index];
                         break;
                     }
 
