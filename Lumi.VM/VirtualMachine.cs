@@ -424,9 +424,18 @@ public sealed class VirtualMachine
         }
     }
 
-    private void AllocateHeapObject(HeapObject heapObject)
+    private void AllocateHeapObject(HeapObject heapObject, IEnumerable<Value>? additionalRoots = null)
     {
-        _heap.MaybeCollect(EnumerateRoots());
+        IEnumerable<Value> Roots()
+        {
+            foreach (var root in EnumerateRoots()) yield return root;
+            if (additionalRoots is not null)
+            {
+                foreach (var root in additionalRoots) yield return root;
+            }
+        }
+
+        _heap.MaybeCollect(Roots());
         _stack[_stackTop++] = Value.FromHeapObject(_heap.Allocate(heapObject));
     }
 
