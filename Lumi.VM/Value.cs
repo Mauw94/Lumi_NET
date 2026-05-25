@@ -14,26 +14,22 @@ internal readonly struct Value
 
     // Payload fields — only the one matching Kind is populated.
     public double Number { get; }
-    public string? String { get; }
     public bool Bool { get; }
     public HeapHandle? HeapHandle { get; }
 
     private Value(
         ValueKind kind,
         double number = 0,
-        string? str = null,
         bool b = false,
         HeapHandle? heapHandle = null)
     {
         Kind = kind;
         Number = number;
-        String = str;
         Bool = b;
         HeapHandle = heapHandle;
     }
 
     public static Value FromNumber(double n) => new(ValueKind.Number, number: n);
-    // public static Value FromString(string s) => new(ValueKind.String, str: s); // REMOVE after full implementation to heap-allocated strings
     public static Value FromBoolean(bool b) => new(ValueKind.Boolean, b: b);
     public static Value Undefined() => new(ValueKind.Undefined);
     public static Value FromHeapObject(HeapHandle heapHandle) => new(ValueKind.HeapObject, heapHandle: heapHandle);
@@ -53,7 +49,6 @@ internal readonly struct Value
     public static Value ConstantToValue(Constant constant) => constant.Kind switch
     {
         ConstantKind.Number => FromNumber(constant.Number),
-        // ConstantKind.String => FromString(constant.String!), // TODO: we leave strings on the stack for now. Move to heap later.
         ConstantKind.Boolean => FromBoolean(constant.Boolean),
         ConstantKind.Null => new(ValueKind.Null),
         ConstantKind.Undefined => new(ValueKind.Undefined),

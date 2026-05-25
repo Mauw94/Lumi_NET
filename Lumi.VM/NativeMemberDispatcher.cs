@@ -155,10 +155,7 @@ internal static class NativeMemberDispatcher
             return heap.GetStringValue(value.GetRequiredHeapHandle());
         }
 
-        if (value.Kind != ValueKind.String || value.String is null)
-            throw VirtualMachineError.MethodArgumentTypeMismatch(methodName, parameterIndex, ValueKind.String, value.Kind);
-
-        return value.String;
+        throw VirtualMachineError.MethodArgumentTypeMismatch(methodName, parameterIndex, ValueKind.String, value.Kind);
     }
 
     private static HeapArrayObject GetRequiredArrayArgument(string methodName, int parameterIndex, Value value, HeapManager heap)
