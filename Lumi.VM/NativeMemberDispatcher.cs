@@ -160,12 +160,11 @@ internal static class NativeMemberDispatcher
         if (!value.IsHeapAllocated())
             throw VirtualMachineError.MethodArgumentTypeMismatch(methodName, parameterIndex, ValueKind.Array, value.Kind);
 
-        var heapObject = heap.Get<HeapArrayObject>(value.GetRequiredHeapHandle());
+        var heapObject = heap.Get<HeapObject>(value.GetRequiredHeapHandle());
         if (heapObject is not HeapArrayObject arrayObject)
             throw VirtualMachineError.MethodArgumentTypeMismatch(methodName, parameterIndex, ValueKind.Array, heapObject.Kind);
 
         return arrayObject;
-    }
 
     private static void ValidateArgumentCount(string methodName, int expected, int actual)
     {
