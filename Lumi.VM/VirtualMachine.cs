@@ -439,11 +439,16 @@ public sealed class VirtualMachine
         _stack[_stackTop++] = Value.FromHeapObject(_heap.Allocate(heapObject));
     }
 
-    private Value ConstantToValue(Constant constant) => constant.Kind switch
+    private Value ConstantToValue(Constant constant)
     {
-        ConstantKind.String => Value.FromHeapObject(_heap.InternString(constant.String!)),
-        _ => Value.ConstantToValue(constant),
-    };
+        if (constant.Kind != ConstantKind.String)
+        {
+            return Value.ConstantToValue(constant);
+        }
+
+        _heap.MaybeCollect(EnumerateRoots());
+        return Value.FromHeapObject(_heap.InternString(constant.String!));
+    }
 
     private bool TryGetStringValue(Value value, out string text)
     {
