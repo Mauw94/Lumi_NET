@@ -199,7 +199,7 @@ public sealed class VirtualMachine
                             values[i] = _stack[--_stackTop];
                         }
 
-                        AllocateHeapObject(new HeapArrayObject([.. values]));
+                        AllocateHeapObject(new HeapArrayObject([.. values]), values);
                         break;
                     }
 
