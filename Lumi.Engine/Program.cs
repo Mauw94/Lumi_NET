@@ -40,9 +40,9 @@ static async Task<string> LoadScript(string scriptName)
     var files = Directory.GetFiles(root, "*.lumi*", SearchOption.AllDirectories);
     var path = files.FirstOrDefault(f => f.Contains(scriptName, StringComparison.OrdinalIgnoreCase)) ?? string.Empty;
 
-    if (!File.Exists(path))
+    if (string.IsNullOrEmpty(path) || !File.Exists(path))
     {
-        Console.Error.WriteLine($"Script not found: {path}");
+        Console.Error.WriteLine($"Script not found: {scriptName}");
         return string.Empty;
     }
 
