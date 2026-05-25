@@ -142,7 +142,7 @@ public sealed class VirtualMachine
                             values[fields[i]] = i < args.Length ? args[i] : Value.Undefined();
                         }
 
-                        AllocateHeapObject(new HeapStructObject(structName, values));
+                        AllocateHeapObject(new HeapStructObject(structName, values), values.Values);
                         break;
                     }
 
