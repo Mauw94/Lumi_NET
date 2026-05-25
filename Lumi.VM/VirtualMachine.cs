@@ -62,6 +62,7 @@ public sealed class VirtualMachine
 
                         if (TryGetStringValue(a, out _) || TryGetStringValue(b, out _))
                         {
+                            _heap.MaybeCollect(Roots([a, b]));
                             var handle = _heap.InternString(StringifyForConcatenation(a) + StringifyForConcatenation(b));
                             _stack[_stackTop++] = Value.FromHeapObject(handle);
                             break;
@@ -424,17 +425,17 @@ public sealed class VirtualMachine
         }
     }
 
+    private IEnumerable<Value> Roots(IEnumerable<Value>? additionalRoots = null)
+    {
+        foreach (var root in EnumerateRoots()) yield return root;
+        if (additionalRoots is not null)
+        {
+            foreach (var root in additionalRoots) yield return root;
+        }
+    }
+
     private void AllocateHeapObject(HeapObject heapObject, IEnumerable<Value>? additionalRoots = null)
     {
-        IEnumerable<Value> Roots()
-        {
-            foreach (var root in EnumerateRoots()) yield return root;
-            if (additionalRoots is not null)
-            {
-                foreach (var root in additionalRoots) yield return root;
-            }
-        }
-
         _heap.MaybeCollect(Roots());
         _stack[_stackTop++] = Value.FromHeapObject(_heap.Allocate(heapObject));
     }
