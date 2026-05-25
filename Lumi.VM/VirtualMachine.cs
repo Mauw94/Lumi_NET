@@ -171,15 +171,19 @@ public sealed class VirtualMachine
                         var fieldName = instruction.GetSafeStringOperand();
                         var fieldValue = _stack[--_stackTop];
                         var target = _stack[--_stackTop];
-                        var heapObject = _heap.Get<HeapStructObject>(target.GetRequiredHeapHandle());
 
-                        if (heapObject.Kind != ValueKind.Struct || heapObject.Fields is null)
+                        if (!target.IsHeapAllocated())
+                            throw VirtualMachineError.FieldAccessTargetNotStruct(target.Kind);
+
+                        var heapObject = _heap.Get<HeapObject>(target.GetRequiredHeapHandle());
+
+                        if (heapObject is not HeapStructObject structObject || structObject.Fields is null)
                             throw VirtualMachineError.FieldAccessTargetNotStruct(heapObject.Kind);
 
-                        if (!heapObject.Fields.ContainsKey(fieldName))
+                        if (!structObject.Fields.ContainsKey(fieldName))
                             throw VirtualMachineError.UnknownStructField(fieldName);
 
-                        heapObject.Fields[fieldName] = fieldValue;
+                        structObject.Fields[fieldName] = fieldValue;
                         break;
                     }
 
