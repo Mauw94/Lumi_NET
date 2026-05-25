@@ -170,8 +170,8 @@ internal sealed class HeapManager
 
     void MarkObject(HeapHandle handle)
     {
-        var obj = _slots[handle.HandleId];
-        if (obj is null || obj.IsMarked) return;
+        var obj = Get(handle);
+        if (obj.IsMarked) return;
 
         obj.IsMarked = true;
         obj.VisitReferences(MarkValue);
