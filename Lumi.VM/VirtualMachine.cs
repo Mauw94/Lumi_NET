@@ -454,15 +454,18 @@ public sealed class VirtualMachine
             return false;
         }
 
-        text = _heap.GetStringValue(value.GetRequiredHeapHandle());
+        var obj = _heap.Get<HeapObject>(value.GetRequiredHeapHandle());
+        if (obj is not HeapStringObject stringObj)
+        {
+            return false;
+        }
 
+        text = stringObj.Value;
         return true;
     }
 
     private string StringifyForConcatenation(Value value)
         => TryGetStringValue(value, out var text)
             ? text
-            : value.IsHeapAllocated()
-                ? _heap.GetStringValue(value.GetRequiredHeapHandle())
-                : value.PrintValue();
+            : _heap.FormatValue(value);
 }
