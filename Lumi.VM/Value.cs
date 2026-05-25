@@ -63,7 +63,7 @@ internal readonly struct Value
     public string PrintValue() => Kind switch
     {
         ValueKind.Number => Number.ToString(),
-        ValueKind.String => "\"" + String + "\"" ?? string.Empty, // TODO: will be obsolute once we move string to the heap
+        ValueKind.String => "\"" + String + "\"" ?? string.Empty, // TODO: will be obsolete once we move string to the heap
         ValueKind.Boolean => Bool.ToString(),
         ValueKind.Null => "null",
         ValueKind.Undefined => "undefined",
