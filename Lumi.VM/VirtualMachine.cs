@@ -320,7 +320,7 @@ public sealed class VirtualMachine
                             var heapHandle = target.GetRequiredHeapHandle();
                             heapObject = _heap.Get<HeapObject>(heapHandle);
 
-                            _stack[_stackTop++] = NativeMemberDispatcher.Invoke(_heap, heapObject, methodName, args);
+                            _stack[_stackTop++] = NativeMemberDispatcher.Invoke(_heap, target, methodName, args);
                             break;
                         }
 
@@ -352,7 +352,7 @@ public sealed class VirtualMachine
                             target = _stack[--_stackTop];
                             heapObject = _heap.Get<HeapObject>(target.GetRequiredHeapHandle()); // heapobject ValueKind is number?
 
-                            _stack[_stackTop++] = NativeMemberDispatcher.Invoke(_heap, heapObject, methodName, args);
+                            _stack[_stackTop++] = NativeMemberDispatcher.Invoke(_heap, target, methodName, args);
                             break;
                         }
 
