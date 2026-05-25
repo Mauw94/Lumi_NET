@@ -51,7 +51,14 @@ internal sealed class HeapManager
         return obj as T ?? throw HeapError.DanglingReference();
     }
 
-    private HeapObject Get(HeapHandle handle) => _slots[handle.HandleId] ?? throw HeapError.DanglingReference();
+    private HeapObject Get(HeapHandle handle)
+    {
+        var id = handle.HandleId;
+        if ((uint)id >= (uint)_slots.Length)
+            throw HeapError.DanglingReference();
+
+        return _slots[id] ?? throw HeapError.DanglingReference();
+    }
 
     /// <summary>
     /// Returns a handle for the specified string, using string interning to ensure that identical strings share the same heap allocation. 
