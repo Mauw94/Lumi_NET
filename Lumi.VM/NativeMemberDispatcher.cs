@@ -8,17 +8,18 @@ namespace Lumi.VM;
 /// </summary>
 internal static class NativeMemberDispatcher
 {
-    public static Value Invoke(HeapManager heap, HeapObject target, string methodName, IReadOnlyList<Value> args)
+    public static Value Invoke(HeapManager heap, Value receiverValue, string methodName, IReadOnlyList<Value> args)
     {
+        var target = heap.Get<HeapObject>(receiverValue.GetRequiredHeapHandle());
         return target.Kind switch
         {
-            ValueKind.Array => InvokeArrayMethod((HeapArrayObject)target, methodName, args),
+            ValueKind.Array => InvokeArrayMethod((HeapArrayObject)target, receiverValue, methodName, args),
             ValueKind.NativeObject => InvokePreludeMethod(heap, (HeapNativeObject)target, methodName, args),
             _ => throw VirtualMachineError.MethodTargetNotSupported(methodName, target.Kind)
         };
     }
 
-    private static Value InvokeArrayMethod(HeapArrayObject target, string methodName, IReadOnlyList<Value> args)
+    private static Value InvokeArrayMethod(HeapArrayObject target, Value receiverValue, string methodName, IReadOnlyList<Value> args)
     {
         if (target.Elements is null)
             throw VirtualMachineError.ListMethodTargetNotArray(target.Kind);
@@ -30,7 +31,7 @@ internal static class NativeMemberDispatcher
 
         return methodName switch
         {
-            StdLibConstants.ArrayMethods.Add => AddArrayItem(target, args[0]),
+            StdLibConstants.ArrayMethods.Add => AddArrayItem(target, args[0], receiverValue),
             StdLibConstants.ArrayMethods.Remove => RemoveArrayItem(target, args[0]),
             StdLibConstants.ArrayMethods.Length => Value.FromNumber(target.Elements.Count),
             StdLibConstants.ArrayMethods.Contains => Value.FromBoolean(target.Elements.Contains(args[0])),
@@ -124,11 +125,11 @@ internal static class NativeMemberDispatcher
         return Value.Undefined();
     }
 
-    private static Value AddArrayItem(HeapArrayObject target, Value item)
+    private static Value AddArrayItem(HeapArrayObject target, Value item, Value receiverValue)
     {
         target.Elements!.Add(item);
 
-        return Value.Undefined();
+        return receiverValue;
     }
 
     private static Value RemoveArrayItem(HeapArrayObject target, Value item)
