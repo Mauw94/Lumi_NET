@@ -33,7 +33,7 @@ internal readonly struct Value
     }
 
     public static Value FromNumber(double n) => new(ValueKind.Number, number: n);
-    public static Value FromString(string s) => new(ValueKind.String, str: s); // REMOVE after full implementation to heap-allocated strings
+    // public static Value FromString(string s) => new(ValueKind.String, str: s); // REMOVE after full implementation to heap-allocated strings
     public static Value FromBoolean(bool b) => new(ValueKind.Boolean, b: b);
     public static Value Undefined() => new(ValueKind.Undefined);
     public static Value FromHeapObject(HeapHandle heapHandle) => new(ValueKind.HeapObject, heapHandle: heapHandle);
@@ -53,7 +53,7 @@ internal readonly struct Value
     public static Value ConstantToValue(Constant constant) => constant.Kind switch
     {
         ConstantKind.Number => FromNumber(constant.Number),
-        ConstantKind.String => FromString(constant.String!), // TODO: we leave strings on the stack for now. Move to heap later.
+        // ConstantKind.String => FromString(constant.String!), // TODO: we leave strings on the stack for now. Move to heap later.
         ConstantKind.Boolean => FromBoolean(constant.Boolean),
         ConstantKind.Null => new(ValueKind.Null),
         ConstantKind.Undefined => new(ValueKind.Undefined),
@@ -63,7 +63,6 @@ internal readonly struct Value
     public string PrintValue() => Kind switch
     {
         ValueKind.Number => Number.ToString(),
-        ValueKind.String => "\"" + String + "\"" ?? string.Empty, // TODO: will be obsolete once we move string to the heap
         ValueKind.Boolean => Bool.ToString(),
         ValueKind.Null => "null",
         ValueKind.Undefined => "undefined",

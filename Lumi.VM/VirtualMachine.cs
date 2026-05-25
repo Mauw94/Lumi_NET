@@ -52,7 +52,7 @@ public sealed class VirtualMachine
             switch (instruction.Kind)
             {
                 case InstructionKind.PushConst:
-                    _stack[_stackTop++] = Value.ConstantToValue(constants[instruction.IntOperand.GetValueOrDefault()]);
+                    _stack[_stackTop++] = ConstantToValue(constants[instruction.IntOperand.GetValueOrDefault()]);
                     break;
 
                 case InstructionKind.Add:
@@ -60,10 +60,10 @@ public sealed class VirtualMachine
                         var b = _stack[--_stackTop];
                         var a = _stack[--_stackTop];
 
-                        // NOTE: clean this up.
-                        if (a.Kind == ValueKind.String || b.Kind == ValueKind.String)
+                        if (TryGetStringValue(a, out _) || TryGetStringValue(b, out _))
                         {
-                            _stack[_stackTop++] = Value.FromString(a.ToString() + b.ToString());
+                            var handle = _heap.InternString(StringifyForConcatenation(a) + StringifyForConcatenation(b));
+                            _stack[_stackTop++] = Value.FromHeapObject(handle);
                             break;
                         }
                         _stack[_stackTop++] = Value.FromNumber(a.Number + b.Number);
@@ -115,9 +115,7 @@ public sealed class VirtualMachine
 
                 case InstructionKind.LoadPreludeGlobal:
                     {
-                        var heapObject = new HeapNativeObject(instruction.GetSafeStringOperand(), []); // TODO: fields?
-                        _heap.MaybeCollect(EnumerateRoots());
-                        _stack[_stackTop++] = Value.FromHeapObject(_heap.Allocate(heapObject));
+                        AllocateHeapObject(new HeapNativeObject(instruction.GetSafeStringOperand(), []));
                         break;
                     }
 
@@ -144,9 +142,7 @@ public sealed class VirtualMachine
                             values[fields[i]] = i < args.Length ? args[i] : Value.Undefined();
                         }
 
-                        var heapObject = new HeapStructObject(structName, values);
-                        _heap.MaybeCollect(EnumerateRoots());
-                        _stack[_stackTop++] = Value.FromHeapObject(_heap.Allocate(heapObject));
+                        AllocateHeapObject(new HeapStructObject(structName, values));
                         break;
                     }
 
@@ -203,9 +199,7 @@ public sealed class VirtualMachine
                             values[i] = _stack[--_stackTop];
                         }
 
-                        var heapObject = new HeapArrayObject([.. values]);
-                        _heap.MaybeCollect(EnumerateRoots());
-                        _stack[_stackTop++] = Value.FromHeapObject(_heap.Allocate(heapObject));
+                        AllocateHeapObject(new HeapArrayObject([.. values]));
                         break;
                     }
 
@@ -429,4 +423,37 @@ public sealed class VirtualMachine
             yield return _variables[i];
         }
     }
+
+    private void AllocateHeapObject(HeapObject heapObject)
+    {
+        _heap.MaybeCollect(EnumerateRoots());
+        _stack[_stackTop++] = Value.FromHeapObject(_heap.Allocate(heapObject));
+    }
+
+    private Value ConstantToValue(Constant constant) => constant.Kind switch
+    {
+        ConstantKind.String => Value.FromHeapObject(_heap.InternString(constant.String!)),
+        _ => Value.ConstantToValue(constant),
+    };
+
+    private bool TryGetStringValue(Value value, out string text)
+    {
+        text = string.Empty;
+
+        if (!value.IsHeapAllocated())
+        {
+            return false;
+        }
+
+        text = _heap.GetStringValue(value.GetRequiredHeapHandle());
+
+        return true;
+    }
+
+    private string StringifyForConcatenation(Value value)
+        => TryGetStringValue(value, out var text)
+            ? text
+            : value.IsHeapAllocated()
+                ? _heap.GetStringValue(value.GetRequiredHeapHandle())
+                : value.PrintValue();
 }
