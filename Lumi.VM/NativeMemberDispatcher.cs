@@ -61,13 +61,13 @@ internal static class NativeMemberDispatcher
         {
             return methodName switch
             {
-                StdLibConstants.FilePreludeMethods.ReadText => Value.FromString(ReadAllText(methodName, args)),
-                StdLibConstants.FilePreludeMethods.WriteText => WriteText(args),
-                StdLibConstants.FilePreludeMethods.AppendText => AppendText(args),
+                StdLibConstants.FilePreludeMethods.ReadText => ReadText(heap, args),
+                StdLibConstants.FilePreludeMethods.WriteText => WriteText(heap, args),
+                StdLibConstants.FilePreludeMethods.AppendText => AppendText(heap, args),
                 StdLibConstants.FilePreludeMethods.ReadLines => ReadLines(heap, args),
                 StdLibConstants.FilePreludeMethods.WriteLines => WriteLines(heap, args),
-                StdLibConstants.FilePreludeMethods.Delete => Delete(args),
-                StdLibConstants.FilePreludeMethods.Create => Create(args),
+                StdLibConstants.FilePreludeMethods.Delete => Delete(heap, args),
+                StdLibConstants.FilePreludeMethods.Create => Create(heap, args),
                 _ => throw VirtualMachineError.UnknownPreludeMethod(StandardLibraryRegistry.FilePreludeName, methodName)
             };
         }
@@ -77,29 +77,32 @@ internal static class NativeMemberDispatcher
         }
     }
 
-    private static string ReadAllText(string methodName, IReadOnlyList<Value> args)
-        => File.ReadAllText(GetRequiredStringArgument(methodName, 0, args[0]));
+    private static string ReadAllText(HeapManager heap, string methodName, IReadOnlyList<Value> args)
+        => File.ReadAllText(GetRequiredStringArgument(methodName, 0, args[0], heap));
 
-    private static Value Delete(IReadOnlyList<Value> args)
+    private static Value ReadText(HeapManager heap, IReadOnlyList<Value> args)
+        => Value.FromHeapObject(heap.InternString(ReadAllText(heap, StdLibConstants.FilePreludeMethods.ReadText, args)));
+
+    private static Value Delete(HeapManager heap, IReadOnlyList<Value> args)
     {
-        var path = GetRequiredStringArgument(StdLibConstants.FilePreludeMethods.Delete, 0, args[0]);
+        var path = GetRequiredStringArgument(StdLibConstants.FilePreludeMethods.Delete, 0, args[0], heap);
         File.Delete(path);
 
         return Value.Undefined();
     }
 
-    private static Value Create(IReadOnlyList<Value> args)
+    private static Value Create(HeapManager heap, IReadOnlyList<Value> args)
     {
-        var path = GetRequiredStringArgument(StdLibConstants.FilePreludeMethods.Create, 0, args[0]);
+        var path = GetRequiredStringArgument(StdLibConstants.FilePreludeMethods.Create, 0, args[0], heap);
         using var fileStream = File.Create(path);
 
         return Value.Undefined();
     }
 
-    private static Value AppendText(IReadOnlyList<Value> args)
+    private static Value AppendText(HeapManager heap, IReadOnlyList<Value> args)
     {
-        var path = GetRequiredStringArgument(StdLibConstants.FilePreludeMethods.AppendText, 0, args[0]);
-        var contents = GetRequiredStringArgument(StdLibConstants.FilePreludeMethods.AppendText, 1, args[1]);
+        var path = GetRequiredStringArgument(StdLibConstants.FilePreludeMethods.AppendText, 0, args[0], heap);
+        var contents = GetRequiredStringArgument(StdLibConstants.FilePreludeMethods.AppendText, 1, args[1], heap);
         File.AppendAllText(path, contents);
 
         return Value.Undefined();
@@ -107,17 +110,14 @@ internal static class NativeMemberDispatcher
 
     private static Value WriteLines(HeapManager heap, IReadOnlyList<Value> args)
     {
-        var path = GetRequiredStringArgument(StdLibConstants.FilePreludeMethods.WriteLines, 0, args[0]);
+        var path = GetRequiredStringArgument(StdLibConstants.FilePreludeMethods.WriteLines, 0, args[0], heap);
         var linesArray = GetRequiredArrayArgument(StdLibConstants.FilePreludeMethods.WriteLines, 1, args[1], heap);
 
         var lines = new string[linesArray.Elements.Count];
         for (var i = 0; i < linesArray.Elements.Count; i++)
         {
             var element = linesArray.Elements[i];
-            if (element.Kind != ValueKind.String || element.String is null)
-                throw VirtualMachineError.MethodArgumentTypeMismatch(StdLibConstants.FilePreludeMethods.WriteLines, 1, ValueKind.String, element.Kind);
-
-            lines[i] = element.String;
+            lines[i] = GetRequiredStringArgument(StdLibConstants.FilePreludeMethods.WriteLines, 1, element, heap);
         }
 
         File.WriteAllLines(path, lines);
@@ -139,21 +139,23 @@ internal static class NativeMemberDispatcher
         return Value.FromBoolean(removed);
     }
 
-    private static Value WriteText(IReadOnlyList<Value> args)
+    private static Value WriteText(HeapManager heap, IReadOnlyList<Value> args)
     {
-        var path = GetRequiredStringArgument(StdLibConstants.FilePreludeMethods.WriteText, 0, args[0]);
-        var contents = GetRequiredStringArgument(StdLibConstants.FilePreludeMethods.WriteText, 1, args[1]);
+        var path = GetRequiredStringArgument(StdLibConstants.FilePreludeMethods.WriteText, 0, args[0], heap);
+        var contents = GetRequiredStringArgument(StdLibConstants.FilePreludeMethods.WriteText, 1, args[1], heap);
         File.WriteAllText(path, contents);
 
         return Value.Undefined();
     }
 
-    private static string GetRequiredStringArgument(string methodName, int parameterIndex, Value value)
+    private static string GetRequiredStringArgument(string methodName, int parameterIndex, Value value, HeapManager? heap)
     {
-        if (value.Kind != ValueKind.String || value.String is null)
-            throw VirtualMachineError.MethodArgumentTypeMismatch(methodName, parameterIndex, ValueKind.String, value.Kind);
+        if (heap is not null && value.IsHeapAllocated())
+        {
+            return heap.GetStringValue(value.GetRequiredHeapHandle());
+        }
 
-        return value.String;
+        throw VirtualMachineError.MethodArgumentTypeMismatch(methodName, parameterIndex, ValueKind.String, value.Kind);
     }
 
     private static HeapArrayObject GetRequiredArrayArgument(string methodName, int parameterIndex, Value value, HeapManager heap)
@@ -161,11 +163,7 @@ internal static class NativeMemberDispatcher
         if (!value.IsHeapAllocated())
             throw VirtualMachineError.MethodArgumentTypeMismatch(methodName, parameterIndex, ValueKind.Array, value.Kind);
 
-        var heapObject = heap.Get<HeapObject>(value.GetRequiredHeapHandle());
-        if (heapObject is not HeapArrayObject arrayObject)
-            throw VirtualMachineError.MethodArgumentTypeMismatch(methodName, parameterIndex, ValueKind.Array, heapObject.Kind);
-
-        return arrayObject;
+        return heap.Get<HeapArrayObject>(value.GetRequiredHeapHandle());
     }
 
     private static void ValidateArgumentCount(string methodName, int expected, int actual)
@@ -176,16 +174,15 @@ internal static class NativeMemberDispatcher
 
     private static Value ReadLines(HeapManager heap, IReadOnlyList<Value> args)
     {
-        var lines = File.ReadAllLines(GetRequiredStringArgument(StdLibConstants.FilePreludeMethods.ReadLines, 0, args[0]));
+        var lines = File.ReadAllLines(GetRequiredStringArgument(StdLibConstants.FilePreludeMethods.ReadLines, 0, args[0], heap));
         var values = new List<Value>(lines.Length);
 
         foreach (var line in lines)
         {
-            values.Add(Value.FromString(line));
+            var handle = heap.InternString(line);
+            values.Add(Value.FromHeapObject(handle));
         }
 
-        var heapArray = new HeapArrayObject(values);
-
-        return Value.FromHeapObject(heap.Allocate(heapArray));
+        return Value.FromHeapObject(heap.Allocate(new HeapArrayObject(values)));
     }
 }

@@ -52,7 +52,7 @@ public sealed class VirtualMachine
             switch (instruction.Kind)
             {
                 case InstructionKind.PushConst:
-                    _stack[_stackTop++] = Value.ConstantToValue(constants[instruction.IntOperand.GetValueOrDefault()]);
+                    _stack[_stackTop++] = ConstantToValue(constants[instruction.IntOperand.GetValueOrDefault()]);
                     break;
 
                 case InstructionKind.Add:
@@ -60,10 +60,11 @@ public sealed class VirtualMachine
                         var b = _stack[--_stackTop];
                         var a = _stack[--_stackTop];
 
-                        // NOTE: clean this up.
-                        if (a.Kind == ValueKind.String || b.Kind == ValueKind.String)
+                        if (TryGetStringValue(a, out _) || TryGetStringValue(b, out _))
                         {
-                            _stack[_stackTop++] = Value.FromString(a.ToString() + b.ToString());
+                            _heap.MaybeCollect(Roots([a, b]));
+                            var handle = _heap.InternString(StringifyForConcatenation(a) + StringifyForConcatenation(b));
+                            _stack[_stackTop++] = Value.FromHeapObject(handle);
                             break;
                         }
                         _stack[_stackTop++] = Value.FromNumber(a.Number + b.Number);
@@ -115,9 +116,7 @@ public sealed class VirtualMachine
 
                 case InstructionKind.LoadPreludeGlobal:
                     {
-                        var heapObject = new HeapNativeObject(instruction.GetSafeStringOperand(), []); // TODO: fields?
-                        _heap.MaybeCollect(EnumerateRoots());
-                        _stack[_stackTop++] = Value.FromHeapObject(_heap.Allocate(heapObject));
+                        AllocateHeapObject(new HeapNativeObject(instruction.GetSafeStringOperand(), []));
                         break;
                     }
 
@@ -144,9 +143,7 @@ public sealed class VirtualMachine
                             values[fields[i]] = i < args.Length ? args[i] : Value.Undefined();
                         }
 
-                        var heapObject = new HeapStructObject(structName, values);
-                        _heap.MaybeCollect(EnumerateRoots());
-                        _stack[_stackTop++] = Value.FromHeapObject(_heap.Allocate(heapObject));
+                        AllocateHeapObject(new HeapStructObject(structName, values), values.Values);
                         break;
                     }
 
@@ -203,9 +200,7 @@ public sealed class VirtualMachine
                             values[i] = _stack[--_stackTop];
                         }
 
-                        var heapObject = new HeapArrayObject([.. values]);
-                        _heap.MaybeCollect(EnumerateRoots());
-                        _stack[_stackTop++] = Value.FromHeapObject(_heap.Allocate(heapObject));
+                        AllocateHeapObject(new HeapArrayObject([.. values]), values);
                         break;
                     }
 
@@ -429,4 +424,54 @@ public sealed class VirtualMachine
             yield return _variables[i];
         }
     }
+
+    private IEnumerable<Value> Roots(IEnumerable<Value>? additionalRoots = null)
+    {
+        foreach (var root in EnumerateRoots()) yield return root;
+        if (additionalRoots is not null)
+        {
+            foreach (var root in additionalRoots) yield return root;
+        }
+    }
+
+    private void AllocateHeapObject(HeapObject heapObject, IEnumerable<Value>? additionalRoots = null)
+    {
+        _heap.MaybeCollect(Roots());
+        _stack[_stackTop++] = Value.FromHeapObject(_heap.Allocate(heapObject));
+    }
+
+    private Value ConstantToValue(Constant constant)
+    {
+        if (constant.Kind != ConstantKind.String)
+        {
+            return Value.ConstantToValue(constant);
+        }
+
+        _heap.MaybeCollect(EnumerateRoots());
+        return Value.FromHeapObject(_heap.InternString(constant.String!));
+    }
+
+    private bool TryGetStringValue(Value value, out string text)
+    {
+        text = string.Empty;
+
+        if (!value.IsHeapAllocated())
+        {
+            return false;
+        }
+
+        var obj = _heap.Get<HeapObject>(value.GetRequiredHeapHandle());
+        if (obj is not HeapStringObject stringObj)
+        {
+            return false;
+        }
+
+        text = stringObj.Value;
+        return true;
+    }
+
+    private string StringifyForConcatenation(Value value)
+        => TryGetStringValue(value, out var text)
+            ? text
+            : _heap.FormatValue(value);
 }
