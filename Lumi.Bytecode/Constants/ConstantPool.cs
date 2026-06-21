@@ -7,7 +7,6 @@
 /// </summary>
 internal sealed class ConstantPool
 {
-    // TODO: need a constantpool pass to remove dead constants after optimizations like constant folding and inlining.
     private readonly List<Constant> _values = new(capacity: 16);
     private readonly Dictionary<double, int> _numberIndex = [];
     private readonly Dictionary<string, int> _stringIndex = new(StringComparer.Ordinal);
