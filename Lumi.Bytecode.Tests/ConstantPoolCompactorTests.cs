@@ -26,8 +26,8 @@ public sealed class ConstantPoolCompactorTests
         var (rewrittenInstructions, compactedConstants) = ConstantPoolCompactor.Compact(instructions, constants);
 
         Assert.HasCount(2, compactedConstants);
-        Assert.AreEqual(1, compactedConstants[0].Number);
-        Assert.AreEqual(3, compactedConstants[1].Number);
+        Assert.AreEqual(1.0, compactedConstants[0].Number);
+        Assert.AreEqual(3.0, compactedConstants[1].Number);
 
         Assert.HasCount(3, rewrittenInstructions);
         Assert.AreEqual(InstructionKind.PushConst, rewrittenInstructions[0].Kind);
