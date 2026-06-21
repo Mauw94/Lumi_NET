@@ -12,6 +12,9 @@ public sealed record BytecodeResult(
     IReadOnlyDictionary<string, IReadOnlyList<string>> StructDefinitions,
     IReadOnlyDictionary<string, IReadOnlyDictionary<string, int>> StructMethodAddresses)
 {
-    public static BytecodeResult FromGenerator(BytecodeGenerator generator) =>
-        new(generator.Instructions, generator.Constants, generator.Locals, generator.FunctionAddresses, generator.StructDefinitions, generator.StructMethodAddresses);
+    public static BytecodeResult FromGenerator(BytecodeGenerator generator)
+    {
+        var (instructions, constants) = ConstantPoolCompactor.Compact(generator.Instructions, generator.Constants);
+        return new(instructions, constants, generator.Locals, generator.FunctionAddresses, generator.StructDefinitions, generator.StructMethodAddresses);
+    }
 }
