@@ -76,6 +76,32 @@ public sealed class FunctionBytecodeTests
     }
 
     [TestMethod]
+    public void Test_FunctionDeclaration_RegistersFunctionDescriptor()
+    {
+        var program = BuildProgram(
+            new FunctionDeclaration
+            {
+                Id = new IdentifierNode { Name = "foo" },
+                Params = [new IdentifierNode { Name = "value" }],
+                Body = new BlockStatement { Body = [] }
+            });
+
+        var result = Generate(program);
+        var functionId = result.FunctionDescriptorIds["foo"];
+        var descriptor = result.FunctionDescriptors[functionId];
+
+        Assert.AreEqual(functionId, descriptor.FunctionId);
+        Assert.AreEqual("foo", descriptor.Name);
+        Assert.AreEqual(1, descriptor.EntryPoint);
+        Assert.AreEqual(1, descriptor.ParameterCount);
+        Assert.IsNull(descriptor.ParentFunctionId);
+        Assert.IsNull(descriptor.OwningStructName);
+        Assert.IsFalse(descriptor.HasCaptures());
+        Assert.HasCount(0, descriptor.CaptureNames);
+        Assert.AreEqual(result.FunctionAddresses["foo"], descriptor.EntryPoint);
+    }
+
+    [TestMethod]
     public void Test_FunctionDeclaration_WithParameters_EmitsStoreVars()
     {
         // fn add(a, b) { print a + b; }
@@ -276,6 +302,90 @@ public sealed class FunctionBytecodeTests
         Assert.IsTrue(result.FunctionAddresses.ContainsKey("a"));
         Assert.IsTrue(result.FunctionAddresses.ContainsKey("b"));
         Assert.AreNotEqual(result.FunctionAddresses["a"], result.FunctionAddresses["b"]);
+    }
+
+    [TestMethod]
+    public void Test_NestedFunctionDeclaration_RegistersParentDescriptor()
+    {
+        var program = BuildProgram(
+            new FunctionDeclaration
+            {
+                Id = new IdentifierNode { Name = "outer" },
+                Params = [],
+                Body = new BlockStatement
+                {
+                    Body =
+                    [
+                        new FunctionDeclaration
+                        {
+                            Id = new IdentifierNode { Name = "inner" },
+                            Params = [],
+                            Body = new BlockStatement { Body = [] }
+                        }
+                    ]
+                }
+            });
+
+        var result = Generate(program);
+        var outerId = result.FunctionDescriptorIds["outer"];
+        var outerDescriptor = result.FunctionDescriptors[outerId];
+        var innerDescriptor = result.FunctionDescriptors.Values.Single(d => d.Name == "inner");
+
+        Assert.IsNull(outerDescriptor.ParentFunctionId);
+        Assert.AreEqual(outerId, innerDescriptor.ParentFunctionId);
+        Assert.IsNull(innerDescriptor.OwningStructName);
+        Assert.IsFalse(innerDescriptor.HasCaptures());
+        Assert.AreNotEqual(outerDescriptor.EntryPoint, innerDescriptor.EntryPoint);
+    }
+
+    [TestMethod]
+    public void Test_NestedFunctionDeclaration_WithOuterReference_RegistersCaptures()
+    {
+        var program = BuildProgram(
+            new FunctionDeclaration
+            {
+                Id = new IdentifierNode { Name = "outer" },
+                Params = [],
+                Body = new BlockStatement
+                {
+                    Body =
+                    [
+                        new VariableDeclaration
+                        {
+                            Kind = "let",
+                            Declarations =
+                            [
+                                new VariableDeclarator
+                                {
+                                    VarName = new IdentifierNode { Name = "captured" },
+                                    Init = new NumberNode { Value = 1.0 }
+                                }
+                            ]
+                        },
+                        new FunctionDeclaration
+                        {
+                            Id = new IdentifierNode { Name = "inner" },
+                            Params = [],
+                            Body = new BlockStatement
+                            {
+                                Body =
+                                [
+                                    new PrintStatement
+                                    {
+                                        Argument = new IdentifierNode { Name = "captured" }
+                                    }
+                                ]
+                            }
+                        }
+                    ]
+                }
+            });
+
+        var result = Generate(program);
+        var innerDescriptor = result.FunctionDescriptors.Values.Single(d => d.Name == "inner");
+
+        Assert.IsTrue(innerDescriptor.HasCaptures());
+        CollectionAssert.AreEqual(new[] { "captured" }, innerDescriptor.CaptureNames.ToArray());
     }
 
     [TestMethod]

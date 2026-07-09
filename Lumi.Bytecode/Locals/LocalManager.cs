@@ -6,21 +6,24 @@
 /// </summary>
 internal sealed class LocalManager
 {
-    private readonly List<Dictionary<string, Local>> _scopes = new(capacity: 4);
+    private readonly List<ScopeFrame> _scopes = new(capacity: 4);
     private int _nextSlotId = 0;
-    private Dictionary<string, Local> CurrentScope => _scopes.Count > 0 ? _scopes[^1] : throw BytecodeError.NoActiveScope();
+    private ScopeFrame CurrentScope => _scopes.Count > 0 ? _scopes[^1] : throw BytecodeError.NoActiveScope();
 
     /// <summary>
     /// Returns a flat view of every local registered across all scopes.
     /// </summary>
-    public IReadOnlyList<Local> AllLocals => [.. _scopes.SelectMany(s => s.Values)];
+    public IReadOnlyList<Local> AllLocals => [.. _scopes.SelectMany(s => s.Locals.Values)];
 
     /// <summary>
     /// Enter a new scope.
     /// </summary>
-    public void EnterScope()
+    public void EnterScope(int? owningFunctionId = null)
     {
-        _scopes.Add([]);
+        if (owningFunctionId is null && _scopes.Count > 0)
+            owningFunctionId = _scopes[^1].OwningFunctionId;
+
+        _scopes.Add(new ScopeFrame([], owningFunctionId, _scopes.Count));
     }
 
     /// <summary>
@@ -28,6 +31,7 @@ internal sealed class LocalManager
     /// </summary>
     public void ExitScope()
     {
+
         if (_scopes.Count == 0) throw BytecodeError.NoActiveScope();
         _scopes.RemoveAt(_scopes.Count - 1);
     }
@@ -65,12 +69,12 @@ internal sealed class LocalManager
     public Label GetOrCreateLocal(string name, LocalKind kind, VarType type = VarType.Unknown)
     {
         var current = CurrentScope;
-        if (current.TryGetValue(name, out var existing))
+        if (current.Locals.TryGetValue(name, out var existing))
             return existing.Label;
 
         var newLabel = new Label(_nextSlotId++);
         var newLocal = new Local(name, kind, newLabel, type);
-        current[name] = newLocal;
+        current.Locals[name] = newLocal;
 
         return newLabel;
     }
@@ -84,16 +88,42 @@ internal sealed class LocalManager
     /// multiple variables share the same name in different scopes, the one in the closest (most nested) scope is
     /// returned.</remarks>
     /// <param name="name">The name of the local variable to locate. Cannot be null.</param>
-    /// <returns>A <see cref="Local"/> instance representing the found local variable if one exists; otherwise, <see
     /// langword="null"/>.</returns>
     public Local? LookupLocal(string name)
     {
         for (int i = _scopes.Count - 1; i >= 0; i--)
         {
-            if (_scopes[i].TryGetValue(name, out var local))
+            if (_scopes[i].Locals.TryGetValue(name, out var local))
                 return local;
         }
 
         return null;
     }
+
+    /// <summary>
+    /// Searches for a local variable with the specified name in the current and enclosing scopes.
+    /// </summary>
+    /// <remarks>The search begins in the innermost scope and proceeds outward through enclosing scopes. If
+    /// multiple variables share the same name in different scopes, the one in the closest (most nested) scope is
+    /// returned.</remarks>
+    /// <param name="name">The name of the local variable to locate. Cannot be null.</param>
+    /// <returns>A <see cref="LocalResolution"/> instance representing the found local variable if one exists; otherwise, <see
+    /// langword="null"/>.</returns>
+    public LocalResolution? LookupLocalWithScope(string name)
+    {
+        var scopeDepth = 0;
+        for (int i = _scopes.Count - 1; i >= 0; i--)
+        {
+            if (_scopes[i].Locals.TryGetValue(name, out var local))
+            {
+                return new LocalResolution(local, _scopes[i].OwningFunctionId, scopeDepth);
+            }
+            scopeDepth++;
+        }
+
+        return null;
+    }
 }
+
+internal readonly record struct LocalResolution(Local Local, int? OwningFunctionId, int ScopeDepth);
+internal sealed record ScopeFrame(Dictionary<string, Local> Locals, int? OwningFunctionId, int ScopeDepth);

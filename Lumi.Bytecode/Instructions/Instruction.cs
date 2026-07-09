@@ -75,4 +75,6 @@ public readonly struct Instruction
     public static Instruction StoreField(string fieldName) => new(InstructionKind.StoreField, fieldName);
     public static Instruction MakeArray(int elementCount) => new(InstructionKind.MakeArray, elementCount);
     public static Instruction IndexArray() => new(InstructionKind.IndexArray);
+    public static Instruction MakeClosure(int functionAddress) => new(InstructionKind.MakeClosure, functionAddress);
+    public static Instruction LoadCapture(int captureIndex) => new(InstructionKind.LoadCapture, captureIndex);
 }

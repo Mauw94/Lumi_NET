@@ -45,4 +45,6 @@ public enum InstructionKind
     Print,
     Nop,
     Halt,
+    MakeClosure,
+    LoadCapture,
 }

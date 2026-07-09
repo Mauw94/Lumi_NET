@@ -75,7 +75,7 @@ public sealed class BytecodeTests
 
         // No type annotation — Type should be unknown
         var local = result.Locals.Single();
-        Assert.AreEqual(VarType.Unknown, local.Type);
+        Assert.AreEqual(VarType.Unknown, local.VarType);
     }
 
     [TestMethod]
@@ -108,7 +108,7 @@ public sealed class BytecodeTests
         var local = result.Locals.Single();
         Assert.AreEqual("x", local.Name);
         Assert.AreEqual(LocalKind.Let, local.Kind);
-        Assert.AreEqual(VarType.Int, local.Type);
+        Assert.AreEqual(VarType.Int, local.VarType);
     }
 
     [TestMethod]
@@ -151,7 +151,7 @@ public sealed class BytecodeTests
         var local = result.Locals.Single();
         Assert.AreEqual("x", local.Name);
         Assert.AreEqual(LocalKind.Let, local.Kind);
-        Assert.AreEqual(VarType.Int, local.Type);
+        Assert.AreEqual(VarType.Int, local.VarType);
     }
 
     [TestMethod]
@@ -182,7 +182,7 @@ public sealed class BytecodeTests
         var local = result.Locals.Single();
         Assert.AreEqual("items", local.Name);
         Assert.AreEqual(LocalKind.Let, local.Kind);
-        Assert.AreEqual(VarType.List, local.Type);
+        Assert.AreEqual(VarType.List, local.VarType);
     }
 
     [TestMethod]
@@ -435,6 +435,15 @@ public sealed class BytecodeTests
         Assert.AreEqual(0, call.GetSafeIntOperand());
         Assert.IsTrue(result.StructMethodAddresses.ContainsKey("Person"));
         Assert.IsTrue(result.StructMethodAddresses["Person"].ContainsKey("greet"));
+        Assert.IsTrue(result.StructMethodDescriptorIds.ContainsKey("Person"));
+        Assert.IsTrue(result.StructMethodDescriptorIds["Person"].ContainsKey("greet"));
+
+        var descriptorId = result.StructMethodDescriptorIds["Person"]["greet"];
+        var descriptor = result.FunctionDescriptors[descriptorId];
+        Assert.AreEqual("greet", descriptor.Name);
+        Assert.AreEqual("Person", descriptor.OwningStructName);
+        Assert.IsNull(descriptor.ParentFunctionId);
+        Assert.AreEqual(result.StructMethodAddresses["Person"]["greet"], descriptor.EntryPoint);
     }
 
     [TestMethod]

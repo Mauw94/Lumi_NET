@@ -1,4 +1,4 @@
-﻿using Lumi.AST;
+using Lumi.AST;
 using Lumi.Bytecode.Constants;
 using Lumi.Bytecode.Instructions;
 using Lumi.Bytecode.Locals;
@@ -15,22 +15,32 @@ public sealed class BytecodeGenerator
     private readonly ConstantPool _constantPool = new();
     private readonly Dictionary<Label, List<int>> _unpatchedJumps = [];
     private readonly Dictionary<string, int> _functionAddresses = [];
+    private readonly Dictionary<int, FunctionDescriptor> _functionDescriptors = [];
+    private readonly Dictionary<string, int> _functionDescriptorIds = new(StringComparer.Ordinal);
     // TKey: struct name, TValue: list of field names in declaration order
     private readonly Dictionary<string, IReadOnlyList<string>> _structDefinitions = new(StringComparer.Ordinal);
     // TKey: struct name, TValue: list of field initializer expressions in declaration order (null if no initializer)
     private readonly Dictionary<string, IReadOnlyList<Node?>> _structFieldInitializers = new(StringComparer.Ordinal);
     // TKey: struct name, TValue: (TKey: method name, TValue: method entry point) pairs
     private readonly Dictionary<string, Dictionary<string, int>> _structMethodAddresses = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, Dictionary<string, int>> _structMethodDescriptorIds = new(StringComparer.Ordinal);
+    private readonly Dictionary<int, HashSet<string>> _capturesByFunctionId = [];
     private readonly LocalManager _locals = new();
+    private readonly Stack<int> _functionIdStack = [];
     private int _nextLabelId = 0;
+    private int _nextFunctionId = 1;
 
     public IReadOnlyList<Instruction> Instructions => _instructions;
     public IReadOnlyList<Constant> Constants => _constantPool.Values;
     public IReadOnlyList<Local> Locals => _locals.AllLocals;
     public IReadOnlyDictionary<string, int> FunctionAddresses => _functionAddresses;
+    public IReadOnlyDictionary<int, FunctionDescriptor> FunctionDescriptors => _functionDescriptors;
+    public IReadOnlyDictionary<string, int> FunctionDescriptorIds => _functionDescriptorIds;
     public IReadOnlyDictionary<string, IReadOnlyList<string>> StructDefinitions => _structDefinitions;
     public IReadOnlyDictionary<string, IReadOnlyDictionary<string, int>> StructMethodAddresses
         => _structMethodAddresses.ToDictionary(static kvp => kvp.Key, static kvp => (IReadOnlyDictionary<string, int>)kvp.Value, StringComparer.Ordinal);
+    public IReadOnlyDictionary<string, IReadOnlyDictionary<string, int>> StructMethodDescriptorIds
+        => _structMethodDescriptorIds.ToDictionary(static kvp => kvp.Key, static kvp => (IReadOnlyDictionary<string, int>)kvp.Value, StringComparer.Ordinal);
 
     public BytecodeGenerator()
     {
@@ -84,9 +94,10 @@ public sealed class BytecodeGenerator
                 break;
 
             case IdentifierNode identifier:
-                if (_locals.LookupLocal(identifier.Name) is { } local)
+                if (_locals.LookupLocalWithScope(identifier.Name) is { } localResolution)
                 {
-                    Emit(Instruction.LoadVar(local.Label));
+                    RegisterCapture(localResolution);
+                    Emit(Instruction.LoadVar(localResolution.Local.Label));
                     break;
                 }
 
@@ -166,8 +177,9 @@ public sealed class BytecodeGenerator
                 if (assignmentExpression.Left is IdentifierNode targetIdentifier)
                 {
                     Visit(assignmentExpression.Right);
-                    var targetLocal = _locals.LookupLocal(targetIdentifier.Name) ?? throw BytecodeError.UndefinedVariable(targetIdentifier.Name);
-                    Emit(Instruction.StoreVar(targetLocal.Label));
+                    var targetResolution = _locals.LookupLocalWithScope(targetIdentifier.Name) ?? throw BytecodeError.UndefinedVariable(targetIdentifier.Name);
+                    RegisterCapture(targetResolution);
+                    Emit(Instruction.StoreVar(targetResolution.Local.Label));
                     break;
                 }
 
@@ -203,6 +215,7 @@ public sealed class BytecodeGenerator
             _structDefinitions[structName] = fields;
             _structFieldInitializers[structName] = fieldInitializers;
             _structMethodAddresses[structName] = new Dictionary<string, int>(StringComparer.Ordinal);
+            _structMethodDescriptorIds[structName] = new Dictionary<string, int>(StringComparer.Ordinal);
         }
     }
 
@@ -424,65 +437,145 @@ public sealed class BytecodeGenerator
         if (functionDeclaration.Id is not IdentifierNode functionName)
             throw BytecodeError.ExpectedIdentifierInFunctionDeclaration();
 
-        VisitFunctionBody(
+       var descriptor= VisitFunctionBody(
             functionDeclaration,
-            address => _functionAddresses[functionName.Name] = address,
-            receiverLocalName: null);
+            descriptor =>
+            {
+                _functionAddresses[functionName.Name] = descriptor.EntryPoint;
+
+                if (descriptor.ParentFunctionId is null && descriptor.OwningStructName is null)
+                {
+                    _functionDescriptorIds[functionName.Name] = descriptor.FunctionId;
+                }
+            },
+            receiverLocalName: null,
+            owningStructName: null);
+
+        // TODO:  It does not yet switch captured identifier codegen to LoadCapture;
+        // right now it still records captures while emitting the existing local access path.
+        if (descriptor.ParentFunctionId is not null && descriptor.HasCaptures())
+        {
+            Emit(Instruction.MakeClosure(descriptor.FunctionId));
+        }
     }
 
-    private void VisitFunctionBody(
+    private FunctionDescriptor VisitFunctionBody(
         FunctionDeclaration functionDeclaration,
-        Action<int> registerEntryPoint,
-        string? receiverLocalName)
+        Action<FunctionDescriptor> registerDescriptor,
+        string? receiverLocalName,
+        string? owningStructName)
     {
         // Jump over the function body so it isn't executed during normal program flow.
         var skipLabel = NewLabel();
         EmitJump(skipLabel);
 
-        // Record the function entry point (the instruction right after the jump).
-        registerEntryPoint(_instructions.Count);
+        var functionId = _nextFunctionId++;
+        int? parentFunctionId = _functionIdStack.Count > 0 ? _functionIdStack.Peek() : null;
+        var entryPoint = _instructions.Count;
 
-        // Reset the slot counter so function-local variables are numbered from 0,
-        // relative to the function's base pointer at runtime.
-        var savedSlotCounter = _locals.SaveAndResetSlotCounter();
+        if (functionDeclaration.Id is not IdentifierNode functionName)
+            throw BytecodeError.ExpectedIdentifierInFunctionDeclaration();
 
-        // Create a new scope for the function body.
-        _locals.EnterScope();
+        var descriptor = new FunctionDescriptor(
+            FunctionId: functionId,
+            Name: functionName.Name,
+            EntryPoint: entryPoint,
+            ParameterCount: functionDeclaration.Params.Count,
+            ParentFunctionId: parentFunctionId,
+            OwningStructName: owningStructName,
+            CaptureNames: []);
 
-        // Register parameters as locals and emit StoreVar instructions
-        // to pop the caller's arguments into them.
-        // Arguments are pushed left-to-right, so we pop right-to-left.
-        var parameterLabels = new List<Label>(functionDeclaration.Params.Count);
-        if (receiverLocalName is not null)
-            parameterLabels.Add(_locals.GetOrCreateLocal(receiverLocalName, LocalKind.Let, VarType.Unknown));
+        _functionDescriptors[functionId] = descriptor;
+        registerDescriptor(descriptor);
+        _functionIdStack.Push(functionId);
 
-        foreach (var param in functionDeclaration.Params)
+        try
         {
-            if (param is not IdentifierNode paramName)
-                throw BytecodeError.ExpectedIdentifierInFunctionParameter();
+            // Reset the slot counter so function-local variables are numbered from 0,
+            // relative to the function's base pointer at runtime.
+            var savedSlotCounter = _locals.SaveAndResetSlotCounter();
 
-            parameterLabels.Add(_locals.GetOrCreateLocal(paramName.Name, LocalKind.Var, VarType.Unknown));
+            try
+            {
+                // Create a new scope for the function body.
+                _locals.EnterScope(functionId);
+
+                // Register parameters as locals and emit StoreVar instructions
+                // to pop the caller's arguments into them.
+                // Arguments are pushed left-to-right, so we pop right-to-left.
+                var parameterLabels = new List<Label>(functionDeclaration.Params.Count);
+                if (receiverLocalName is not null)
+                    parameterLabels.Add(_locals.GetOrCreateLocal(receiverLocalName, LocalKind.Let, VarType.Unknown));
+
+                foreach (var param in functionDeclaration.Params)
+                {
+                    if (param is not IdentifierNode paramName)
+                        throw BytecodeError.ExpectedIdentifierInFunctionParameter();
+
+                    parameterLabels.Add(_locals.GetOrCreateLocal(paramName.Name, LocalKind.Var, VarType.Unknown));
+                }
+
+                for (int i = parameterLabels.Count - 1; i >= 0; i--)
+                {
+                    Emit(Instruction.StoreVar(parameterLabels[i]));
+                }
+
+                // Generate bytecode for the function body.
+                Visit(functionDeclaration.Body);
+
+                // Implicit return: push undefined and return.
+                Emit(Instruction.PushConst(AddConstant(Constant.Undefined())));
+                Emit(new Instruction(InstructionKind.Return));
+
+                _locals.ExitScope();
+            }
+            finally
+            {
+                // Restore the global slot counter so outer-scope numbering resumes correctly.
+                _locals.RestoreSlotCounter(savedSlotCounter);
+            }
+
+            descriptor = descriptor with
+            {
+                CaptureNames = GetOrderedCaptures(functionId)
+            };
+            _functionDescriptors[functionId] = descriptor;
+
+            // Patch the skip-jump so normal execution resumes here.
+            PatchLabel(skipLabel);
+        }
+        finally
+        {
+            _functionIdStack.Pop();
         }
 
-        for (int i = parameterLabels.Count - 1; i >= 0; i--)
+        return descriptor;
+    }
+
+    private void RegisterCapture(LocalResolution resolution)
+    {
+        if (_functionIdStack.Count == 0)
+            return;
+
+        var currentFunctionId = _functionIdStack.Peek();
+        if (resolution.OwningFunctionId is null || resolution.OwningFunctionId == currentFunctionId)
+            return;
+
+        if (!_capturesByFunctionId.TryGetValue(currentFunctionId, out var captures))
         {
-            Emit(Instruction.StoreVar(parameterLabels[i]));
+            captures = new HashSet<string>(StringComparer.Ordinal);
+            _capturesByFunctionId[currentFunctionId] = captures;
         }
 
-        // Generate bytecode for the function body.
-        Visit(functionDeclaration.Body);
+        captures.Add(resolution.Local.Name);
+    }
 
-        // Implicit return: push undefined and return.
-        Emit(Instruction.PushConst(AddConstant(Constant.Undefined())));
-        Emit(new Instruction(InstructionKind.Return));
+    private IReadOnlyList<string> GetOrderedCaptures(int functionId)
+    {
+        if (!_capturesByFunctionId.TryGetValue(functionId, out var captures) || captures.Count == 0)
+            return [];
 
-        _locals.ExitScope();
-
-        // Restore the global slot counter so outer-scope numbering resumes correctly.
-        _locals.RestoreSlotCounter(savedSlotCounter);
-
-        // Patch the skip-jump so normal execution resumes here.
-        PatchLabel(skipLabel);
+        return [.. captures.OrderBy(static name => name, StringComparer.Ordinal)];
     }
 
     private void VisitCallExpression(CallExpression callExpression)
@@ -540,8 +633,13 @@ public sealed class BytecodeGenerator
             // so it can be called via CallMemberMethod instructions.
             VisitFunctionBody(
                 method,
-                address => _structMethodAddresses[structName][methodName.Name] = address,
-                receiverLocalName: "this");
+                descriptor =>
+                {
+                    _structMethodAddresses[structName][methodName.Name] = descriptor.EntryPoint;
+                    _structMethodDescriptorIds[structName][methodName.Name] = descriptor.FunctionId;
+                },
+                receiverLocalName: "this",
+                owningStructName: structName);
         }
     }
 
