@@ -31,7 +31,6 @@ internal sealed class LocalManager
     /// </summary>
     public void ExitScope()
     {
-
         if (_scopes.Count == 0) throw BytecodeError.NoActiveScope();
         _scopes.RemoveAt(_scopes.Count - 1);
     }

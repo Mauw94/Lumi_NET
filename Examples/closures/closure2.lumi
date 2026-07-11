@@ -1,0 +1,10 @@
+fn outer() {
+    let captured -> 1;
+    fn inner() {
+        print captured;
+    }
+    captured = 2;
+    return inner;
+}
+let printer -> outer();
+printer();
