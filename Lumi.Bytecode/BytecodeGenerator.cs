@@ -11,25 +11,42 @@ namespace Lumi.Bytecode;
 /// </summary>
 public sealed class BytecodeGenerator
 {
-    private readonly List<Instruction> _instructions = new(capacity: 64);
-    private readonly ConstantPool _constantPool = new();
+    // TKey: label, TValue: list of instruction indices that need to be patched to jump to that label
     private readonly Dictionary<Label, List<int>> _unpatchedJumps = [];
+
+    // TKey: function name, TValue: function entry point
     private readonly Dictionary<string, int> _functionAddresses = [];
+
+    // TKey: function id, TValue: function descriptor
     private readonly Dictionary<int, FunctionDescriptor> _functionDescriptors = [];
+
+    // TKey: function name, TValue: function descriptor id
     private readonly Dictionary<string, int> _functionDescriptorIds = new(StringComparer.Ordinal);
+
     // TKey: struct name, TValue: list of field names in declaration order
     private readonly Dictionary<string, IReadOnlyList<string>> _structDefinitions = new(StringComparer.Ordinal);
+
     // TKey: struct name, TValue: list of field initializer expressions in declaration order (null if no initializer)
     private readonly Dictionary<string, IReadOnlyList<Node?>> _structFieldInitializers = new(StringComparer.Ordinal);
+
     // TKey: struct name, TValue: (TKey: method name, TValue: method entry point) pairs
     private readonly Dictionary<string, Dictionary<string, int>> _structMethodAddresses = new(StringComparer.Ordinal);
-    private readonly Dictionary<string, Dictionary<string, int>> _structMethodDescriptorIds = new(StringComparer.Ordinal);
-    private readonly Dictionary<int, HashSet<string>> _capturesByFunctionId = [];
-    private readonly LocalManager _locals = new();
-    private readonly Stack<int> _functionIdStack = [];
-    private int _nextLabelId = 0;
-    private int _nextFunctionId = 1;
 
+    // TKey: struct name, TValue: (TKey: method name, TValue: method descriptor id) pairs
+    private readonly Dictionary<string, Dictionary<string, int>> _structMethodDescriptorIds = new(StringComparer.Ordinal);
+
+    // TKey: function id, TValue: list of captures for that function
+    private readonly Dictionary<int, List<CaptureBinding>> _capturesByFunctionId = [];
+
+    private readonly List<Instruction> _instructions = new(capacity: 64);   // Start with a small capacity to avoid frequent resizing for small programs
+    private readonly ConstantPool _constantPool = new();                    // Start with an empty constant pool; constants will be added as they are encountered during bytecode generation
+    private readonly LocalManager _locals = new();                          // Start with an empty local manager; locals will be registered as they are declared in the program
+    private readonly Stack<int> _functionIdStack = [];                      // Stack to track the current function context during nested function generation
+    private int _nextLabelId = 0;                                           // Next label id to assign for jump targets; incremented each time a new label is created
+    private int _nextFunctionId = 1;                                        // Next function id to assign for new functions; starts at 1 since 0 is reserved for the global scope
+
+
+    // Expose private fields as read-only properties for external access, while preventing modification from outside the class.
     public IReadOnlyList<Instruction> Instructions => _instructions;
     public IReadOnlyList<Constant> Constants => _constantPool.Values;
     public IReadOnlyList<Local> Locals => _locals.AllLocals;
@@ -96,8 +113,7 @@ public sealed class BytecodeGenerator
             case IdentifierNode identifier:
                 if (_locals.LookupLocalWithScope(identifier.Name) is { } localResolution)
                 {
-                    RegisterCapture(localResolution);
-                    Emit(Instruction.LoadVar(localResolution.Local.Label));
+                    EmitResolvedLoad(localResolution);
                     break;
                 }
 
@@ -178,8 +194,7 @@ public sealed class BytecodeGenerator
                 {
                     Visit(assignmentExpression.Right);
                     var targetResolution = _locals.LookupLocalWithScope(targetIdentifier.Name) ?? throw BytecodeError.UndefinedVariable(targetIdentifier.Name);
-                    RegisterCapture(targetResolution);
-                    Emit(Instruction.StoreVar(targetResolution.Local.Label));
+                    EmitResolvedStore(targetResolution);
                     break;
                 }
 
@@ -199,6 +214,10 @@ public sealed class BytecodeGenerator
         }
     }
 
+    /// <summary>
+    /// Pre-registers struct declarations in the provided program, storing their field names and initializers for later use during bytecode generation.
+    /// </summary>
+    /// <param name="program">The program containing struct declarations to pre-register.</param>
     private void PreRegisterStructDeclarations(Program program)
     {
         foreach (var statement in program.Body)
@@ -437,25 +456,30 @@ public sealed class BytecodeGenerator
         if (functionDeclaration.Id is not IdentifierNode functionName)
             throw BytecodeError.ExpectedIdentifierInFunctionDeclaration();
 
-       var descriptor= VisitFunctionBody(
-            functionDeclaration,
-            descriptor =>
-            {
-                _functionAddresses[functionName.Name] = descriptor.EntryPoint;
+        Label? localFunctionSlot = null;
+        if (_functionIdStack.Count > 0)
+        {
+            localFunctionSlot = _locals.GetOrCreateLocal(functionName.Name, LocalKind.Const, VarType.Unknown);
+        }
 
-                if (descriptor.ParentFunctionId is null && descriptor.OwningStructName is null)
-                {
-                    _functionDescriptorIds[functionName.Name] = descriptor.FunctionId;
-                }
-            },
-            receiverLocalName: null,
-            owningStructName: null);
+        var descriptor = VisitFunctionBody(
+             functionDeclaration,
+             descriptor =>
+             {
+                 _functionAddresses[functionName.Name] = descriptor.EntryPoint;
 
-        // TODO:  It does not yet switch captured identifier codegen to LoadCapture;
-        // right now it still records captures while emitting the existing local access path.
-        if (descriptor.ParentFunctionId is not null && descriptor.HasCaptures())
+                 if (descriptor.ParentFunctionId is null && descriptor.OwningStructName is null)
+                 {
+                     _functionDescriptorIds[functionName.Name] = descriptor.FunctionId;
+                 }
+             },
+             receiverLocalName: null,
+             owningStructName: null);
+
+        if (localFunctionSlot is not null)
         {
             Emit(Instruction.MakeClosure(descriptor.FunctionId));
+            Emit(Instruction.StoreVar(localFunctionSlot.Value));
         }
     }
 
@@ -483,7 +507,7 @@ public sealed class BytecodeGenerator
             ParameterCount: functionDeclaration.Params.Count,
             ParentFunctionId: parentFunctionId,
             OwningStructName: owningStructName,
-            CaptureNames: []);
+            Captures: []);
 
         _functionDescriptors[functionId] = descriptor;
         registerDescriptor(descriptor);
@@ -537,7 +561,7 @@ public sealed class BytecodeGenerator
 
             descriptor = descriptor with
             {
-                CaptureNames = GetOrderedCaptures(functionId)
+                Captures = GetCaptures(functionId)
             };
             _functionDescriptors[functionId] = descriptor;
 
@@ -552,36 +576,137 @@ public sealed class BytecodeGenerator
         return descriptor;
     }
 
-    private void RegisterCapture(LocalResolution resolution)
+    private void EmitResolvedLoad(LocalResolution resolution)
     {
         if (_functionIdStack.Count == 0)
+        {
+            Emit(Instruction.LoadVar(resolution.Local.Label));
             return;
+        }
 
         var currentFunctionId = _functionIdStack.Peek();
         if (resolution.OwningFunctionId is null || resolution.OwningFunctionId == currentFunctionId)
-            return;
-
-        if (!_capturesByFunctionId.TryGetValue(currentFunctionId, out var captures))
         {
-            captures = new HashSet<string>(StringComparer.Ordinal);
-            _capturesByFunctionId[currentFunctionId] = captures;
+            Emit(Instruction.LoadVar(resolution.Local.Label));
+            return;
         }
 
-        captures.Add(resolution.Local.Name);
+        RegisterCapture(resolution);
+        Emit(Instruction.LoadCapture(GetCaptureIndex(currentFunctionId, resolution.Local.Name)));
     }
 
-    private IReadOnlyList<string> GetOrderedCaptures(int functionId)
+    private void EmitResolvedStore(LocalResolution resolution)
+    {
+        if (_functionIdStack.Count == 0)
+        {
+            Emit(Instruction.StoreVar(resolution.Local.Label));
+            return;
+        }
+
+        var currentFunctionId = _functionIdStack.Peek();
+        if (resolution.OwningFunctionId is null || resolution.OwningFunctionId == currentFunctionId)
+        {
+            Emit(Instruction.StoreVar(resolution.Local.Label));
+            return;
+        }
+
+        RegisterCapture(resolution);
+        Emit(Instruction.StoreCapture(GetCaptureIndex(currentFunctionId, resolution.Local.Name)));
+    }
+
+    /// <summary>
+    /// Registers a capture binding for the specified local variable resolution, if it is captured by any enclosing functions.
+    /// </summary>
+    private void RegisterCapture(LocalResolution resolution)
+    {
+        if (_functionIdStack.Count == 0 || resolution.OwningFunctionId is null)
+            return;
+
+        var lexicalChain = _functionIdStack.Reverse().ToList();
+        var ownerIndex = lexicalChain.IndexOf(resolution.OwningFunctionId.Value);
+        if (ownerIndex < 0 || ownerIndex == lexicalChain.Count - 1)
+            return;
+
+        var sourceKind = CaptureSourceKind.Local;
+        var sourceIndex = resolution.Local.Label.Id;
+
+        for (var i = ownerIndex + 1; i < lexicalChain.Count; i++)
+        {
+            var functionId = lexicalChain[i];
+            sourceIndex = EnsureCapture(functionId, resolution.Local.Name, sourceKind, sourceIndex);
+            sourceKind = CaptureSourceKind.Capture;
+        }
+    }
+
+    /// <summary>
+    /// Ensures that a capture binding exists for the specified function and local variable.
+    /// Otherwise adds a new capture binding for the specified function (functionId) and local variable (localName) and returns its index.
+    /// <param name="functionId">The ID of the function for which to ensure a capture binding exists.</param>
+    /// <param name="localName">The name of the local variable to capture.</param>
+    /// <param name="sourceKind">The kind of capture source (local or capture).</param>
+    /// <param name="localIndex">The index of the local variable or capture.</param>
+    /// <returns>The index of the capture binding.</returns>
+    private int EnsureCapture(int functionId, string localName, CaptureSourceKind sourceKind, int localIndex)
+    {
+        if (!_capturesByFunctionId.TryGetValue(functionId, out var captures))
+        {
+            captures = [];
+            _capturesByFunctionId[functionId] = captures;
+        }
+
+        for (var i = 0; i < captures.Count; i++)
+        {
+            if (string.Equals(captures[i].Name, localName, StringComparison.Ordinal))
+                return i;
+        }
+
+        captures.Add(new CaptureBinding(localName, sourceKind, localIndex));
+
+        return captures.Count - 1;
+    }
+
+    /// <summary>
+    /// Gets the index of the capture binding for the specified function and local variable.
+    /// </summary>
+    private int GetCaptureIndex(int functionId, string localName)
+    {
+        if (!_capturesByFunctionId.TryGetValue(functionId, out var captures))
+            throw BytecodeError.UndefinedVariable(localName);
+
+        for (var i = 0; i < captures.Count; i++)
+        {
+            if (string.Equals(captures[i].Name, localName, StringComparison.Ordinal))
+                return i;
+        }
+
+        throw BytecodeError.UndefinedVariable(localName);
+    }
+
+    private IReadOnlyList<CaptureBinding> GetCaptures(int functionId)
     {
         if (!_capturesByFunctionId.TryGetValue(functionId, out var captures) || captures.Count == 0)
             return [];
 
-        return [.. captures.OrderBy(static name => name, StringComparer.Ordinal)];
+        return [.. captures];
     }
 
     private void VisitCallExpression(CallExpression callExpression)
     {
         if (callExpression.Callee is IdentifierNode functionName)
         {
+            if (_locals.LookupLocalWithScope(functionName.Name) is { } localResolution)
+            {
+                EmitResolvedLoad(localResolution);
+
+                foreach (var arg in callExpression.Arguments)
+                {
+                    Visit(arg);
+                }
+
+                Emit(Instruction.CallValue(callExpression.Arguments.Count));
+                return;
+            }
+
             // Push arguments left-to-right.
             foreach (var arg in callExpression.Arguments)
             {
@@ -594,7 +719,17 @@ public sealed class BytecodeGenerator
         }
 
         if (callExpression.Callee is not MemberExpression memberExpression)
-            throw BytecodeError.ExpectedIdentifierInFunctionCall();
+        {
+            Visit(callExpression.Callee);
+
+            foreach (var arg in callExpression.Arguments)
+            {
+                Visit(arg);
+            }
+
+            Emit(Instruction.CallValue(callExpression.Arguments.Count));
+            return;
+        }
 
         if (memberExpression.Property is not IdentifierNode methodIdentifier)
             throw BytecodeError.ExpectedIdentifierInMemberAccess();

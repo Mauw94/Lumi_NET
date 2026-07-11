@@ -145,7 +145,7 @@ public sealed class SemanticAnalyzer
                 if (funcDecl.Id is not IdentifierNode functionName)
                     throw SemanticAnalyzerError.InvalidFunctionDeclaration();
 
-                var symbol = new Symbol(functionName.Name, SymbolKind.Function, TypeKind.Unknown, ParameterCount: funcDecl.Params.Count);
+                var symbol = new Symbol(functionName.Name, SymbolKind.Function, TypeKind.Function, ParameterCount: funcDecl.Params.Count);
                 _scopes.RegisterSymbol(symbol);
             }
 
@@ -434,6 +434,11 @@ public sealed class SemanticAnalyzer
         if (receiverStructName is null && KeywordCatalog.Contains(functionName.Name))
             throw SemanticAnalyzerError.FunctionNameIsKeyword(functionName.Name);
 
+        if (!_scopes.ContainsInCurrentScope(functionName.Name))
+        {
+            _scopes.RegisterSymbol(new Symbol(functionName.Name, SymbolKind.Function, TypeKind.Function, ParameterCount: funcDecl.Params.Count));
+        }
+
         // Function is already registered by VisitProgram's first pass,
         // so we only need to analyze the body here.
 
@@ -528,7 +533,14 @@ public sealed class SemanticAnalyzer
         {
             // Look up the function
             var function = _scopes.LookupSymbol(functionName.Name);
-            if (function is null || function.Value.Kind != SymbolKind.Function)
+            if (function is null)
+                throw SemanticAnalyzerError.UndefinedFunction(functionName.Name);
+
+            var isCallableFunctionSymbol = function.Value.Kind == SymbolKind.Function;
+            var isCallableFunctionValue = function.Value.Kind is SymbolKind.Variable or SymbolKind.Constant
+                && function.Value.Type is TypeKind.Function or TypeKind.Unknown;
+
+            if (!isCallableFunctionSymbol && !isCallableFunctionValue)
                 throw SemanticAnalyzerError.UndefinedFunction(functionName.Name);
 
             // Validate argument count matches the declared parameter count

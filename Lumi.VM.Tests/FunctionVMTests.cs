@@ -151,6 +151,105 @@ public sealed class FunctionVMTests
     }
 
     [TestMethod]
+    public void VM_Function_LocalClosure_Call_UsesCapturedValue()
+    {
+        var output = RunAndCapture(
+            Fn("outer", [],
+                new VariableDeclaration
+                {
+                    Kind = "let",
+                    Declarations =
+                    [
+                        new VariableDeclarator
+                        {
+                            VarName = Id("captured"),
+                            Init = Num(1)
+                        }
+                    ]
+                },
+                Fn("inner", [], Print(Id("captured"))),
+                new ExpressionStatement
+                {
+                    Expression = new AssignmentExpression
+                    {
+                        Left = Id("captured"),
+                        Operator = "=",
+                        Right = Num(2)
+                    }
+                },
+                new ExpressionStatement
+                {
+                    Expression = new CallExpression
+                    {
+                        Callee = Id("inner"),
+                        Arguments = []
+                    }
+                }),
+            Call("outer"));
+
+        Assert.AreEqual("2", output);
+    }
+
+    [TestMethod]
+    public void VM_Function_ReturnedClosure_SeesLiveCapturedMutation()
+    {
+        var output = RunAndCapture(
+            Fn("outer", [],
+                new VariableDeclaration
+                {
+                    Kind = "let",
+                    Declarations =
+                    [
+                        new VariableDeclarator
+                        {
+                            VarName = Id("captured"),
+                            Init = Num(1)
+                        }
+                    ]
+                },
+                Fn("inner", [], Print(Id("captured"))),
+                new ExpressionStatement
+                {
+                    Expression = new AssignmentExpression
+                    {
+                        Left = Id("captured"),
+                        Operator = "=",
+                        Right = Num(2)
+                    }
+                },
+                new ReturnStatement
+                {
+                    Argument = Id("inner")
+                }),
+            new VariableDeclaration
+            {
+                Kind = "let",
+                Declarations =
+                [
+                    new VariableDeclarator
+                    {
+                        VarName = Id("printer"),
+                        Init = new CallExpression
+                        {
+                            Callee = Id("outer"),
+                            Arguments = []
+                        }
+                    }
+                ]
+            },
+            new ExpressionStatement
+            {
+                Expression = new CallExpression
+                {
+                    Callee = Id("printer"),
+                    Arguments = []
+                }
+            });
+
+        Assert.AreEqual("2", output);
+    }
+
+    [TestMethod]
     public void VM_Function_MultipleFunctions_CalledInOrder()
     {
         // fn a() { print 10; }

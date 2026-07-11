@@ -32,6 +32,7 @@ internal sealed class VirtualMachineError(string message) : Exception(message)
     internal static VirtualMachineError UndefinedFunction(string functionName) => new($"Undefined function: {functionName}");
 
     internal static VirtualMachineError InvalidFunctionCall(string message) => new($"Invalid function call: {message}");
+    internal static VirtualMachineError ValueNotCallable(ValueKind kind) => new($"Cannot call a value of kind {kind}.");
 
     internal static VirtualMachineError ReturnWithoutCall() => new("Return instruction executed without a corresponding function call.");
 
@@ -77,4 +78,8 @@ internal sealed class VirtualMachineError(string message) : Exception(message)
         => new($"Struct '{structName}' constructor accepts up to {maxExpected} argument(s) but got {actual}.");
 
     internal static VirtualMachineError ValueNotHeapAllocated(ValueKind kind) => new($"Value of kind {kind} is not heap-allocated and does not have a valid heap handle.");
+    internal static VirtualMachineError MissingClosureEnvironment() => new("Closure capture access requires an active closure environment.");
+    internal static VirtualMachineError InvalidCaptureIndex(int index, int count) => new($"Capture index {index} is out of range for environment of size {count}.");
+    internal static VirtualMachineError CaptureTargetNotCell(ValueKind kind) => new($"Captured value must be backed by a reference cell, got {kind}.");
+    internal static VirtualMachineError UndefinedFunctionDescriptor(int functionId) => new($"Undefined function descriptor id: {functionId}.");
 }

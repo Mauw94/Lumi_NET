@@ -389,6 +389,57 @@ public sealed class FunctionBytecodeTests
     }
 
     [TestMethod]
+    public void Test_NestedFunctionDeclaration_WithOuterReference_EmitsCaptureLoad_And_LocalClosureBinding()
+    {
+        var program = BuildProgram(
+            new FunctionDeclaration
+            {
+                Id = new IdentifierNode { Name = "outer" },
+                Params = [],
+                Body = new BlockStatement
+                {
+                    Body =
+                    [
+                        new VariableDeclaration
+                        {
+                            Kind = "let",
+                            Declarations =
+                            [
+                                new VariableDeclarator
+                                {
+                                    VarName = new IdentifierNode { Name = "captured" },
+                                    Init = new NumberNode { Value = 1.0 }
+                                }
+                            ]
+                        },
+                        new FunctionDeclaration
+                        {
+                            Id = new IdentifierNode { Name = "inner" },
+                            Params = [],
+                            Body = new BlockStatement
+                            {
+                                Body =
+                                [
+                                    new PrintStatement
+                                    {
+                                        Argument = new IdentifierNode { Name = "captured" }
+                                    }
+                                ]
+                            }
+                        }
+                    ]
+                }
+            });
+
+        var result = Generate(program);
+        var innerDescriptor = result.FunctionDescriptors.Values.Single(d => d.Name == "inner");
+
+        Assert.AreEqual(CaptureSourceKind.Local, innerDescriptor.Captures[0].SourceKind);
+        Assert.AreEqual(InstructionKind.LoadCapture, result.Instructions.Single(i => i.Kind == InstructionKind.LoadCapture).Kind);
+        Assert.IsTrue(result.Instructions.Any(i => i.Kind == InstructionKind.MakeClosure && i.GetSafeIntOperand() == innerDescriptor.FunctionId));
+    }
+
+    [TestMethod]
     public void Test_FunctionDeclaration_BodyDoesNotLeakLocals()
     {
         // fn foo() { let x -> 1; }

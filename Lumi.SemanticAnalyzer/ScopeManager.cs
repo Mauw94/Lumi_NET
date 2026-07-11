@@ -49,6 +49,8 @@ internal sealed class ScopeManager
         scope[symbol.Name] = symbol;
     }
 
+    public bool ContainsInCurrentScope(string name) => CurrentScope.ContainsKey(name);
+
     /// <summary>
     /// Looks up a symbol by name, searching from the innermost scope outward.
     /// </summary>

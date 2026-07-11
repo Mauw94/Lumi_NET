@@ -294,6 +294,27 @@ public sealed class FunctionTests
     }
 
     [TestMethod]
+    public void Test_Function_Returned_Closure_Sees_Live_Captured_Mutation()
+    {
+        var source = @"
+            fn outer() {
+                let captured -> 1;
+                fn inner() {
+                    print captured;
+                }
+                captured = 2;
+                return inner;
+            }
+            let printer -> outer();
+            printer();
+        ";
+
+        var output = ExecuteAndCapture(source);
+
+        Assert.AreEqual("2", output);
+    }
+
+    [TestMethod]
     public void Test_Recursive_Function_Fibonacci()
     {
         var source = @"

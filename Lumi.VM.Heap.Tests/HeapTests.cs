@@ -192,6 +192,21 @@ public sealed class HeapTests
     }
 
     [TestMethod]
+    public void CollectGarbage_EnvironmentRoot_PreservesCapturedCellAndString()
+    {
+        var heap = new VmHeap();
+        var stringHandle = heap.InternString("hello");
+        var cellHandle = heap.Allocate(new HeapCellObject(Value.FromHeapObject(stringHandle)));
+        var environmentHandle = heap.Allocate(new HeapEnvironmentObject([Value.FromHeapObject(cellHandle)]));
+
+        heap.CollectGarbage([Value.FromHeapObject(environmentHandle)]);
+
+        var cell = heap.Get<HeapCellObject>(cellHandle);
+        Assert.AreEqual(stringHandle, cell.Value.GetRequiredHeapHandle());
+        Assert.AreEqual("hello", heap.GetStringValue(stringHandle));
+    }
+
+    [TestMethod]
     public void CollectGarbage_StructRoot_PreservesReferencedArray()
     {
         var heap = new VmHeap();

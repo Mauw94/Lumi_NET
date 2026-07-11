@@ -9,7 +9,7 @@ namespace Lumi.Bytecode;
 /// <param name="ParameterCount">The declared parameter count, excluding any implicit receiver.</param>
 /// <param name="ParentFunctionId">The enclosing function descriptor id when this function is nested; otherwise null.</param>
 /// <param name="OwningStructName">The struct name when this descriptor represents a struct method; otherwise null.</param>
-/// <param name="CaptureNames">The outer-scope local names referenced by this function.</param>
+/// <param name="Captures">The outer-scope locals referenced by this function and how they are sourced.</param>
 public sealed record FunctionDescriptor(
     int FunctionId,
     string Name,
@@ -17,7 +17,9 @@ public sealed record FunctionDescriptor(
     int ParameterCount,
     int? ParentFunctionId,
     string? OwningStructName,
-    IReadOnlyList<string> CaptureNames)
+    IReadOnlyList<CaptureBinding> Captures)
 {
-    public bool HasCaptures() => CaptureNames.Count > 0;
+    public IReadOnlyList<string> CaptureNames => [.. Captures.Select(static capture => capture.Name)];
+
+    public bool HasCaptures() => Captures.Count > 0;
 }

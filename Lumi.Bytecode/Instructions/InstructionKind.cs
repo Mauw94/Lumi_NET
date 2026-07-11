@@ -47,4 +47,6 @@ public enum InstructionKind
     Halt,
     MakeClosure,
     LoadCapture,
+    StoreCapture,
+    CallValue,
 }
