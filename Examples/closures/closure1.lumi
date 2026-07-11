@@ -11,4 +11,4 @@ struct Counter {
 
 let counter -> new Counter(value: 5);
 let printer -> counter.makePrinter();
-print printer; // Prints closure
+printer(); // Prints closure
