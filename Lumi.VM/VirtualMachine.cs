@@ -26,8 +26,10 @@ public sealed class VirtualMachine
 
     private readonly Stack<CallFrame> _callStack = [];
     private IReadOnlyDictionary<string, int> _functionAddresses = new Dictionary<string, int>();
+    private IReadOnlyDictionary<int, FunctionDescriptor> _functionDescriptors = new Dictionary<int, FunctionDescriptor>();
     private IReadOnlyDictionary<string, IReadOnlyList<string>> _structDefinitions = new Dictionary<string, IReadOnlyList<string>>();
     private IReadOnlyDictionary<string, IReadOnlyDictionary<string, int>> _structMethodAddresses = new Dictionary<string, IReadOnlyDictionary<string, int>>();
+    private Value? _currentEnvironment;
     private int _ip;
     private int _basePointer;
     private int _executedInstructionCount;
@@ -41,8 +43,10 @@ public sealed class VirtualMachine
         var instructions = (List<Instruction>)bytecode.Instructions;
         var constants = (List<Constant>)bytecode.Constants;
         _functionAddresses = bytecode.FunctionAddresses;
+        _functionDescriptors = bytecode.FunctionDescriptors;
         _structDefinitions = bytecode.StructDefinitions;
         _structMethodAddresses = bytecode.StructMethodAddresses;
+        _currentEnvironment = null;
         _ip = _executedInstructionCount;
         var instructionCount = instructions.Count;
 
@@ -106,11 +110,7 @@ public sealed class VirtualMachine
                 case InstructionKind.StoreVar:
                     {
                         var slot = _basePointer + instruction.IntOperand.GetValueOrDefault();
-                        if (slot >= _variables.Length)
-                            GrowVariables(slot);
-                        _variables[slot] = _stack[--_stackTop];
-                        if (slot >= _variableCount)
-                            _variableCount = slot + 1;
+                        WriteVariableSlot(slot, _stack[--_stackTop]);
                         break;
                     }
 
@@ -227,7 +227,19 @@ public sealed class VirtualMachine
                 case InstructionKind.LoadVar:
                     {
                         var slot = _basePointer + instruction.GetSafeIntOperand();
-                        _stack[_stackTop++] = _variables[slot];
+                        _stack[_stackTop++] = ReadVariableSlot(slot);
+                        break;
+                    }
+
+                case InstructionKind.LoadCapture:
+                    {
+                        _stack[_stackTop++] = ReadCapture(instruction.GetSafeIntOperand());
+                        break;
+                    }
+
+                case InstructionKind.StoreCapture:
+                    {
+                        WriteCapture(instruction.GetSafeIntOperand(), _stack[--_stackTop]);
                         break;
                     }
 
@@ -297,9 +309,25 @@ public sealed class VirtualMachine
                         if (!_functionAddresses.TryGetValue(functionName, out var functionAddress))
                             throw VirtualMachineError.UndefinedFunction(functionName);
 
-                        _callStack.Push(new CallFrame(ReturnAddress: _ip + 1, PreviousBasePointer: _basePointer));
-                        _basePointer = _variableCount;
-                        _ip = functionAddress;
+                        EnterFunction(functionAddress, environment: null);
+                        continue;
+                    }
+
+                case InstructionKind.CallValue:
+                    {
+                        var argumentCount = instruction.GetSafeIntOperand();
+                        var calleeIndex = _stackTop - argumentCount - 1;
+                        var callee = _stack[calleeIndex];
+
+                        if (!callee.IsHeapAllocated())
+                            throw VirtualMachineError.ValueNotCallable(callee.Kind);
+
+                        var heapObject = _heap.Get<HeapObject>(callee.GetRequiredHeapHandle());
+                        if (heapObject is not HeapClosureObject closure)
+                            throw VirtualMachineError.ValueNotCallable(heapObject.Kind);
+
+                        RemoveStackValueAt(calleeIndex);
+                        EnterFunction(closure.FunctionAddress, closure.Environment);
                         continue;
                     }
 
@@ -336,10 +364,7 @@ public sealed class VirtualMachine
                                 throw VirtualMachineError.UnknownStructMethod(heapStructObject.StructName ?? "struct", methodName);
                             }
 
-                            _callStack.Push(new CallFrame(ReturnAddress: _ip + 1, PreviousBasePointer: _basePointer));
-                            _basePointer = _variableCount;
-                            _ip = methodAddress;
-
+                            EnterFunction(methodAddress, environment: null);
                             continue;
                         }
 
@@ -372,10 +397,34 @@ public sealed class VirtualMachine
 
                         _variableCount = _basePointer;
                         _basePointer = frame.PreviousBasePointer;
+                        _currentEnvironment = frame.PreviousEnvironment;
 
                         _stack[_stackTop++] = returnValue;
                         _ip = frame.ReturnAddress;
                         continue;
+                    }
+
+                case InstructionKind.MakeClosure:
+                    {
+                        var functionId = instruction.GetSafeIntOperand();
+                        if (!_functionDescriptors.TryGetValue(functionId, out var descriptor))
+                            throw VirtualMachineError.UndefinedFunctionDescriptor(functionId);
+
+                        var captureCells = new List<Value>(descriptor.Captures.Count);
+                        foreach (var capture in descriptor.Captures)
+                        {
+                            captureCells.Add(capture.SourceKind switch
+                            {
+                                CaptureSourceKind.Local => EnsureLocalCell(capture.SourceIndex),
+                                CaptureSourceKind.Capture => ReadCaptureCell(capture.SourceIndex),
+                                _ => throw VirtualMachineError.InvalidFunctionCall($"Unsupported capture source kind '{capture.SourceKind}'.")
+                            });
+                        }
+
+                        var environment = AllocateHeapValue(new HeapEnvironmentObject(captureCells), captureCells);
+                        var closure = AllocateHeapValue(new HeapClosureObject(descriptor.EntryPoint, environment), [environment, .. captureCells]);
+                        _stack[_stackTop++] = closure;
+                        break;
                     }
 
                 case InstructionKind.Pop:
@@ -402,6 +451,10 @@ public sealed class VirtualMachine
         _executedInstructionCount = _ip;
     }
 
+    /// <summary>
+    /// Grows the variable storage array to accommodate the required slot index.
+    /// </summary>
+    /// <param name="requiredSlot">The index of the variable slot that needs to be accommodated.</param>
     private void GrowVariables(int requiredSlot)
     {
         var newSize = _variables.Length;
@@ -412,6 +465,167 @@ public sealed class VirtualMachine
         Array.Resize(ref _variables, newSize);
     }
 
+    /// <summary>
+    /// Enters a function by pushing a new call frame onto the call stack, updating the base pointer and current environment, 
+    /// and setting the instruction pointer to the function's entry point.
+    /// </summary>
+    /// <param name="entryPoint">The entry point of the function to enter.</param>
+    /// <param name="environment">The closure environment for the function.</param>
+    private void EnterFunction(int entryPoint, Value? environment)
+    {
+        _callStack.Push(new CallFrame(ReturnAddress: _ip + 1, PreviousBasePointer: _basePointer, PreviousEnvironment: _currentEnvironment));
+        _basePointer = _variableCount;
+        _currentEnvironment = environment;
+        _ip = entryPoint;
+    }
+
+    /// <summary>
+    /// Removes a value from the stack at the specified index, shifting subsequent values down to fill the gap.
+    /// </summary>
+    private void RemoveStackValueAt(int index)
+    {
+        for (var i = index; i < _stackTop - 1; i++)
+        {
+            _stack[i] = _stack[i + 1];
+        }
+
+        _stackTop--;
+    }
+
+    /// <summary>
+    /// Writes a value to the specified local variable slot, growing the variable storage if necessary.
+    /// </summary>
+    /// <param name="slot">The local slot index of the variable to write.</param>
+    /// <param name="value">The value to write to the variable slot.</param>
+    private void WriteVariableSlot(int slot, Value value)
+    {
+        if (slot >= _variables.Length)
+            GrowVariables(slot);
+
+        if (slot < _variableCount && TryGetCell(_variables[slot], out var existingCell))
+        {
+            existingCell.Value = value;
+            return;
+        }
+
+        _variables[slot] = value;
+        if (slot >= _variableCount)
+            _variableCount = slot + 1;
+    }
+
+    /// <summary>
+    /// Reads the value of a variable from the specified local slot, resolving heap cells if necessary.
+    /// </summary>
+    /// <param name="slot">The local slot index of the variable to read.</param>
+    /// <returns>The value of the variable, resolving heap cells if necessary.</returns>
+    private Value ReadVariableSlot(int slot)
+    {
+        var value = _variables[slot];
+
+        return TryGetCell(value, out var cell) ? cell.Value : value;
+    }
+
+    /// <summary>
+    /// Ensures that the variable at the specified local slot is stored in a heap cell, allowing it to be captured by closures. 
+    /// If the variable is not already a cell, it allocates a new heap cell and updates the variable slot to reference it.
+    /// </summary>
+    private Value EnsureLocalCell(int localSlot)
+    {
+        var slot = _basePointer + localSlot;
+        if (slot >= _variableCount)
+            throw VirtualMachineError.UndefinedVariable(slot);
+
+        if (TryGetCell(_variables[slot], out _))
+            return _variables[slot];
+
+        var cellValue = AllocateHeapValue(new HeapCellObject(_variables[slot]), [_variables[slot]]);
+        _variables[slot] = cellValue;
+
+        return cellValue;
+    }
+
+    /// <summary>
+    /// Reads the value of a captured variable from the current closure environment at the specified capture index.
+    /// </summary>
+    private Value ReadCapture(int captureIndex)
+    {
+        var captureCell = ReadCaptureCell(captureIndex);
+
+        return GetRequiredCell(captureCell).Value;
+    }
+
+    /// <summary>
+    /// Writes a value to a captured variable in the current closure environment at the specified capture index.
+    /// </summary>
+    private void WriteCapture(int captureIndex, Value value)
+    {
+        var captureCell = ReadCaptureCell(captureIndex);
+        GetRequiredCell(captureCell).Value = value;
+    }
+
+    /// <summary>
+    /// Reads the capture cell from the current closure environment at the specified capture index.
+    /// </summary>
+    private Value ReadCaptureCell(int captureIndex)
+    {
+        var environment = GetCurrentEnvironment();
+        if (captureIndex < 0 || captureIndex >= environment.Captures.Count)
+            throw VirtualMachineError.InvalidCaptureIndex(captureIndex, environment.Captures.Count);
+
+        var capture = environment.Captures[captureIndex];
+        if (!TryGetCell(capture, out _))
+            throw VirtualMachineError.CaptureTargetNotCell(capture.Kind);
+
+        return capture;
+    }
+
+    /// <summary>
+    /// Retrieves the current closure environment from the stack. 
+    /// If the current environment is not set or is not a valid heap-allocated value, it throws an exception.
+    /// </summary>
+    /// <returns>The current closure environment.</returns>
+    private HeapEnvironmentObject GetCurrentEnvironment()
+    {
+        if (_currentEnvironment is not Value environmentValue)
+            throw VirtualMachineError.MissingClosureEnvironment();
+
+        return _heap.Get<HeapEnvironmentObject>(environmentValue.GetRequiredHeapHandle());
+    }
+
+    /// <summary>
+    /// Attempts to retrieve a heap cell object from the provided value. 
+    /// If the value is heap-allocated and represents a cell, it returns true and outputs the cell; otherwise, it returns false.
+    /// </summary>
+    private bool TryGetCell(Value value, out HeapCellObject cell)
+    {
+        cell = null!;
+        if (!value.IsHeapAllocated())
+            return false;
+
+        var heapObject = _heap.Get<HeapObject>(value.GetRequiredHeapHandle());
+        if (heapObject is not HeapCellObject cellObject)
+            return false;
+
+        cell = cellObject;
+
+        return true;
+    }
+
+    /// <summary>
+    /// Retrieves the heap cell object from the provided value, throwing an exception if the value is not a valid cell.
+    /// </summary>
+    private HeapCellObject GetRequiredCell(Value value)
+    {
+        if (!TryGetCell(value, out var cell))
+            throw VirtualMachineError.CaptureTargetNotCell(value.Kind);
+
+        return cell;
+    }
+
+    /// <summary>
+    /// Enumerates all root values that are currently reachable and should be considered during garbage collection.
+    /// </summary>
+    /// <returns></returns>
     private IEnumerable<Value> EnumerateRoots()
     {
         for (var i = 0; i < _stackTop; i++)
@@ -423,8 +637,18 @@ public sealed class VirtualMachine
         {
             yield return _variables[i];
         }
+
+        if (_currentEnvironment is { } environment)
+        {
+            yield return environment;
+        }
     }
 
+    /// <summary>
+    /// Enumerates all root values, including the current stack, variables, and optionally any additional roots provided.
+    /// </summary>
+    /// <param name="additionalRoots">Optional additional root values to include.</param>
+    /// <returns>An enumerable of root values.</returns>
     private IEnumerable<Value> Roots(IEnumerable<Value>? additionalRoots = null)
     {
         foreach (var root in EnumerateRoots()) yield return root;
@@ -434,12 +658,28 @@ public sealed class VirtualMachine
         }
     }
 
+    /// <summary>
+    /// Allocates a heap object and pushes it onto the stack, optionally including additional roots for garbage collection.
+    /// </summary>
+    /// <param name="heapObject">The heap object to allocate.</param>
+    /// <param name="additionalRoots">Optional additional root values to include during garbage collection.</param>
     private void AllocateHeapObject(HeapObject heapObject, IEnumerable<Value>? additionalRoots = null)
     {
-        _heap.MaybeCollect(Roots());
-        _stack[_stackTop++] = Value.FromHeapObject(_heap.Allocate(heapObject));
+        _stack[_stackTop++] = AllocateHeapValue(heapObject, additionalRoots);
     }
 
+    private Value AllocateHeapValue(HeapObject heapObject, IEnumerable<Value>? additionalRoots = null)
+    {
+        _heap.MaybeCollect(Roots(additionalRoots));
+
+        return Value.FromHeapObject(_heap.Allocate(heapObject));
+    }
+
+    /// <summary>
+    /// Converts a constant to a Value, handling string constants by interning them in the heap.
+    /// </summary>
+    /// <param name="constant">The constant to convert.</param>
+    /// <returns>The corresponding Value.</returns>
     private Value ConstantToValue(Constant constant)
     {
         if (constant.Kind != ConstantKind.String)
@@ -448,9 +688,16 @@ public sealed class VirtualMachine
         }
 
         _heap.MaybeCollect(EnumerateRoots());
+
         return Value.FromHeapObject(_heap.InternString(constant.String!));
     }
 
+    /// <summary>
+    /// Attempts to retrieve the string value from a heap-allocated string object.
+    /// </summary>
+    /// <param name="value">The value to check.</param>
+    /// <param name="text">The output string if the value is a heap-allocated string.</param>
+    /// <returns>True if the value is a heap-allocated string, otherwise false.</returns>
     private bool TryGetStringValue(Value value, out string text)
     {
         text = string.Empty;
@@ -470,6 +717,12 @@ public sealed class VirtualMachine
         return true;
     }
 
+    /// <summary>
+    /// Converts a Value to its string representation for concatenation purposes. 
+    /// If the value is a heap-allocated string, it retrieves the string; otherwise, it formats the value using the heap's formatting method.
+    /// </summary>
+    /// <param name="value">The value to convert to a string.</param>
+    /// <returns>The string representation of the value.</returns>
     private string StringifyForConcatenation(Value value)
         => TryGetStringValue(value, out var text)
             ? text

@@ -1,0 +1,15 @@
+struct Counter {
+    value: int
+
+    fn makePrinter() {
+        fn printer() {
+            print this.value;
+        }
+        return printer;
+    }
+}
+
+let counter -> new Counter(value: 5);
+print counter.value;
+let printer -> counter.makePrinter();
+print printer;

@@ -7,5 +7,5 @@ public enum LocalKind
 {
     Let,
     Const,
-    Var
+    Var,
 }

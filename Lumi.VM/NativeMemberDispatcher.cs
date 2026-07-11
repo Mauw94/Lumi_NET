@@ -127,14 +127,14 @@ internal static class NativeMemberDispatcher
 
     private static Value AddArrayItem(HeapArrayObject target, Value item, Value receiverValue)
     {
-        target.Elements!.Add(item);
+        target.Elements.Add(item);
 
         return receiverValue;
     }
 
     private static Value RemoveArrayItem(HeapArrayObject target, Value item)
     {
-        var removed = target.Elements!.Remove(item);
+        var removed = target.Elements.Remove(item);
 
         return Value.FromBoolean(removed);
     }

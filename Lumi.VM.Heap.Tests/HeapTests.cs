@@ -73,6 +73,34 @@ public sealed class HeapTests
     }
 
     [TestMethod]
+    public void Allocate_EnvironmentObject_RoundTrips()
+    {
+        var heap = new VmHeap();
+        var handle = heap.Allocate(new HeapEnvironmentObject([Value.FromNumber(1), Value.FromBoolean(true)]));
+
+        var environment = heap.Get<HeapEnvironmentObject>(handle);
+
+        Assert.AreEqual(ValueKind.HeapObject, environment.Kind);
+        Assert.HasCount(2, environment.Captures);
+        Assert.AreEqual(1d, environment.Captures[0].Number);
+        Assert.IsTrue(environment.Captures[1].Bool);
+    }
+
+    [TestMethod]
+    public void Allocate_ClosureObject_RoundTrips()
+    {
+        var heap = new VmHeap();
+        var environmentHandle = heap.Allocate(new HeapEnvironmentObject([Value.FromNumber(42)]));
+        var closureHandle = heap.Allocate(new HeapClosureObject(123, Value.FromHeapObject(environmentHandle)));
+
+        var closure = heap.Get<HeapClosureObject>(closureHandle);
+
+        Assert.AreEqual(ValueKind.Function, closure.Kind);
+        Assert.AreEqual(123, closure.FunctionAddress);
+        Assert.AreEqual(environmentHandle, closure.Environment.GetRequiredHeapHandle());
+    }
+
+    [TestMethod]
     public void FormatValue_HeapArrayValue_PrintsArrayContents()
     {
         var heap = new VmHeap();
@@ -81,6 +109,29 @@ public sealed class HeapTests
         var text = heap.FormatValue(Value.FromHeapObject(handle));
 
         Assert.AreEqual("[1, 2]", text);
+    }
+
+    [TestMethod]
+    public void FormatValue_EnvironmentValue_PrintsCaptureList()
+    {
+        var heap = new VmHeap();
+        var handle = heap.Allocate(new HeapEnvironmentObject([Value.FromNumber(1), Value.FromBoolean(true)]));
+
+        var text = heap.FormatValue(Value.FromHeapObject(handle));
+
+        Assert.AreEqual("[1, True]", text);
+    }
+
+    [TestMethod]
+    public void FormatValue_ClosureValue_PrintsClosureMetadata()
+    {
+        var heap = new VmHeap();
+        var environmentHandle = heap.Allocate(new HeapEnvironmentObject([]));
+        var closureHandle = heap.Allocate(new HeapClosureObject(7, Value.FromHeapObject(environmentHandle)));
+
+        var text = heap.FormatValue(Value.FromHeapObject(closureHandle));
+
+        Assert.AreEqual("<closure@7>", text);
     }
 
     [TestMethod]
@@ -107,6 +158,52 @@ public sealed class HeapTests
         Assert.AreEqual("hello", heap.GetStringValue(stringHandle));
         Assert.IsTrue(heap.TryGetInternedString("hello", out var internedHandle));
         Assert.AreEqual(stringHandle, internedHandle);
+    }
+
+    [TestMethod]
+    public void CollectGarbage_EnvironmentRoot_PreservesCapturedString()
+    {
+        var heap = new VmHeap();
+        var stringHandle = heap.InternString("hello");
+        var environmentHandle = heap.Allocate(new HeapEnvironmentObject([Value.FromHeapObject(stringHandle)]));
+
+        heap.CollectGarbage([Value.FromHeapObject(environmentHandle)]);
+
+        var environment = heap.Get<HeapEnvironmentObject>(environmentHandle);
+        Assert.AreEqual(stringHandle, environment.Captures[0].GetRequiredHeapHandle());
+        Assert.AreEqual("hello", heap.GetStringValue(stringHandle));
+    }
+
+    [TestMethod]
+    public void CollectGarbage_ClosureRoot_PreservesEnvironmentAndCapturedString()
+    {
+        var heap = new VmHeap();
+        var stringHandle = heap.InternString("hello");
+        var environmentHandle = heap.Allocate(new HeapEnvironmentObject([Value.FromHeapObject(stringHandle)]));
+        var closureHandle = heap.Allocate(new HeapClosureObject(9, Value.FromHeapObject(environmentHandle)));
+
+        heap.CollectGarbage([Value.FromHeapObject(closureHandle)]);
+
+        var environment = heap.Get<HeapEnvironmentObject>(environmentHandle);
+        var closure = heap.Get<HeapClosureObject>(closureHandle);
+        Assert.AreEqual(environmentHandle, closure.Environment.GetRequiredHeapHandle());
+        Assert.AreEqual(stringHandle, environment.Captures[0].GetRequiredHeapHandle());
+        Assert.AreEqual("hello", heap.GetStringValue(stringHandle));
+    }
+
+    [TestMethod]
+    public void CollectGarbage_EnvironmentRoot_PreservesCapturedCellAndString()
+    {
+        var heap = new VmHeap();
+        var stringHandle = heap.InternString("hello");
+        var cellHandle = heap.Allocate(new HeapCellObject(Value.FromHeapObject(stringHandle)));
+        var environmentHandle = heap.Allocate(new HeapEnvironmentObject([Value.FromHeapObject(cellHandle)]));
+
+        heap.CollectGarbage([Value.FromHeapObject(environmentHandle)]);
+
+        var cell = heap.Get<HeapCellObject>(cellHandle);
+        Assert.AreEqual(stringHandle, cell.Value.GetRequiredHeapHandle());
+        Assert.AreEqual("hello", heap.GetStringValue(stringHandle));
     }
 
     [TestMethod]
