@@ -1356,4 +1356,61 @@ public sealed class BytecodeTests
         Assert.AreEqual(ConstantKind.Number, secondConst.Kind);
         Assert.AreEqual(5d, secondConst.Number);
     }
+
+    [TestMethod]
+    public void Test_WhileStatement_Exits_On_Condition()
+    {
+        var program = new Program
+        {
+            Body = [
+                new VariableDeclaration
+                {
+                    Kind = "let",
+                    Declarations =
+                    [
+                        new VariableDeclarator
+                        {
+                            VarName = new IdentifierNode { Name = "x" },
+                            Init = new NumberNode { Value = 0.0 }
+                        }
+                    ]
+                },
+                new WhileStatement
+                {
+                    Condition = new BinaryExpression
+                    {
+                        Left = new IdentifierNode { Name = "x" },
+                        Operator = "<",
+                        Right = new NumberNode { Value = 5.0 }
+                    },
+                    Body = new BlockStatement
+                    {
+                        Body =
+                        [
+                            new ExpressionStatement
+                            {
+                                Expression = new AssignmentExpression
+                                {
+                                    Left = new IdentifierNode { Name = "x" },
+                                    Operator = "=",
+                                    Right = new BinaryExpression
+                                    {
+                                        Left = new IdentifierNode { Name = "x" },
+                                        Operator = "+",
+                                        Right = new NumberNode { Value = 1.0 }
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            ]
+        };
+
+        var result = new BytecodeGenerator().Generate(program);
+
+        Assert.AreEqual(InstructionKind.PushConst, result.Instructions[0].Kind);
+        var finalValue = result.Constants[result.Instructions[3].GetSafeIntOperand()];
+        Assert.AreEqual(5, finalValue.Number);
+    }
 }

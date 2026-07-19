@@ -597,6 +597,27 @@ public sealed class ParserTests
         Assert.AreEqual("list", paramType.BaseTypeName);
     }
 
+    [TestMethod]
+    public void Test_Parsing_While_Statement()
+    {
+        var source = "while (x < 10) { x = x + 1; }";
+        var program = ParseProgram(source);
+
+        Assert.HasCount(1, program.Body);
+        Assert.IsInstanceOfType<WhileStatement>(program.Body[0]);
+
+        var whileStmt = (WhileStatement)program.Body[0];
+        Assert.IsInstanceOfType<BinaryExpression>(whileStmt.Condition);
+        Assert.IsInstanceOfType<BlockStatement>(whileStmt.Body);
+
+        var block = (BlockStatement)whileStmt.Body;
+        Assert.HasCount(1, block.Body);
+        Assert.IsInstanceOfType<ExpressionStatement>(block.Body[0]);
+
+        var exprStmt = (ExpressionStatement)block.Body[0];
+        Assert.IsInstanceOfType<AssignmentExpression>(exprStmt.Expression);
+    }
+
     private static Program ParseProgram(string source)
     {
         var parser = new Parser(source);

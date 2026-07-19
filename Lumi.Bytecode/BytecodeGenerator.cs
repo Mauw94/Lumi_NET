@@ -209,6 +209,10 @@ public sealed class BytecodeGenerator
 
                 throw BytecodeError.InvalidAssignmentTarget();
 
+            case WhileStatement whileStatement:
+                VisitWhileStatement(whileStatement);
+                break;
+
             default:
                 break;
         }
@@ -367,6 +371,29 @@ public sealed class BytecodeGenerator
         {
             PatchLabel(elseLabel);     // no else: target lands right after then-branch
         }
+
+        _locals.ExitScope();
+    }
+
+    private void VisitWhileStatement(WhileStatement whileStatement)
+    {
+        _locals.EnterScope();
+
+        var loopStart = _instructions.Count;
+        var endLabel = NewLabel();
+
+        if (whileStatement.Condition is null)
+        {
+            throw BytecodeError.WhileStatementMissingCondition();
+        }
+
+        Visit(whileStatement.Condition);
+        EmitJumpIfFalse(endLabel);
+
+        Visit(whileStatement.Body);
+        Emit(Instruction.Jump(loopStart));
+
+        PatchLabel(endLabel);
 
         _locals.ExitScope();
     }

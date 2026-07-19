@@ -1112,4 +1112,60 @@ public sealed class VirtualMachineTests
         Assert.AreEqual("5", lines[1]);
     }
 
+    [TestMethod]
+    public void Test_WhileStatement_With_Condition_And_Body()
+    {
+        // while (i < 3) { print i; i = i + 1; }
+        var bytecode = Build(
+            new VariableDeclaration
+            {
+                Kind = "let",
+                Declarations =
+                [
+                    new VariableDeclarator
+                    {
+                        VarName = new IdentifierNode { Name = "i" },
+                        Init = new NumberNode { Value = 0.0 }
+                    }
+                ]
+            },
+            new WhileStatement
+            {
+                Condition = new BinaryExpression
+                {
+                    Left = new IdentifierNode { Name = "i" },
+                    Operator = "<",
+                    Right = new NumberNode { Value = 3.0 }
+                },
+                Body = new BlockStatement
+                {
+                    Body =
+                    [
+                        new PrintStatement { Argument = new IdentifierNode { Name = "i" } },
+                        new ExpressionStatement
+                        {
+                            Expression = new AssignmentExpression
+                            {
+                                Left = new IdentifierNode { Name = "i" },
+                                Operator = "=",
+                                Right = new BinaryExpression
+                                {
+                                    Left = new IdentifierNode { Name = "i" },
+                                    Operator = "+",
+                                    Right = new NumberNode { Value = 1.0 }
+                                }
+                            }
+                        }
+                    ]
+                }
+            }
+        );
+        var output = CaptureOutput(() => new VirtualMachine().Execute(bytecode));
+        var lines = output.Split(Environment.NewLine);
+
+        Assert.HasCount(3, lines);
+        Assert.AreEqual("0", lines[0]);
+        Assert.AreEqual("1", lines[1]);
+        Assert.AreEqual("2", lines[2]);
+    }
 }

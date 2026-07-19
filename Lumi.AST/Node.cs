@@ -148,6 +148,12 @@ public class ReturnStatement : Node
     public Node? Argument { get; set; }
 }
 
+public class WhileStatement : Node
+{
+    public Node? Condition { get; set; }
+    public required Node Body { get; set; }
+}
+
 // Literals and misc
 public class ArrayLiteral : Node
 {
