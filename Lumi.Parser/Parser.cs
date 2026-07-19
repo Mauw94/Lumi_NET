@@ -124,6 +124,9 @@ public sealed class Parser
                     case "return":
                         result = ParseReturnStatement;
                         break;
+                    case "while":
+                        result = ParseWhileStatement;
+                        break;
                     default:
                         result = ParseExpressionStatement;
                         break;
@@ -428,6 +431,24 @@ public sealed class Parser
             var span = CreateSpanFromTokens();
 
             return new ReturnStatement { Argument = argument, Span = span };
+        }
+    }
+
+    private Node ParseWhileStatement
+    {
+        get
+        {
+            Advance(); // consume 'while'
+
+            Expect(TokenKind.LeftParen);
+            var expr = ParseExpression();
+
+            Expect(TokenKind.RightParen);
+
+            var body = ParseStatement();
+            var span = CreateSpanFromTokens();
+
+            return new WhileStatement { Condition = expr, Body = body, Span = span };
         }
     }
 

@@ -1713,4 +1713,86 @@ public sealed class SemanticAnalyzerTests
         Assert.HasCount(1, result.Errors);
         Assert.Contains("cannot mix named and positional", result.Errors[0].Message);
     }
+
+    [TestMethod]
+    public void Analyze_NewStruct_With_Unknown_Field_ReturnsError()
+    {
+        var program = new Program
+        {
+            Body =
+            [
+                new StructDeclaration
+                {
+                    Identifier = new IdentifierNode { Name = "Person" },
+                    Fields =
+                    [
+                        new StructFieldDeclaration { Identifier = new IdentifierNode { Name = "name" }, Type = new IdentifierNode { Name = "str" } },
+                        new StructFieldDeclaration { Identifier = new IdentifierNode { Name = "age" }, Type = new IdentifierNode { Name = "int" } }
+                    ]
+                },
+                new VariableDeclaration
+                {
+                    Kind = "let",
+                    Declarations =
+                    [
+                        new VariableDeclarator
+                        {
+                            VarName = new IdentifierNode { Name = "p" },
+                            VarType = new IdentifierNode { Name = "Person" },
+                            Init = new NewExpression
+                            {
+                                TypeName = new IdentifierNode { Name = "Person" },
+                                Arguments =
+                                [
+                                    new StructFieldInitializerArgument { Identifier = new IdentifierNode { Name = "name" }, Value = new StringNode { Value = "test" } },
+                                    new StructFieldInitializerArgument { Identifier = new IdentifierNode { Name = "height" }, Value = new NumberNode { Value = 180 } }
+                                ]
+                            }
+                        }
+                    ]
+                }
+            ]
+        };
+        var result = new SemanticAnalyzer().Analyze(program);
+        Assert.IsFalse(result.IsValid);
+        Assert.HasCount(1, result.Errors);
+        Assert.Contains("does not contain field 'height'", result.Errors[0].Message);
+    }
+
+    [TestMethod]
+    public void Analyze_Visiting_WhileStatement_Visits_Condition_And_Body()
+    {
+        var program = new Program
+        {
+            Body =
+            [
+                new WhileStatement
+                {
+                    Condition = new BinaryExpression
+                    {
+                        Left = new NumberNode { Value = 1 },
+                        Operator = "<",
+                        Right = new NumberNode { Value = 10 }
+                    },
+                    Body = new BlockStatement
+                    {
+                        Body =
+                        [
+                            new ExpressionStatement
+                            {
+                                Expression = new PrintStatement
+                                {
+                                    Argument = new StringNode { Value = "looping" }
+                                }
+                            }
+                        ]
+                    }
+                }
+            ]
+        };
+
+        var result = new SemanticAnalyzer().Analyze(program);
+        Assert.IsTrue(result.IsValid);
+        Assert.IsEmpty(result.Errors);
+    }
 }

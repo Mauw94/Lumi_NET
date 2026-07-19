@@ -98,6 +98,10 @@ public sealed class SemanticAnalyzer
                 VisitForStatement(forStmt);
                 break;
 
+            case WhileStatement whileStmt:
+                VisitWhileStatement(whileStmt);
+                break;
+
             case ExpressionStatement exprStmt:
                 VisitExpressionStatement(exprStmt);
                 break;
@@ -345,6 +349,20 @@ public sealed class SemanticAnalyzer
 
         // Analyze the body
         Visit(forStmt.Body);
+
+        _scopes.ExitScope();
+    }
+
+    private void VisitWhileStatement(WhileStatement whileStmt)
+    {
+        if (whileStmt.Condition is not null)
+        {
+            Visit(whileStmt.Condition);
+        }
+
+        _scopes.EnterScope();
+
+        Visit(whileStmt.Body);
 
         _scopes.ExitScope();
     }

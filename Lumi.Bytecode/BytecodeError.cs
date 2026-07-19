@@ -35,4 +35,5 @@ public sealed class BytecodeError(string message) : Exception(message)
     public static BytecodeError NoValidIteratorFound() => new("No valid iterator found for for statement. Expected an identifier.");
     public static BytecodeError InvalidAssignmentTarget() => new("Invalid assignment target. Expected a variable or a property.");
     public static BytecodeError InvalidConstantPoolIndex(int index) => new($"Invalid constant pool index: {index}.");
+    public static BytecodeError WhileStatementMissingCondition() => new("While statement is missing a condition.");
 }

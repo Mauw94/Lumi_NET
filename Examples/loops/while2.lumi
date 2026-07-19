@@ -1,0 +1,15 @@
+struct Add {
+    n: int -> 1;
+
+    fn multiply(n) {
+        return this.n * n; 
+    }
+}
+
+let a -> new Add;
+let x -> 0;
+
+while (x < 20) {
+    x = x + a.multiply(2);
+    print x;
+}
